@@ -1,36 +1,105 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# pekanan
 
-## Getting Started
+Aplikasi Next.js yang memakai Neon sebagai backend: Postgres untuk data, Neon Auth
+(Managed Better Auth) untuk login, dan Neon Function untuk endpoint di sisi Neon.
 
-First, run the development server:
+- Frontend + server: Next.js 16.4.5 (App Router, Cache Components)
+- Database: Neon Postgres via Drizzle ORM + `node-postgres`
+- Auth: Neon Auth (`@neon/auth`)
+- Function: Neon Functions (`neon.ts` + `hello.ts`)
+- Package manager: pnpm
+
+## Prasyarat
+
+- Node.js 24
+- pnpm
+- Neon CLI (`neon`) dan akun Neon yang sudah login
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+neon whoami                        # pastikan sudah login, jika belum: neon login
+neon init -y --org-id <org-id> --project-id <project-id> --branch production
+neon deploy                        # provisioning service + menulis env ke .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Setelah `neon deploy` atau `neon env pull`, hapus key `DATABASE_URL` agar tidak ambigu
+dengan URL pooled, lalu tambahkan cookie secret:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+# hapus baris DATABASE_URL; runtime memakai DATABASE_URL_POOLED
+sed -i '/^DATABASE_URL=/d' .env.local
+# jika belum ada
+printf 'NEON_AUTH_COOKIE_SECRET=%s\n' "$(openssl rand -base64 32)" >> .env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Jalankan migrasi (memakai koneksi direct):
 
-## Learn More
+```bash
+set -a && . ./.env.local && set +a && pnpm db:migrate
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Environment variables
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Variabel | Sumber | Dipakai untuk |
+| --- | --- | --- |
+| `DATABASE_URL_POOLED` | `neon deploy` (renamed dari `DATABASE_URL`) | query runtime |
+| `DATABASE_URL_UNPOOLED` | `neon deploy` | migrasi Drizzle |
+| `NEON_AUTH_BASE_URL` | `neon deploy` | server Neon Auth |
+| `NEON_AUTH_JWKS_URL` | `neon deploy` | verifikasi JWT |
+| `NEON_FUNCTION_HELLO_BASE_URL` | `neon deploy` | memanggil function `hello` |
+| `NEON_AUTH_COOKIE_SECRET` | dibuat manual | cookie session Next |
+| `NEON_BRANCH` | `neon deploy` | informasi branch |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Script
 
-## Deploy on Vercel
+```bash
+pnpm dev            # dev server
+pnpm build          # production build
+pnpm start          # jalankan hasil build
+pnpm db:generate    # generate migrasi dari schema
+pnpm db:migrate     # terapkan migrasi
+pnpm neon:deploy    # apply neon.ts
+pnpm neon:dev       # jalankan Neon Functions lokal
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Struktur
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+neon.ts                         # infra-as-code: auth + functions
+hello.ts                        # Neon Function hello
+drizzle.config.ts, drizzle/     # konfigurasi dan migrasi Drizzle
+src/db/                         # schema + pool Postgres
+src/lib/auth/                   # server & client Neon Auth
+src/lib/functions.ts            # helper URL Neon Function
+src/app/api/auth/[...path]/     # proxy Neon Auth
+src/app/api/todos/              # CRUD todos (POST/DELETE wajib login)
+src/app/api/ping-function/      # proxy ke function hello
+src/app/page.tsx                # beranda
+src/components/                 # panel auth dan daftar todo
+scripts/smoke.mts               # tes end-to-end
+```
+
+## Tes
+
+Dengan server berjalan di `localhost:3000`:
+
+```bash
+pnpm exec tsx scripts/smoke.mts
+```
+
+`scripts/verify-db.mts` memeriksa tabel dan menambah dua todo contoh — jangan
+dijalankan terhadap database produksi.
+
+## Deploy ke Vercel
+
+1. Import repo di Vercel dan set semua variabel pada tabel di atas.
+2. Pastikan trusted domain Neon Auth mencakup domain produksi:
+   `neon neon-auth domain add https://<domain>`.
+3. Setelah `neon deploy`, periksa bahwa `Disable Sign Up` masih `false`:
+   `neon neon-auth config email-password get`.
+
+Tier Hobby Vercel hanya untuk penggunaan non-komersial.
+
+Catatan detail, jebakan, dan status pekerjaan ada di [HANDOFF.md](./HANDOFF.md).
