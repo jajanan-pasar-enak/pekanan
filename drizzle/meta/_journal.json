@@ -8,6 +8,20 @@
       "when": 1793974577316,
       "tag": "0000_kind_satana",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794026909485,
+      "tag": "0001_panoramic_legion",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794026916760,
+      "tag": "0002_retire_transferred_laporan",
+      "breakpoints": true
     }
   ]
 }

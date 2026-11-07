@@ -6,17 +6,17 @@ Urutan commit mengikuti `plan.md` §9; setiap commit wajib lulus `pnpm build`.
 
 ## Commit 1 — Fondasi database
 
-- [ ] `pnpm add zod`; `pnpm add better-auth@1.7.17`; `pnpm add -D @better-auth/core@1.7.17` (belum remove `@neon/*`)
-- [ ] Tambah `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` (opsional) ke `.env.local` + `.env.example`
-- [ ] `drizzle.config.ts`: `schemaFilter: ["public"]`
-- [ ] `src/db/schema.ts`: tabel auth lokal (`user`, `session`, `account`, `verification`) + kolom plugin admin
-- [ ] `src/db/schema.ts`: `karyawan`, `pekan`, `laporan_pekan`, `laporan_anggota`, `koreksi_laporan`
-- [ ] `src/db/schema.ts`: `nominal_iuran`, `pembayaran_iuran`, `hasil_followup`, `klien`, `followup`
-- [ ] CHECK/enum & unique parsial dideklarasikan di schema (media ≥ 0, tanggal WIB, bulan awal bulan)
-- [ ] `src/lib/waktu.ts` helper WIB (`pekanWIB`, `pekanBerjalan`, `bulanBerjalan`)
-- [ ] Migration: generate, lalu `generate --custom` untuk trigger `retire_transferred_laporan`
-- [ ] Uji migration di database (psql): tabel, trigger, unique parsial, CHECK; `DROP todos, visits` otomatis
-- [ ] `pnpm build` lulus
+- [x] `pnpm add zod`; `pnpm add better-auth@1.7.17`; `pnpm add -D @better-auth/core@1.7.17` (belum remove `@neon/*`)
+- [x] Tambah `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` (opsional) ke `.env.local` + `.env.example`
+- [x] `drizzle.config.ts`: `schemaFilter: ["public"]`
+- [x] `src/db/schema.ts`: tabel auth lokal (`user`, `session`, `account`, `verification`) + kolom plugin admin
+- [x] `src/db/schema.ts`: `karyawan`, `pekan`, `laporan_pekan`, `laporan_anggota`, `koreksi_laporan`
+- [x] `src/db/schema.ts`: `nominal_iuran`, `pembayaran_iuran`, `hasil_followup`, `klien`, `followup`
+- [x] CHECK/enum & unique parsial dideklarasikan di schema (media ≥ 0, tanggal WIB, bulan awal bulan)
+- [x] `src/lib/waktu.ts` helper WIB (`pekanWIB`, `pekanBerjalan`, `bulanBerjalan`)
+- [x] Migration: generate, lalu `generate --custom` untuk trigger `retire_transferred_laporan`
+- [x] Uji migration di database (psql): tabel, trigger, unique parsial, CHECK; `DROP todos, visits` otomatis
+- [x] `pnpm build` lulus
 
 ## Commit 2 — Auth lokal
 
