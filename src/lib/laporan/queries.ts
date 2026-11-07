@@ -38,6 +38,7 @@ export type LaporanDetail = {
 
 export type LaporanRingkas = {
   id: string;
+  pekanId: string;
   mulai: string;
   selesai: string;
   status: string;
@@ -165,6 +166,7 @@ export async function daftarLaporanSaya(supervisorId: string): Promise<LaporanRi
   const rows = await db
     .select({
       id: laporanPekan.id,
+      pekanId: pekan.id,
       mulai: pekan.mulai,
       selesai: pekan.selesai,
       status: laporanPekan.status,
@@ -200,6 +202,7 @@ export async function daftarLaporanSaya(supervisorId: string): Promise<LaporanRi
 
   return rows.map((r) => ({
     id: r.id,
+    pekanId: r.pekanId,
     mulai: r.mulai,
     selesai: r.selesai,
     status: r.status,

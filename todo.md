@@ -47,13 +47,13 @@ Urutan commit mengikuti `plan.md` §9; setiap commit wajib lulus `pnpm build`.
 
 ## Commit 4 — API klien, follow-up, iuran, admin
 
-- [ ] `src/lib/klien/*`, `src/lib/iuran/*`, `src/lib/kepegawaian/*`
-- [ ] `GET/POST /api/klien`, `POST /api/klien/[id]/alih` (Admin), follow-up per klien
-- [ ] `GET/POST /api/pembayaran-iuran`; master `nominal-iuran`, `hasil-followup`
-- [ ] `GET/POST /api/admin/karyawan`, `PATCH /api/admin/karyawan/[id]` (cegah siklus, pindah baris laporan, guard nonaktif)
-- [ ] `GET /api/rekap/pekan/[id]`
-- [ ] `scripts/seed.mts` (`@seed.local`, idempoten) + `--cleanup` berurutan
-- [ ] `pnpm smoke` lengkap
+- [x] `src/lib/klien/*`, `src/lib/iuran/*`, `src/lib/kepegawaian/*`
+- [x] `GET/POST /api/klien`, `POST /api/klien/[id]/alih` (Admin), follow-up per klien
+- [x] `GET/POST /api/pembayaran-iuran`; master `nominal-iuran`, `hasil-followup`
+- [x] `GET/POST /api/admin/karyawan`, `PATCH /api/admin/karyawan/[id]` (cegah siklus, pindah baris laporan, guard nonaktif)
+- [x] `GET /api/rekap/pekan/[id]`
+- [x] `scripts/seed.mts` (`@seed.local`, idempoten) + `--cleanup` berurutan
+- [x] `pnpm smoke` lengkap (77/77) + `pnpm test` 28/28 + `pnpm build` lulus
 
 ## Commit 5 — UI
 

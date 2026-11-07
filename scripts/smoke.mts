@@ -26,18 +26,21 @@ if (!adminPassword) {
 const passwordAdminAktif = process.env.SMOKE_ADMIN_PASSWORD ?? adminPassword;
 
 function buatJar() {
-  const jar = new Map<string, string>();
+  // Set-Cookie di-pisah per atribut: header gabungan bisa memuat koma di `Expires`.
+  let cookies: { name: string; value: string }[] = [];
   function cookieHeader() {
-    return [...jar].map(([k, v]) => `${k}=${v}`).join("; ");
+    return cookies.map((c) => `${c.name}=${c.value}`).join("; ");
   }
   function absorb(res: Response) {
     for (const raw of res.headers.getSetCookie()) {
-      const [pair] = raw.split(";");
-      const i = pair.indexOf("=");
-      const name = pair.slice(0, i).trim();
-      const value = pair.slice(i + 1).trim();
-      if (value === "" || /max-age=0/i.test(raw)) jar.delete(name);
-      else jar.set(name, value);
+      const atribut = raw.split(";").map((a) => a.trim());
+      const [pair, ...sisa] = atribut;
+      const i = pair!.indexOf("=");
+      const name = pair!.slice(0, i).trim();
+      const value = pair!.slice(i + 1).trim();
+      const dihapus = value === "" || /^max-age=0$/i.test(sisa.find((a) => /^max-age=/i.test(a)) ?? "");
+      cookies = cookies.filter((c) => c.name !== name);
+      if (!dihapus) cookies.push({ name, value });
     }
   }
   async function call(path: string, init: RequestInit = {}) {
@@ -97,6 +100,11 @@ function mulaiPekan(selisih: number): string {
   const d = new Date(`${tanggalWIB(0)}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() - d.getUTCDay() + selisih * 7);
   return d.toISOString().slice(0, 10);
+}
+
+function bulanDepan(bulanAwal: string): string {
+  const [y, m] = bulanAwal.split("-").map(Number);
+  return new Date(Date.UTC(y!, m!, 1)).toISOString().slice(0, 10);
 }
 
 function tambahHari(iso: string, n: number): string {
@@ -257,7 +265,6 @@ async function jalankanFase(): Promise<void> {
       `user=${sesi.json?.user?.email ?? "-"}`,
     );
   }
-
   // 6. Karyawan baru: password awal tidak bisa dipakai ke API sampai diganti.
   {
     const r = await masuk(anggota, emailPertama, passwordAwal);
@@ -714,6 +721,466 @@ async function faseLaporan() {
   }
 }
 
+async function cariIdKaryawan(email: string): Promise<string> {
+  const client = new Client({ connectionString: process.env.DATABASE_URL_UNPOOLED! });
+  await client.connect();
+  try {
+    const r = await client.query(
+      `SELECT k.id FROM karyawan k JOIN "user" u ON u.id = k.user_id WHERE u.email = $1`,
+      [email],
+    );
+    return r.rows[0]?.id ?? "";
+  } finally {
+    await client.end();
+  }
+}
+
+async function faseKlienIuran() {
+  // Klien, follow-up, rekap, dan iuran (Commit 4) lewat rantai fase laporan:
+  // atasan → supervisor → anggota (emailPertama).
+  if (!process.env.DATABASE_URL_UNPOOLED) {
+    console.log("SKIP  fase klien/iuran (DATABASE_URL_UNPOOLED tidak ada)");
+    return;
+  }
+  if (!idSup || !idAnak) {
+    console.log("SKIP  fase klien/iuran (supervisor/anggota tidak tersedia)");
+    return;
+  }
+
+  let klienId = "";
+  {
+    const r = await sup.call("/api/klien", {
+      method: "POST",
+      body: JSON.stringify({ nama: "Smoke Klien", kontak: "" }),
+    });
+    klienId = r.json?.data?.id ?? "";
+    check(
+      "supervisor buat klien (kontak kosong → null)",
+      r.status === 201 && r.json?.data?.kontak === null,
+      `status=${r.status} code=${kode(r.json)}`,
+    );
+  }
+
+  const sesiAdmin = await admin.call("/api/auth/get-session");
+  const adminAsli = sesiAdmin.json?.user?.email === adminEmail;
+  let hasilId = "";
+  let nominalId = "";
+  if (adminAsli) {
+    const h = await admin.call("/api/hasil-followup", {
+      method: "POST",
+      body: JSON.stringify({ nama: "Smoke Tertarik", urutan: 1 }),
+    });
+    hasilId = h.json?.data?.id ?? "";
+    check("admin tambah hasil follow-up", h.status === 201, `status=${h.status}`);
+    const n = await admin.call("/api/nominal-iuran", {
+      method: "POST",
+      body: JSON.stringify({ nama: "Smoke Nominal", nominal: 1000 }),
+    });
+    nominalId = n.json?.data?.id ?? "";
+    check("admin tambah nominal iuran", n.status === 201, `status=${n.status}`);
+    const o = await admin.call("/api/hasil-followup", {
+      method: "POST",
+      body: JSON.stringify({ nama: "Smoke Nonaktif", urutan: 2 }),
+    });
+    if (o.status === 201) {
+      // Master nonaktif untuk uji hasil_followup_id tidak aktif.
+      const client = new Client({ connectionString: process.env.DATABASE_URL_UNPOOLED! });
+      await client.connect();
+      await client.query(`UPDATE hasil_followup SET aktif = false WHERE id = $1`, [o.json.data.id]);
+      await client.end();
+    }
+  }
+  {
+    const r = await sup.call("/api/hasil-followup");
+    const r2 = await sup.call("/api/nominal-iuran");
+    check(
+      "GET master hasil follow-up & nominal iuran",
+      r.status === 200 && (r.json?.data ?? []).length > 0 && r2.status === 200,
+      `status=${r.status}/${r2.status}`,
+    );
+    hasilId ||= (r.json?.data ?? []).find((h: any) => h.aktif)?.id ?? "";
+    nominalId ||= (r2.json?.data ?? []).find((n: any) => n.aktif)?.id ?? "";
+    check(
+      "master untuk uji tersedia (hasil & nominal)",
+      hasilId !== "" && nominalId !== "",
+      `hasil=${hasilId !== ""} nominal=${nominalId !== ""}`,
+    );
+  }
+  {
+    const r = await sup.call("/api/hasil-followup", {
+      method: "POST",
+      body: JSON.stringify({ nama: "Smoke Bukan Admin" }),
+    });
+    const r2 = await sup.call("/api/nominal-iuran", {
+      method: "POST",
+      body: JSON.stringify({ nama: "Smoke Bukan Admin", nominal: 1 }),
+    });
+    check(
+      "angka master hanya Admin → 403",
+      r.status === 403 && r2.status === 403,
+      `status=${r.status}/${r2.status}`,
+    );
+  }
+
+  {
+    const r = await sup.call(`/api/klien/${klienId}/followup`, {
+      method: "POST",
+      body: JSON.stringify({ tanggal: tambahHari(tanggalWIB(0), 1), hasilFollowupId: hasilId }),
+    });
+    check(
+      "follow-up tanggal besok → 400",
+      r.status === 400 && kode(r.json) === "VALIDATION",
+      `status=${r.status} code=${kode(r.json)}`,
+    );
+  }
+  {
+    const r = await atasan.call(`/api/klien/${klienId}/followup`, {
+      method: "POST",
+      body: JSON.stringify({ tanggal: tanggalWIB(0), hasilFollowupId: hasilId }),
+    });
+    check(
+      "follow-up oleh non-pemilik → 404",
+      r.status === 404 && kode(r.json) === "NOT_FOUND",
+      `status=${r.status} code=${kode(r.json)}`,
+    );
+  }
+  {
+    const r = await sup.call(`/api/klien/${klienId}/followup`, {
+      method: "POST",
+      body: JSON.stringify({ tanggal: tanggalWIB(0), hasilFollowupId: hasilId, deskripsi: "Tertarik" }),
+    });
+    check("catat follow-up", r.status === 201, `status=${r.status} code=${kode(r.json)}`);
+  }
+  {
+    const r = await sup.call(`/api/klien/${klienId}/followup`);
+    const r2 = await atasan.call(`/api/klien/${klienId}/followup`);
+    const r3 = await lain.call(`/api/klien/${klienId}/followup`);
+    check(
+      "riwayat: pemilik & atasan langsung boleh, orang lain 404",
+      r.status === 200 && r.json?.data?.length === 1 && r2.status === 200 && r2.json?.data?.length === 1 && r3.status === 404,
+      `status=${r.status}/${r2.status}/${r3.status}`,
+    );
+  }
+
+  // Rekap pekan: follow-up dihitung dari kejadian, bukan angka manual.
+  // Laporan pekan lampau (Terkirim) dipakai agar baris pekan berjalan yang
+  // berstatus Draf tidak ikut dan hasilnya deterministik.
+  {
+    // -2 karena pekan -1 sudah dipakai fase laporan.
+    const mulaiLampau = mulaiPekan(-2);
+    const client = new Client({ connectionString: process.env.DATABASE_URL_UNPOOLED! });
+    await client.connect();
+    let pekanLampau = "";
+    try {
+      const p = await client.query(
+        `INSERT INTO pekan (mulai, selesai) VALUES ($1, $2)
+         ON CONFLICT (mulai) DO UPDATE SET selesai = EXCLUDED.selesai RETURNING id`,
+        [mulaiLampau, tambahHari(mulaiLampau, 6)],
+      );
+      pekanLampau = p.rows[0].id;
+      const l = await client.query(
+        `INSERT INTO laporan_pekan (pekan_id, supervisor_id, status, submitted_at)
+         VALUES ($1, $2, 'Terkirim', now()) RETURNING id`,
+        [pekanLampau, idSup],
+      );
+      await client.query(
+        `INSERT INTO laporan_anggota (laporan_id, anggota_id, kehadiran, media_online, media_offline, one_on_one)
+         VALUES ($1, $2, 'Tepat Waktu', 3, 1, 'Pribadi')`,
+        [l.rows[0].id, idAnak],
+      );
+    } finally {
+      await client.end();
+    }
+    const rekap = await sup.call(`/api/rekap/pekan/${pekanLampau}`);
+    const baris = rekap.json?.data?.baris ?? [];
+    const r2 = await atasan.call(`/api/rekap/pekan/${pekanLampau}`);
+    const r3 = await lain.call(`/api/rekap/pekan/${pekanLampau}`);
+    check(
+      "rekap pekan lampau: satu baris, follow-up dihitung dari kejadian",
+      rekap.status === 200 && baris.length === 1 && baris[0]?.followup === 0,
+      `status=${rekap.status} n=${baris.length} followup=${baris[0]?.followup ?? "-"}`,
+    );
+    check("rekap: atasan langsung boleh, orang lain 404", r2.status === 200 && r3.status === 404, `status=${r2.status}/${r3.status}`);
+  }
+  const bulanIni = `${tanggalWIB(0).slice(0, 7)}-01`;
+  {
+    const r = await sup.call("/api/pembayaran-iuran", {
+      method: "POST",
+      body: JSON.stringify({ karyawanId: idAnak, nominalIuranId: nominalId, bulan: bulanIni }),
+    });
+    check(
+      "supervisor langsung mencatat iuran anggota",
+      r.status === 201 && r.json?.data?.dicatatUntukOrangLain === true,
+      `status=${r.status} code=${kode(r.json)}`,
+    );
+  }
+  {
+    const r = await sup.call("/api/pembayaran-iuran", {
+      method: "POST",
+      body: JSON.stringify({ karyawanId: idAnak, nominalIuranId: nominalId, bulan: bulanIni }),
+    });
+    check(
+      "duplikat (karyawan, bulan) → 409",
+      r.status === 409 && kode(r.json) === "CONFLICT",
+      `status=${r.status} code=${kode(r.json)}`,
+    );
+  }
+  {
+    const r = await atasan.call("/api/pembayaran-iuran", {
+      method: "POST",
+      body: JSON.stringify({ karyawanId: idAnak, nominalIuranId: nominalId, bulan: bulanIni }),
+    });
+    check(
+      "supervisor tidak langsung mencatat → 403",
+      r.status === 403 && kode(r.json) === "FORBIDDEN",
+      `status=${r.status} code=${kode(r.json)}`,
+    );
+  }
+  {
+    const r = await anggota.call("/api/pembayaran-iuran", {
+      method: "POST",
+      body: JSON.stringify({ nominalIuranId: nominalId, bulan: bulanDepan(bulanIni) }),
+    });
+    check(
+      "iuran bulan depan → 400",
+      r.status === 400 && kode(r.json) === "VALIDATION",
+      `status=${r.status} code=${kode(r.json)}`,
+    );
+  }
+  {
+    const r = await sup.call("/api/pembayaran-iuran");
+    const data = r.json?.data ?? [];
+    check(
+      "GET iuran: saw pembayaran Anggota Langsung",
+      r.status === 200 && data.some((p: any) => p.karyawan?.id === idAnak && p.olehSupervisor === true),
+      `status=${r.status} n=${data.length}`,
+    );
+    const r2 = await lain.call(`/api/pembayaran-iuran?karyawanId=${idAnak}`);
+    check(
+      "IDOR: iuran karyawan lain → 404",
+      r2.status === 404 && kode(r2.json) === "NOT_FOUND",
+      `status=${r2.status} code=${kode(r2.json)}`,
+    );
+  }
+
+  // Nonaktif ditolak VALIDATION (bukan 401/403): superv masih punya Anggota & Klien.
+  {
+    const r = await admin.call(`/api/admin/karyawan/${idSup}`, {
+      method: "PATCH",
+      body: JSON.stringify({ aktif: false }),
+    });
+    check(
+      "nonaktif ditolak karena beban → 400 VALIDATION",
+      r.status === 400 && kode(r.json) === "VALIDATION",
+      `status=${r.status} code=${kode(r.json)} body=${r.text.slice(0, 120)}`,
+    );
+  }
+}
+
+async function faseAdminKepegawaian() {
+  // PATCH admin/karyawan: siklus, pindah supervisor, demote, nonaktif, alih klien.
+  if (!process.env.DATABASE_URL_UNPOOLED) {
+    console.log("SKIP  fase admin kepegawaian (DATABASE_URL_UNPOOLED tidak ada)");
+    return;
+  }
+  const sesi = await admin.call("/api/auth/get-session");
+  const profilAdmin = await admin.call("/api/me");
+  if (sesi.json?.user?.email !== adminEmail || profilAdmin.json?.data?.role !== "admin") {
+    console.log("SKIP  fase admin kepegawaian (admin bukan ADMIN_EMAIL; data seed?)");
+    return;
+  }
+
+  // Rantai baru: X (puncak) ← Y ← Z.
+  const emailX = `smoke-x-${stempel}@seed.local`;
+  const emailY = `smoke-y-${stempel}@seed.local`;
+  const emailZ = `smoke-z-${stempel}@seed.local`;
+  const idr: Record<string, string> = {};
+  for (const [email, nama] of [
+    [emailX, "Smoke Atas"],
+    [emailY, "Smoke Tengah"],
+    [emailZ, "Smoke Bawah"],
+  ] as const) {
+    const r = await admin.call("/api/admin/karyawan", {
+      method: "POST",
+      body: JSON.stringify({ nama, email, password: passwordAwal, level: "Tetap" }),
+    });
+    check(`admin buat ${nama}`, r.status === 201, `status=${r.status} code=${kode(r.json)}`);
+    idr[email] = await cariIdKaryawan(email);
+  }
+  // Satu sesi untuk ketiga akun: token sesi berbagi nama dengan sesi admin, dan
+  // PATCH nonaktif mencabut semua sesi akun itu — sesi terpisah akan saling
+  // menimpa di header Cookie.
+  const bersama = buatJar();
+  let sesiAktif = "";
+  async function jadi(email: string) {
+    const r = await masuk(bersama, email, sesiAktif === email ? passwordBaru : passwordAwal);
+    if (sesiAktif === email) return r;
+    const ganti = await bersama.call("/api/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword: passwordAwal, newPassword: passwordBaru }),
+    });
+    if (r.status === 200 && ganti.status === 200) sesiAktif = email;
+    return ganti;
+  }
+  for (const email of [emailZ, emailY, emailX]) await jadi(email);
+  const kembaliKeZ = () => jadi(emailZ);
+  const patch = (email: string, body: unknown) =>
+    admin.call(`/api/admin/karyawan/${idr[email]}`, { method: "PATCH", body: JSON.stringify(body) });
+  // Token sesi Better Auth berotasi saat dipakai. Membaca sesi dengan jar lain
+  // setelah PATCH dapat menimpa token di DB sebelum jar admin membaca respons
+  // PATCH (get-session tampak valid, PATCH 401). Jadi sediakan jalur PATCH yang
+  // memakai jar bersama: ubah namamu sendiri lewat akun yang sedang aktif.
+  async function patchSebagaiEmail(email: string) {
+    await jadi(email);
+    const r = await bersama.call(`/api/admin/karyawan/${idr[email]}`, {
+      method: "PATCH",
+      body: JSON.stringify({ nama: "Smoke Bawah" }),
+    });
+    if (r.status !== 200) throw new Error(`PATCH ${email} gagal: ${r.status} ${r.text.slice(0, 120)}`);
+  }
+
+  {
+    await jadi(emailY);
+    const r = await bersama.call("/api/admin/karyawan");
+    await kembaliKeZ();
+    const r2 = await bersama.call(`/api/admin/karyawan/${idr[emailY]}`, {
+      method: "PATCH",
+      body: JSON.stringify({ nama: "Dibajak" }),
+    });
+    check("non-admin akses admin → 403", r.status === 403 && r2.status === 403, `status=${r.status}/${r2.status}`);
+  }
+  {
+    const r = await patch(emailZ, { supervisorId: idr[emailY]! });
+    check("pindah supervisor: Z di bawah Y", r.status === 200 && r.json?.data?.supervisorId === idr[emailY], `status=${r.status} code=${kode(r.json)}`);
+  }
+  {
+    const r = await patch(emailY, { supervisorId: idr[emailX]! });
+    check("pindah supervisor: Y di bawah X", r.status === 200, `status=${r.status} code=${kode(r.json)}`);
+  }
+  {
+    const r = await patch(emailX, { supervisorId: idr[emailZ]! });
+    check(
+      "supervisor membentuk siklus → 400",
+      r.status === 400 && kode(r.json) === "VALIDATION",
+      `status=${r.status} code=${kode(r.json)}`,
+    );
+  }
+  {
+    const r = await patch(emailY, { level: "Magang" });
+    check("demote Tetap→Magang yang membimbing Magang → 400", r.status === 400 && kode(r.json) === "VALIDATION", `status=${r.status} code=${kode(r.json)}`);
+  }
+  {
+    // Y tidak boleh dinonaktifkan sebelum Z selesai diuji: kegagalan lebih awal
+    // tidak boleh menyamarkan uji nonaktif Z.
+    await patchSebagaiEmail(emailZ);
+    const r = await patch(emailY, { supervisorId: idr[emailZ]! });
+    check(
+      "supervisor = Anggota Langsung (siklus) → 400",
+      r.status === 400 && kode(r.json) === "VALIDATION",
+      `status=${r.status} code=${kode(r.json)}`,
+    );
+    await jadi(emailX);
+    // Kembalikan rantai: siklus ditolak sebelum menulis, Y tetap puncak.
+    const balik = await patch(emailY, { supervisorId: idr[emailX]! });
+    check("Y kembali di bawah X", balik.status === 200, `status=${balik.status} code=${kode(balik.json)}`);
+  }
+
+  // Draf pekan berjalan Y berisi baris Z (setelah pindah supervisor).
+  {
+    await jadi(emailY);
+    const r = await bersama.call("/api/pekan/bootstrap", { method: "POST" });
+    const berjalan = r.json?.data?.laporan?.find((l: any) => l.pekanBerjalan);
+    check(
+      "Draf Y memuat baris Z setelah pindah supervisor",
+      r.status === 200 && berjalan?.total === 1,
+      `status=${r.status} total=${berjalan?.total ?? "-"}`,
+    );
+  }
+
+  let klienZ = "";
+  {
+    await kembaliKeZ();
+    const r = await bersama.call("/api/klien", {
+      method: "POST",
+      body: JSON.stringify({ nama: "Smoke Klien Z", kontak: "0800" }),
+    });
+    klienZ = r.json?.data?.id ?? "";
+    check("Z buat klien", r.status === 201, `status=${r.status}`);
+  }
+  {
+    const r = await patch(emailZ, { aktif: false });
+    check(
+      "nonaktif dengan klien → 400",
+      r.status === 400 && kode(r.json) === "VALIDATION",
+      `status=${r.status} code=${kode(r.json)}`,
+    );
+  }
+  {
+    const r = await patch(emailY, { aktif: false });
+    check("nonaktif supervisor yang punya anggota → 400", r.status === 400, `status=${r.status} body=${r.text.slice(0, 120)}`);
+  }
+  {
+    await jadi(emailY);
+    const r = await bersama.call(`/api/klien/${klienZ}/alih`, {
+      method: "POST",
+      body: JSON.stringify({ keKaryawanId: idr[emailX] }),
+    });
+    check("alih klien oleh non-admin → 403", r.status === 403, `status=${r.status}`);
+  }
+  {
+    const r = await admin.call(`/api/klien/${klienZ}/alih`, {
+      method: "POST",
+      body: JSON.stringify({ keKaryawanId: idr[emailZ] }),
+    });
+    check(
+      "alih ke pemilik yang sama → 400",
+      r.status === 400 && kode(r.json) === "VALIDATION",
+      `status=${r.status} code=${kode(r.json)}`,
+    );
+  }
+  {
+    const r = await admin.call(`/api/klien/${klienZ}/alih`, {
+      method: "POST",
+      body: JSON.stringify({ keKaryawanId: idr[emailY] }),
+    });
+    check(
+      "alih klien oleh admin",
+      r.status === 200 && r.json?.data?.pemilik?.id === idr[emailY],
+      `status=${r.status} code=${kode(r.json)}`,
+    );
+  }
+  {
+    check(
+      "sesi admin masih berlaku sebelum nonaktif",
+      await sesiAdminMasihBerjalan(),
+      "sesi admin hilang",
+    );
+    const r = await patch(emailZ, { aktif: false });
+    check(
+      "nonaktif anggota tanpa klien → 200 + sesi dicabut",
+      r.status === 200 && r.json?.data?.aktif === false && r.json?.data?.sesiDicabut === true,
+      `status=${r.status} body=${r.text.slice(0, 160)}`,
+    );
+  }
+  {
+    await kembaliKeZ();
+    const r = await bersama.call("/api/me");
+    check("sesi karyawan nonaktif tidak berlaku", r.status === 401, `status=${r.status} code=${kode(r.json)}`);
+  }
+  {
+    const r = await bersama.call(`/api/pembayaran-iuran`);
+    check("tidak bisa mencatat iuran setelah nonaktif → 401", r.status === 401, `status=${r.status}`);
+  }
+  {
+    const r = await patch(emailY, { aktif: false });
+    check(
+      "nonaktif supervisor yang kliennya sudah dialihkan → 200",
+      r.status === 200 && r.json?.data?.aktif === false,
+      `status=${r.status} code=${kode(r.json)}`,
+    );
+  }
+}
+
 let kandidatAdmin = [...new Set([passwordAdminAktif, adminPasswordBaru])];
 let admin = await masukAdmin();
 
@@ -743,36 +1210,48 @@ try {
     admin = await masukAdmin();
   }
   await faseLaporan();
+  await faseKlienIuran();
+  await faseAdminKepegawaian();
 } finally {
-  // Bersihkan data uji. FK laporan/koreksi memakai ON DELETE RESTRICT, jadi
-  // baris laporan milik karyawan smoke dihapus lebih dulu.
+  // Bersihkan data uji dalam satu transaksi, urutan mengikuti FK RESTRICT:
+  // koreksi → laporan → followup → iuran → klien → karyawan → user, lalu master "Smoke ".
+  // Satu transaksi: bila satu langkah gagal, tidak ada yang terhapus separuh.
   if (process.env.DATABASE_URL_UNPOOLED) {
     const client = new Client({ connectionString: process.env.DATABASE_URL_UNPOOLED });
     await client.connect();
-    await client.query(
-      `DELETE FROM koreksi_laporan WHERE laporan_id IN (
-         SELECT l.id FROM laporan_pekan l JOIN karyawan k ON k.id = l.supervisor_id
-         JOIN "user" u ON u.id = k.user_id WHERE u.email LIKE 'smoke-%@seed.local'
-       )`,
-    );
-    await client.query(
-      `DELETE FROM laporan_pekan WHERE supervisor_id IN (
-         SELECT k.id FROM karyawan k JOIN "user" u ON u.id = k.user_id
-         WHERE u.email LIKE 'smoke-%@seed.local'
-       )`,
-    );
-    // karyawan.user_id ON DELETE RESTRICT: hapus profil dulu, akun & sesi ikut cascade.
-    const hasil = await client.query(
-      `WITH profil AS (
-         DELETE FROM karyawan ks USING "user" u
-         WHERE ks.user_id = u.id AND u.email LIKE 'smoke-%@seed.local'
-         RETURNING u.id
-       ), akun AS (
-         DELETE FROM "user" WHERE id IN (SELECT id FROM profil) RETURNING id
-       ) SELECT count(*)::int AS n FROM akun`,
-    );
+    const karyawanSmoke = `(SELECT k.id FROM karyawan k JOIN "user" u ON u.id = k.user_id
+       WHERE u.email LIKE 'smoke-%@seed.local')`;
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        `DELETE FROM koreksi_laporan WHERE laporan_id IN (
+           SELECT l.id FROM laporan_pekan l WHERE l.supervisor_id IN ${karyawanSmoke})`,
+      );
+      await client.query(`DELETE FROM laporan_pekan WHERE supervisor_id IN ${karyawanSmoke}`);
+      // Follow-up hasil fase ini dibuat oleh karyawan smoke.
+      await client.query(`DELETE FROM followup WHERE created_by IN ${karyawanSmoke}`);
+      await client.query(`DELETE FROM pembayaran_iuran WHERE karyawan_id IN ${karyawanSmoke}`);
+      await client.query(`DELETE FROM klien WHERE karyawan_id IN ${karyawanSmoke}`);
+      const hasil = await client.query(
+        `WITH profil AS (
+           DELETE FROM karyawan ks USING "user" u
+           WHERE ks.user_id = u.id AND u.email LIKE 'smoke-%@seed.local'
+           RETURNING u.id
+         ), akun AS (
+           DELETE FROM "user" WHERE id IN (SELECT id FROM profil) RETURNING id
+         ) SELECT count(*)::int AS n FROM akun`,
+      );
+      await client.query(`DELETE FROM nominal_iuran WHERE nama LIKE 'Smoke %'`);
+      await client.query(`DELETE FROM hasil_followup WHERE nama LIKE 'Smoke %'`);
+      await client.query("COMMIT");
+      console.log(`smoke: ${hasil.rows[0].n} data uji dibersihkan.`);
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => {});
+      throw error;
+    }
     await client.end();
-    console.log(`smoke: ${hasil.rows[0].n} data uji dibersihkan.`);
+    // Data @seed.local tidak disentuh smoke; seed.mts --cleanup untuk menghapusnya.
+    console.log("smoke: data @seed.local tidak disentuh (pk. seed.mts --cleanup).");
   } else {
     console.log(`smoke: DATABASE_URL_UNPOOLED tidak ada; bersihkan manual (${emailPertama}, ${emailKedua}).`);
   }

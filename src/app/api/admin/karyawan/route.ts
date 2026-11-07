@@ -1,55 +1,25 @@
 import { connection } from "next/server";
-import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/current";
-import { auth } from "@/lib/auth/server";
-import { AppError, handle, jsonOk } from "@/lib/http";
+import { bacaJson, handle, jsonOk } from "@/lib/http";
+import { buatKaryawan } from "@/lib/kepegawaian/mutations";
+import { daftarKaryawan } from "@/lib/kepegawaian/queries";
 
-const bodySchema = z.object({
-  nama: z.string().trim().min(1, "Nama wajib diisi."),
-  email: z.email("Email tidak valid."),
-  password: z.string().min(8, "Password awal minimal 8 karakter."),
-  level: z.enum(["Magang", "Tetap"]),
-  supervisorId: z.uuid("Supervisor tidak valid.").nullable().default(null),
-  admin: z.boolean().default(false),
-});
-
-export async function POST(request: Request) {
+export async function GET() {
   return handle(async () => {
     // Route handler ikut di-prerender saat build; baca sesi hanya per request.
     await connection();
     await requireAdmin();
-    const { admin, ...karyawanBaru } = bodySchema.parse(await request.json());
+    return jsonOk(await daftarKaryawan());
+  });
+}
 
+export async function POST(request: Request) {
+  return handle(async () => {
+    await connection();
+    await requireAdmin();
     // auth.api.createUser memvalidasi level & supervisor lewat databaseHooks
     // dan membuat profil karyawan (harus_ganti_password = true). autoSignIn
     // false memastikan sesi admin tidak tertimpa.
-    const hasil = await auth.api.createUser({
-      body: {
-        name: karyawanBaru.nama,
-        email: karyawanBaru.email.toLowerCase(),
-        password: karyawanBaru.password,
-        role: admin ? "admin" : "user",
-        data: {
-          level: karyawanBaru.level,
-          supervisorId: karyawanBaru.supervisorId,
-        },
-      },
-      headers: request.headers,
-    });
-
-    if (!hasil?.user) {
-      throw new AppError("INTERNAL", "Karyawan gagal dibuat.");
-    }
-    return jsonOk(
-      {
-        userId: hasil.user.id,
-        email: hasil.user.email,
-        nama: hasil.user.name,
-        level: karyawanBaru.level,
-        supervisorId: karyawanBaru.supervisorId,
-        harusGantiPassword: true,
-      },
-      201,
-    );
+    return jsonOk(await buatKaryawan(await bacaJson(request), request.headers), 201);
   });
 }

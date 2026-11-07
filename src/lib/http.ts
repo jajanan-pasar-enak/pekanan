@@ -51,6 +51,30 @@ export function jsonError(
   );
 }
 
+// ZodError ditangani terpisah agar semua error validasi memakai format
+// { error: { code: "VALIDATION", message, details: { issues } } }.
+export function validationError(error: ZodError): NextResponse {
+  return jsonError("VALIDATION", "Data yang dikirim tidak valid.", {
+    issues: error.issues.map((issue) => ({
+      path: issue.path.join("."),
+      message: issue.message,
+    })),
+  });
+}
+
+export async function bacaJson(request: Request): Promise<unknown> {
+  try {
+    return await request.json();
+  } catch {
+    throw new AppError("VALIDATION", "Body harus berupa JSON yang valid.");
+  }
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error &&
+    (error as { code?: unknown }).code === "23505";
+}
+
 function isBetterAuthApiError(
   error: unknown,
 ): error is { status: string; body?: { message?: string; code?: string } } {
@@ -69,12 +93,7 @@ export async function handle(fn: () => Promise<Response>): Promise<Response> {
       return jsonError(error.code, error.message, error.details);
     }
     if (error instanceof ZodError) {
-      return jsonError("VALIDATION", "Data yang dikirim tidak valid.", {
-        issues: error.issues.map((issue) => ({
-          path: issue.path.join("."),
-          message: issue.message,
-        })),
-      });
+      return validationError(error);
     }
     if (isBetterAuthApiError(error)) {
       if (error.status === "UNAUTHORIZED") {
@@ -88,6 +107,9 @@ export async function handle(fn: () => Promise<Response>): Promise<Response> {
         error.body?.message ?? "Permintaan gagal.",
         error.body?.code ? { kode: error.body.code } : undefined,
       );
+    }
+    if (isUniqueViolation(error)) {
+      return jsonError("CONFLICT", "Data ini sudah tercatat.");
     }
     console.error(error);
     return jsonError("INTERNAL", "Terjadi kesalahan pada server.");

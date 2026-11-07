@@ -45,6 +45,14 @@ export async function buatProfilKaryawan(profil: ProfilBaru): Promise<void> {
   await db.insert(karyawan).values(profil);
 }
 
+export async function perbaruiProfil(
+  userId: string,
+  data: { nama?: string; level?: Level; supervisorId?: string | null },
+): Promise<void> {
+  if (Object.keys(data).length === 0) return;
+  await db.update(karyawan).set(data).where(eq(karyawan.userId, userId));
+}
+
 export async function tandaiGantiPasswordSelesai(userId: string): Promise<void> {
   await db
     .update(karyawan)

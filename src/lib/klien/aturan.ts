@@ -1,0 +1,33 @@
+import { z } from "zod";
+
+const kosongJadiNull = (v: unknown) =>
+  typeof v === "string" && v.trim() === "" ? null : v;
+
+// Tanggal follow-up tidak boleh di masa depan (hari ini WIB masih sah; CHECK DB juga).
+export function tanggalFollowupSah(tanggal: string, hariIni: string): boolean {
+  return tanggal <= hariIni;
+}
+
+export const klienSchema = z.object({
+  nama: z.string().trim().min(1, "Nama klien wajib diisi.").max(200),
+  kontak: z.preprocess(kosongJadiNull, z.string().trim().max(200).nullable()).default(null),
+});
+
+export const followupSchema = z.object({
+  tanggal: z.iso.date("Tanggal follow-up tidak valid."),
+  hasilFollowupId: z.uuid("Hasil follow-up tidak valid."),
+  deskripsi: z.preprocess(kosongJadiNull, z.string().trim().max(2000).nullable()).default(null),
+});
+
+export const alihKlienSchema = z.object({
+  keKaryawanId: z.uuid("Karyawan tujuan tidak valid."),
+});
+
+export const hasilFollowupSchema = z.object({
+  nama: z.string().trim().min(1, "Nama hasil follow-up wajib diisi.").max(100),
+  urutan: z.number().int().min(0).default(0),
+  aktif: z.boolean().default(true),
+});
+
+export type KlienInput = z.infer<typeof klienSchema>;
+export type FollowupInput = z.infer<typeof followupSchema>;

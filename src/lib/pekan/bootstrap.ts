@@ -30,7 +30,8 @@ async function buatAtauAmbilPekan(mulai: string, selesai: string): Promise<strin
 async function buatDraf(supervisorId: string, pekanId: string): Promise<void> {
   await db.execute(sql`
     WITH anggota_langsung AS (
-      SELECT id FROM karyawan WHERE supervisor_id = ${supervisorId}
+      SELECT id FROM karyawan WHERE supervisor_id = ${supervisorId}::uuid
+        AND (SELECT aktif FROM karyawan WHERE id = ${supervisorId}::uuid)
     ), laporan_baru AS (
       INSERT INTO laporan_pekan (pekan_id, supervisor_id, status)
       SELECT ${pekanId}::uuid, ${supervisorId}::uuid, 'Draf'
@@ -43,6 +44,14 @@ async function buatDraf(supervisorId: string, pekanId: string): Promise<void> {
     FROM laporan_baru CROSS JOIN anggota_langsung
     ON CONFLICT (laporan_id, anggota_id) DO NOTHING
   `);
+}
+
+// Dipakai perpindahan supervisor (PATCH /api/admin/karyawan/[id]): Draf pekan
+// berjalan milik supervisor baru harus ada sebelum baris anggota dipindahkan.
+export async function siapkanDrafPekanBerjalan(supervisorId: string): Promise<void> {
+  const { mulai, selesai } = pekanWIB();
+  const pekanId = await buatAtauAmbilPekan(mulai, selesai);
+  await buatDraf(supervisorId, pekanId);
 }
 
 async function batasCatchUp(supervisorId: string, selesaiBerjalan: string): Promise<string> {
