@@ -85,7 +85,7 @@ ADMIN_EMAIL=<email admin pertama>
 2. Setelah login, aplikasi `window.location.reload()` (pola lama di `auth-panel.tsx`) — aman.
 3. Build memakai Turbopack; dev `--no-turbopack`.
 4. `pnpm-workspace.yaml` berisi `allowBuilds: esbuild: true` — jangan dihapus, atau `pnpm add` gagal `ERR_PNPM_IGNORED_BUILDS`.
-5. `AGENTS.md` bawaan Next 16 — jangan dihapus. `git status` sesi ini menunjukkan `M AGENTS.md` (tidak sengaja berubah); **cek diff sebelum commit**.
+5. `AGENTS.md` sudah dihapus (commit `9f89ea6`). `next dev` akan membuatnya kembali berisi blok bawaan `<!-- BEGIN:nextjs-agent-rules -->`; jangan di-commit ulang — hapus lagi bila muncul di `git status`.
 6. Warning SSL `sslmode=verify-full` dari `pg-connection-string` — harmless.
 7. Vercel Hobby non-komersial.
 
