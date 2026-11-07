@@ -1,14 +1,15 @@
 # HANDOFF — pekanan
 
-> **Baca ini dulu.** Status terakhir: **Commit 5 (UI) selesai, belum di-commit.** Semua halaman UI terpasang dan sudah diuji di browser terhadap `next start` (Playwright, semua fase OK). `pnpm build` exit 0, `pnpm test` **28/28**. Dua bug nyata ditemukan lewat uji browser dan sudah diperbaiki (lihat §1a). Berikutnya: commit Commit 5, lalu **Commit 6 — Deploy Vercel Hobby + Neon Free**.
+> **Baca ini dulu.** Status terakhir: **Commit 5 (UI) selesai dan sudah di-commit — `8dc453d feat(ui): halaman dashboard, laporan, klien, iuran, dan admin`** (working tree bersih). `pnpm build` exit 0, `pnpm test` **28/28**, uji browser Playwright terhadap `next start` semua fase OK. **Belum di-push**: repo **belum punya remote** (`git remote -v` kosong) — perlu URL repo sebelum `git push -u origin main`. Berikutnya: **Commit 6 — Deploy Vercel Hobby + Neon Free**.
 
 ## 1. Ringkasan
 
 Aplikasi **Next.js 16.4.5 (App Router, Cache Components)** + **Neon Postgres** (Drizzle + `pg`) di `/home/xan/project/skrmb/pekanan`. Mencatat kinerja pekanan tim: Laporan Pekan (kehadiran, sebar media, one-on-one), Klien + Follow-up, dan Iuran bulanan.
 
 - Package manager: **pnpm 12.16.1** · Node **v24.22.1** lokal (environment Qoder menyebut v26; yang dipakai `pnpm exec` adalah v24)
-- Git: branch `main`, commit terakhir **`bd64c4a feat(api): klien, follow-up, iuran, rekap, admin kepegawaian`** (Commit 4).
-- **Belum di-push.** Commit 5 masih di working tree (belum di-commit); Admin lokal `admin@pekanan.local`: password kini **`AdminBaru123!`** (= `SMOKE_ADMIN_PASSWORD_BARU`), `harus_ganti_password = false`, akun `aktif = true`. Smoke mencoba `SMOKE_ADMIN_PASSWORD` dulu, baru `SMOKE_ADMIN_PASSWORD_BARU`, jadi jalankan dengan `ADMIN_PASSWORD='AdminBaru123!'`. (Catatan: probe lama sempat menonaktifkan admin — sudah diaktifkan kembali lewat psql; bila smoke fase admin "SKIP (admin bukan ADMIN_EMAIL)", periksa `karyawan.aktif` untuk admin.)
+- Git: branch `main`, commit terakhir **`8dc453d feat(ui): halaman dashboard, laporan, klien, iuran, dan admin`** (Commit 5); sebelumnya `d4e5a76` (docs) dan `bd64c4a` (Commit 4).
+- **Belum di-push dan belum ada remote.** Tambahkan dulu (`git remote add origin <url>`), lalu `git push -u origin main`. Sebelum memilih remote publik: `HANDOFF.md` memuat email admin lokal & password uji (`AdminBaru123!`) dan `.env.example` berisi nama env — jangan jadikan repo publik tanpa membersihkan itu.
+- Admin lokal `admin@pekanan.local`: password kini **`AdminBaru123!`** (= `SMOKE_ADMIN_PASSWORD_BARU`), `harus_ganti_password = false`, akun `aktif = true`. Smoke mencoba `SMOKE_ADMIN_PASSWORD` dulu, baru `SMOKE_ADMIN_PASSWORD_BARU`, jadi jalankan dengan `ADMIN_PASSWORD='AdminBaru123!'`. (Catatan: probe lama sempat menonaktifkan admin — sudah diaktifkan kembali lewat psql; bila smoke fase admin "SKIP (admin bukan ADMIN_EMAIL)", periksa `karyawan.aktif` untuk admin.)
 - **Data seed lokal `@seed.local` tidak ada di DB** saat Commit 4 diverifikasi (sudah dibersihkan). Smoke tidak butuh seed; `scripts/seed.mts` membuat data contoh bila diinginkan.
 - **Testing:** Commit 1 diverifikasi manual (psql rollback + `drizzle-kit pull`), **bukan dengan suite tersimpan**. Mulai Commit 2 dipakai TDD berbasis `node:test` (lihat §9).
 
@@ -175,7 +176,7 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
 
 ## 8. Aturan kerja untuk sesi berikutnya
 
-- **Pencarian file hanya di dalam folder proyek.** Jangan `find` dari `/home/xan` (pernah timeout).
+- **Pencarian file hanya di dalam folder proyek.** Jangan `find` dari `/home/xan` (pernah timeout). Skrip uji browser sengaja disimpan di `/tmp/pw` (luar repo).
 - Perintah `psql` butuh env dimuat dulu.
 - Jangan mengubah `neon_auth.*` dan jangan menghapus data tanpa persetujuan.
 - Desain domain **dan** arsitektur kode sudah selesai — jangan mengulang pertanyaan; rujuk `CONTEXT.md` dan `plan.md` §Arsitektur Kode.
@@ -183,10 +184,16 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
 
 ## 9. Langkah berikutnya (mulai dari sini)
 
-1. **Commit 5**: review `git status --short`, lalu commit UI (shadcn + halaman + dua perbaikan bug §1a) setelah `pnpm build` & `pnpm test` hijau. Jangan commit `AGENTS.md`.
-2. **Commit 6 — Deploy Vercel Hobby + Neon Free** (`todo.md` bagian "Commit 6"): hapus sisa env Neon, region `sin1`, tanpa cron, migrasi manual dengan `DATABASE_URL_UNPOOLED` sebelum deploy, `pnpm seed:admin` di DB produksi, perbarui `README.md` (menunggu rencana dokumen deploy yang disetujui).
-3. Sisa data uji di DB dari uji browser (akun `uji-browser*`/`uji-browserN@pekanan.local`, klien "Toko Uji Browser", koreksi pada laporan Tono, pembayaran iuran uji) **sengaja belum dihapus** — butuh persetujuan pengguna sebelum `DELETE`.
-4. Server `pnpm start` di port 3000 saat ini menjalankan build terakhir (termasuk perbaikan §1a).
+1. **Push**: tentukan remote tujuan, `git remote add origin <url>`, `git push -u origin main`. Riwayat memuat kata sandi uji admin di `HANDOFF.md` — pertimbangkan repo privat atau bersihkan dokumen dulu.
+2. **Commit 6 — Deploy Vercel Hobby + Neon Free** (`todo.md` bagian "Commit 6"):
+   - `.env.local`: hapus `NEON_AUTH_BASE_URL`, `NEON_AUTH_JWKS_URL`, `NEON_AUTH_COOKIE_SECRET`, `NEON_FUNCTION_HELLO_BASE_URL`, `NEON_BRANCH` (tidak dibaca kode). Perbarui `.env.example`.
+   - Vercel: project Hobby non-komersial, region `sin1`, runtime Node.js, **tanpa** `vercel.json`/cron. Env: `DATABASE_URL_POOLED`, `BETTER_AUTH_SECRET` (baru untuk produksi), `BETTER_AUTH_URL` (domain produksi), `ADMIN_EMAIL`.
+   - Migrasi **manual dari lokal** dengan `DATABASE_URL_UNPOOLED` sebelum deploy (`pnpm db:migrate`); tidak ada migrasi saat build.
+   - `pnpm seed:admin` ke DB produksi, lalu login dan ganti password admin produksi.
+   - Perbarui `README.md` sesuai rencana deploy yang disetujui (Vercel Hobby + Neon Free, lazy+catch-up Draf, migrasi lokal). Rencana dokumen ada di `/home/xan/.qoder/plans/infinite-mist-widgeon.md` (luar repo).
+3. **Pembersihan data uji (butuh persetujuan pengguna, belum dikerjakan):** akun `uji-browser*`/`uji-browser<N>@pekanan.local` (puluhan), klien "Toko Uji Browser" (milik Sari, sebagian sudah dialihkan ke Tono), baris koreksi + perubahan baris pada laporan Tono `bb887a4d-09d4-4a19-a312-a56283d4f6c3`, pembayaran iuran uji (Des 2025–Nov 2026 beberapa karyawan), fixture laporan pekan lampau Tono. Urutan FK: `koreksi_laporan` → `laporan_pekan`/`laporan_anggota` → `followup` → `pembayaran_iuran` → `klien` → `karyawan` → `session`/`account` → `user`.
+4. **Uji manual belum dilakukan:** rekap Atasan (`GET /api/rekap/pekan/[id]`) hanya diuji lewat smoke API, belum ada layar; bootstrap setelah pergantian pekan (Draf baru + catch-up) diuji smoke, belum manual browser.
+5. Skrip uji browser ada di `/tmp/pw/uji.mjs` (+ `node_modules` Playwright-Core di `/tmp/pw`); **tidak di repo** dan bisa hilang saat `/tmp` dibersihkan. `pnpm start` saat ini berjalan di port 3000 (pid dari build terakhir) — restart bila memakai build baru.
 
 **Catatan smoke yang mahal ditemukan di Commit 4 (jangan diulang):**
 - Parser cookie harus memisah `Set-Cookie` per atribut; regex `max-age=0` cocok juga dengan `Max-Age=60480` dan membuang token baru setelah `change-password`.
