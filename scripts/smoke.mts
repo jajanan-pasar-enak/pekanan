@@ -1,32 +1,62 @@
+// Smoke HTTP terhadap aplikasi yang berjalan (`pnpm start`), tanpa impor modul auth.
+// Fase auth (Commit 2). Data uji memakai prefix email `smoke-` dan dibersihkan
+// di akhir lewat DB langsung. Jalankan serial: satu skenario setelah skenario lain.
+import { Client } from "pg";
+
 const base = process.env.SMOKE_BASE_URL ?? "http://localhost:3000";
-const jar = new Map<string, string>();
-const email = `smoke-${Date.now()}@example.com`;
-const password = "SmokeTest123!";
+const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+const adminPassword = process.env.ADMIN_PASSWORD;
+const adminPasswordBaru = process.env.SMOKE_ADMIN_PASSWORD_BARU ?? "AdminBaru123!";
+const stempel = Date.now();
+const emailPertama = `smoke-anggota-a-${stempel}@seed.local`;
+const emailKedua = `smoke-anggota-b-${stempel}@seed.local`;
+const passwordAwal = "SmokeAwal123!";
+const passwordBaru = "SmokeBaru456!";
 
-function cookieHeader() {
-  return [...jar].map(([k, v]) => `${k}=${v}`).join("; ");
+if (!adminPassword) {
+  console.error("smoke: ADMIN_PASSWORD wajib diisi (jalankan dengan --env-file=.env.local).");
+  process.exit(1);
 }
+// Password admin yang dipakai skrip (ganti-password mengubahnya di DB).
+const passwordAdminAktif = process.env.SMOKE_ADMIN_PASSWORD ?? adminPassword;
 
-function absorb(res: Response) {
-  for (const raw of res.headers.getSetCookie()) {
-    const [pair] = raw.split(";");
-    const i = pair.indexOf("=");
-    const name = pair.slice(0, i).trim();
-    const value = pair.slice(i + 1).trim();
-    if (value === "" || /max-age=0/i.test(raw)) jar.delete(name);
-    else jar.set(name, value);
+function buatJar() {
+  const jar = new Map<string, string>();
+  function cookieHeader() {
+    return [...jar].map(([k, v]) => `${k}=${v}`).join("; ");
   }
-}
-
-async function call(path: string, init: RequestInit = {}) {
-  const res = await fetch(base + path, {
-    ...init,
-    headers: { ...(init.headers ?? {}), cookie: cookieHeader() },
-    redirect: "manual",
-  });
-  absorb(res);
-  const text = await res.text();
-  return { status: res.status, text };
+  function absorb(res: Response) {
+    for (const raw of res.headers.getSetCookie()) {
+      const [pair] = raw.split(";");
+      const i = pair.indexOf("=");
+      const name = pair.slice(0, i).trim();
+      const value = pair.slice(i + 1).trim();
+      if (value === "" || /max-age=0/i.test(raw)) jar.delete(name);
+      else jar.set(name, value);
+    }
+  }
+  async function call(path: string, init: RequestInit = {}) {
+    const res = await fetch(base + path, {
+      ...init,
+      headers: {
+        ...(init.body ? { "Content-Type": "application/json" } : {}),
+        ...(init.headers ?? {}),
+        cookie: cookieHeader(),
+        origin: base,
+      },
+      redirect: "manual",
+    });
+    absorb(res);
+    const text = await res.text();
+    let json: any = null;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      /* bukan JSON */
+    }
+    return { status: res.status, text, json };
+  }
+  return { call };
 }
 
 function check(label: string, ok: boolean, detail: string) {
@@ -34,136 +64,243 @@ function check(label: string, ok: boolean, detail: string) {
   if (!ok) process.exitCode = 1;
 }
 
-// 1. Postgres (read)
-{
-  const { status, text } = await call("/api/todos");
-  const json = JSON.parse(text) as { todos: { text: string }[] };
-  check(
-    "postgres read",
-    status === 200 && json.todos.length >= 2,
-    `status=${status} rows=${json.todos.length} sample=${json.todos.map((t) => t.text).slice(0, 2).join(",")}`,
-  );
+function kode(json: any): string {
+  return json?.error?.code ?? "-";
 }
 
-// 2. Unauthenticated write must be rejected
-{
-  const { status, text } = await call("/api/todos", {
+async function masuk(jar: ReturnType<typeof buatJar>, email: string, password: string) {
+  return jar.call("/api/auth/sign-in/email", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text: "should not be inserted" }),
-  });
-  check("postgres write blocked without auth", status === 401, `status=${status} body=${text.slice(0, 80)}`);
-}
-
-// 3. Neon Auth sign-up
-{
-  const { status, text } = await call("/api/auth/sign-up/email", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", origin: base },
-    body: JSON.stringify({ email, password, name: "Smoke Test" }),
-  });
-  const json = JSON.parse(text) as { user?: { email: string }; token?: string };
-  check(
-    "auth sign-up",
-    status === 200 && json.user?.email === email,
-    `status=${status} user=${json.user?.email ?? "-"}`,
-  );
-}
-
-// 4. Session persistence through the Next proxy
-{
-  const { status, text } = await call("/api/auth/get-session");
-  const json = JSON.parse(text) as { user?: { email: string } } | null;
-  check(
-    "auth session",
-    status === 200 && json?.user?.email === email,
-    `status=${status} user=${json?.user?.email ?? "-"}`,
-  );
-}
-
-// 5. Authenticated write (Postgres insert)
-{
-  const { status, text } = await call("/api/todos", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text: "tugas dari smoke test" }),
-  });
-  const json = JSON.parse(text) as { todo?: { id: string; text: string } };
-  check(
-    "postgres write with session",
-    status === 201 && json.todo?.text === "tugas dari smoke test",
-    `status=${status} id=${json.todo?.id ?? "-"}`,
-  );
-  if (json.todo?.id) {
-    const del = await call(`/api/todos?id=${encodeURIComponent(json.todo.id)}`, { method: "DELETE" });
-    check("postgres delete with session", del.status === 200, `status=${del.status}`);
-  }
-}
-
-// 6. Validation on write
-{
-  const { status } = await call("/api/todos", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text: "" }),
-  });
-  check("postgres write validation", status === 400, `status=${status}`);
-}
-
-// 7. Neon Function through the app
-{
-  const { status, text } = await call("/api/ping-function");
-  const json = JSON.parse(text) as { ok: boolean; body: string };
-  check(
-    "neon function via app",
-    status === 200 && json.ok && json.body === "Hello from Neon Functions",
-    `status=${status} body=${json.body ?? "-"}`,
-  );
-}
-
-// 8. Sign out revokes the session
-{
-  const out = await call("/api/auth/sign-out", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", origin: base },
-    body: "{}",
-  });
-  const after = await call("/api/auth/get-session");
-  const json = JSON.parse(after.text) as { user?: unknown } | null;
-  check(
-    "auth sign-out",
-    out.status === 200 && !json?.user,
-    `signOut=${out.status} sessionUser=${json?.user ? "present" : "none"}`,
-  );
-}
-
-// 9. Wrong password is rejected as 401 (the case that used to throw unhandled)
-{
-  const { status, text } = await call("/api/auth/sign-in/email", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", origin: base },
-    body: JSON.stringify({ email, password: "definitely-wrong" }),
-  });
-  const json = JSON.parse(text) as { code?: string };
-  check(
-    "auth rejects wrong password",
-    status === 401 && json.code === "INVALID_EMAIL_OR_PASSWORD",
-    `status=${status} code=${json.code ?? "-"}`,
-  );
-}
-
-// 10. Sign back in
-{
-  const { status } = await call("/api/auth/sign-in/email", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", origin: base },
     body: JSON.stringify({ email, password }),
   });
-  const session = await call("/api/auth/get-session");
-  const json = JSON.parse(session.text) as { user?: { email: string } } | null;
-  check(
-    "auth sign-in",
-    status === 200 && json?.user?.email === email,
-    `status=${status} user=${json?.user?.email ?? "-"}`,
-  );
+}
+
+const admin = buatJar();
+const anggota = buatJar();
+
+try {
+  // 1. Login admin pertama (hasil seed-admin, masih wajib ganti password).
+  {
+    const r = await masuk(admin, adminEmail!, passwordAdminAktif);
+    const sesi = await admin.call("/api/auth/get-session");
+    check(
+      "admin login",
+      r.status === 200 && sesi.json?.user?.email === adminEmail,
+      `status=${r.status} user=${sesi.json?.user?.email ?? "-"}`,
+    );
+  }
+
+  // 2. Sign-up publik ditolak (disableSignUp).
+  {
+    const anon = buatJar();
+    const r = await anon.call("/api/auth/sign-up/email", {
+      method: "POST",
+      body: JSON.stringify({
+        email: `smoke-signup-${stempel}@seed.local`,
+        password: passwordAwal,
+        name: "Coba Daftar",
+      }),
+    });
+    check("sign-up publik ditolak", r.status === 400 || r.status === 403, `status=${r.status}`);
+  }
+
+  // 3. Tanpa sesi → 401 dengan format error standar.
+  {
+    const anon = buatJar();
+    const r = await anon.call("/api/me");
+    check(
+      "tanpa sesi → 401 UNAUTHORIZED",
+      r.status === 401 && kode(r.json) === "UNAUTHORIZED",
+      `status=${r.status} code=${kode(r.json)}`,
+    );
+  }
+
+  // 4. Admin wajib ganti password dulu sebelum endpoint lain.
+  {
+    const r = await admin.call("/api/admin/karyawan", { method: "POST", body: "{}" });
+    check(
+      "admin wajib ganti password → 403 PASSWORD_CHANGE_REQUIRED",
+      r.status === 403 && kode(r.json) === "PASSWORD_CHANGE_REQUIRED",
+      `status=${r.status} code=${kode(r.json)}`,
+    );
+
+    const g = await admin.call("/api/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({
+        currentPassword: passwordAdminAktif,
+        newPassword: adminPasswordBaru,
+      }),
+    });
+    check("admin ganti password", g.status === 200, `status=${g.status} ${g.text.slice(0, 80)}`);
+
+    const me = await admin.call("/api/me");
+    check(
+      "flag admin ter-reset",
+      me.status === 200 && me.json?.data?.harusGantiPassword === false,
+      `status=${me.status} harusGantiPassword=${me.json?.data?.harusGantiPassword ?? "-"}`,
+    );
+  }
+
+  // 5. Validasi pembuatan karyawan.
+  {
+    const r = await admin.call("/api/admin/karyawan", {
+      method: "POST",
+      body: JSON.stringify({ nama: "", email: "bukan-email", password: "x", level: "Tetap" }),
+    });
+    check("body tidak valid → 400 VALIDATION", r.status === 400 && kode(r.json) === "VALIDATION", `status=${r.status} code=${kode(r.json)}`);
+  }
+  {
+    const r = await admin.call("/api/admin/karyawan", {
+      method: "POST",
+      body: JSON.stringify({
+        nama: "Smoke Magang",
+        email: emailPertama,
+        password: passwordAwal,
+        level: "Magang",
+        supervisorId: null,
+      }),
+    });
+    check(
+      "magang tanpa supervisor ditolak",
+      r.status === 400 && kode(r.json) === "VALIDATION",
+      `status=${r.status} code=${kode(r.json)}`,
+    );
+  }
+  {
+    const r = await admin.call("/api/admin/karyawan", {
+      method: "POST",
+      body: JSON.stringify({
+        nama: "Smoke Anggota",
+        email: emailPertama,
+        password: passwordAwal,
+        level: "Tetap",
+        supervisorId: null,
+      }),
+    });
+    check(
+      "admin buat karyawan",
+      r.status === 201 && r.json?.data?.email === emailPertama && r.json?.data?.harusGantiPassword === true,
+      `status=${r.status} email=${r.json?.data?.email ?? "-"}`,
+    );
+  }
+  {
+    const r = await admin.call("/api/admin/karyawan", {
+      method: "POST",
+      body: JSON.stringify({ nama: "Duplikat", email: emailPertama, password: passwordAwal, level: "Tetap" }),
+    });
+    check("email duplikat ditolak", r.status === 400, `status=${r.status} code=${kode(r.json)}`);
+  }
+  {
+    const sesi = await admin.call("/api/auth/get-session");
+    check(
+      "sesi admin tidak tertimpa autoSignIn",
+      sesi.json?.user?.email === adminEmail,
+      `user=${sesi.json?.user?.email ?? "-"}`,
+    );
+  }
+
+  // 6. Karyawan baru: password awal tidak bisa dipakai ke API sampai diganti.
+  {
+    const r = await masuk(anggota, emailPertama, passwordAwal);
+    check("karyawan login dengan password awal", r.status === 200, `status=${r.status}`);
+  }
+  {
+    const r = await anggota.call("/api/me");
+    check(
+      "/api/me tetap bisa diakses saat wajib ganti password",
+      r.status === 200 && r.json?.data?.harusGantiPassword === true,
+      `status=${r.status} harusGantiPassword=${r.json?.data?.harusGantiPassword ?? "-"}`,
+    );
+  }
+  {
+    const r = await anggota.call("/api/admin/karyawan", {
+      method: "POST",
+      body: JSON.stringify({ nama: "X", email: emailKedua, password: passwordAwal, level: "Tetap" }),
+    });
+    check(
+      "endpoint lain → 403 PASSWORD_CHANGE_REQUIRED",
+      r.status === 403 && kode(r.json) === "PASSWORD_CHANGE_REQUIRED",
+      `status=${r.status} code=${kode(r.json)}`,
+    );
+  }
+  {
+    const r = await anggota.call("/api/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword: "salah-banget", newPassword: passwordBaru }),
+    });
+    check("ganti password dengan password lama salah ditolak", r.status >= 400, `status=${r.status}`);
+  }
+  {
+    const r = await anggota.call("/api/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword: passwordAwal, newPassword: passwordBaru }),
+    });
+    check("karyawan ganti password", r.status === 200, `status=${r.status} ${r.text.slice(0, 80)}`);
+  }
+  {
+    const r = await anggota.call("/api/me");
+    check(
+      "flag karyawan ter-reset",
+      r.status === 200 && r.json?.data?.harusGantiPassword === false,
+      `status=${r.status} harusGantiPassword=${r.json?.data?.harusGantiPassword ?? "-"}`,
+    );
+  }
+  {
+    const r = await anggota.call("/api/admin/karyawan", {
+      method: "POST",
+      body: JSON.stringify({ nama: "X", email: emailKedua, password: passwordAwal, level: "Tetap" }),
+    });
+    check(
+      "karyawan non-admin → 403 FORBIDDEN",
+      r.status === 403 && kode(r.json) === "FORBIDDEN",
+      `status=${r.status} code=${kode(r.json)}`,
+    );
+  }
+  {
+    const lain = buatJar();
+    const r = await masuk(lain, emailPertama, passwordAwal);
+    check("password lama tidak berlaku setelah ganti", r.status === 401, `status=${r.status}`);
+  }
+  {
+    const lain = buatJar();
+    const r = await masuk(lain, emailPertama, passwordBaru);
+    check("login dengan password baru", r.status === 200, `status=${r.status}`);
+  }
+
+  // 7. Karyawan nonaktif tidak bisa login (session.create.before).
+  {
+    if (!process.env.DATABASE_URL_UNPOOLED) {
+      console.log("SKIP  sesi karyawan nonaktif (DATABASE_URL_UNPOOLED tidak ada)");
+    } else {
+      const client = new Client({ connectionString: process.env.DATABASE_URL_UNPOOLED });
+      await client.connect();
+      await client.query(
+        `UPDATE karyawan SET aktif = false WHERE user_id = (SELECT id FROM "user" WHERE email = $1)`,
+        [emailPertama],
+      );
+      await client.end();
+      const lain = buatJar();
+      const r = await masuk(lain, emailPertama, passwordBaru);
+      check("karyawan nonaktif tidak bisa login", r.status >= 400, `status=${r.status}`);
+    }
+  }
+} finally {
+  if (process.env.DATABASE_URL_UNPOOLED) {
+    const client = new Client({ connectionString: process.env.DATABASE_URL_UNPOOLED });
+    await client.connect();
+    // karyawan.user_id ON DELETE RESTRICT: hapus profil dulu, akun & sesi ikut cascade.
+    const hasil = await client.query(
+      `WITH profil AS (
+         DELETE FROM karyawan ks USING "user" u
+         WHERE ks.user_id = u.id AND u.email LIKE 'smoke-%@seed.local'
+         RETURNING u.id
+       ), akun AS (
+         DELETE FROM "user" WHERE id IN (SELECT id FROM profil) RETURNING id
+       ) SELECT count(*)::int AS n FROM akun`,
+    );
+    await client.end();
+    console.log(`smoke: ${hasil.rows[0].n} data uji dibersihkan.`);
+  } else {
+    console.log(`smoke: DATABASE_URL_UNPOOLED tidak ada; bersihkan manual (${emailPertama}, ${emailKedua}).`);
+  }
 }

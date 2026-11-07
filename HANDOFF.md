@@ -1,15 +1,24 @@
 # HANDOFF — pekanan
 
-> **Baca ini dulu.** Status terakhir: **Commit 1 (fondasi database) selesai & di-commit; implementasi fitur belum mulai.** Skema `public` (auth lokal + domain) sudah dimigrasikan ke DB, trigger terpasang, `pnpm build` lulus. Berikutnya: Commit 2 (auth lokal).
+> **Baca ini dulu.** Status terakhir: **Commit 2 (auth lokal) selesai.** Better Auth lokal aktif, `seed-admin` jalan, `POST /api/admin/karyawan`, wajib ganti password, scaffold Neon Functions/todos terhapus. `pnpm build`, `pnpm test` (serial), dan `scripts/smoke.mts` (21/21) lulus terhadap `next start`. Berikutnya: Commit 3 (API laporan pekan).
 
 ## 1. Ringkasan
 
 Aplikasi **Next.js 16.4.5 (App Router, Cache Components)** + **Neon Postgres** (Drizzle + `pg`) di `/home/xan/project/skrmb/pekanan`. Mencatat kinerja pekanan tim: Laporan Pekan (kehadiran, sebar media, one-on-one), Klien + Follow-up, dan Iuran bulanan.
 
 - Package manager: **pnpm 12.16.1** · Node **v24.22.1** lokal (environment Qoder menyebut v26; yang dipakai `pnpm exec` adalah v24)
-- Git: branch `main`, commit terakhir **`a4b14fb docs: refresh handoff after database foundation commit`** (di atas `9b99e95 feat(db): ...`)
+- Git: branch `main`, commit terakhir `4eb60e8 docs: record test strategy and refresh handoff status` (di atas `9b99e95 feat(db): ...`); Commit 2 di-commit setelah sesi ini.
 - Working tree bersih; **belum di-push**.
 - **Testing:** Commit 1 diverifikasi manual (psql rollback + `drizzle-kit pull`), **bukan dengan suite tersimpan**. Mulai Commit 2 dipakai TDD berbasis `node:test` (lihat §9).
+
+### Hasil Commit 2 (jangan diulang)
+
+- Auth: `src/lib/auth/{server,client,current,kepegawaian,otorisasi}.ts`; route `api/auth/[...path]` (`toNextJsHandler`), `POST /api/auth/change-password`, `GET /api/me`, `POST /api/admin/karyawan`. `src/lib/http.ts` (`AppError`, `jsonOk`, `jsonError`, `handle`, status per kode).
+- Halaman: `/` (login + redirect bila sudah sesi), `/ganti-password`, shell `(app)/layout.tsx` + `/dashboard` minimal.
+- `scripts/seed-admin.mts` (`pnpm --env-file=.env.local seed:admin`), idempoten. Admin seed punya `harus_ganti_password = true`.
+- Dihapus: `hello.ts`, `neon.ts`, `src/lib/functions.ts`, `scripts/verify-db.mts`, `todo-list.tsx`, `api/ping-function`, dep `@neon/*` + `hono`.
+- `scripts/smoke.mts` ditulis ulang: fase auth lengkap, membersihkan baris `smoke-%@seed.local` lewat DB.
+- `src/lib/http.test.ts` (node:test, 6 uji). `pnpm test` memakai `--test-concurrency=1` (serial).
 
 ### Hasil Commit 1 (jangan diulang)
 
@@ -102,8 +111,20 @@ Tidak dipakai lagi setelah auth lokal aktif (hapus): `NEON_AUTH_BASE_URL`, `NEON
 4. `pnpm-workspace.yaml` berisi `allowBuilds: esbuild: true` — jangan dihapus, atau `pnpm add` gagal `ERR_PNPM_IGNORED_BUILDS`.
 5. `AGENTS.md` sudah dihapus; `next dev` membuatnya lagi dengan blok bawaan — jangan di-commit ulang.
 6. Warning SSL `sslmode=verify-full` dari `pg-connection-string` — harmless.
-7. Node di luar bundler Next tidak me-resolve `@neon/auth/next/server` → skrip uji lewat HTTP/Drizzle langsung.
+7. Node di luar bundler Next tidak me-resolve `@neon/auth/next/server` → skrip uji lewat HTTP/Drizzle langsung. (`@neon/*` sudah dihapus.)
 8. Vercel Hobby non-komersial (dikonfirmasi tetap Hobby).
+9. Route handler dan page **wajib** `await connection()` sebelum `headers()`; halaman yang butuh request data harus dibungkus `<Suspense>`. Saat build, Next tetap men-prerender `/api/me` dan mencetak "connection() rejects ... HANGING_PROMISE_REJECTION" — itu **banner yang diharapkan**, build tetap exit 0 dan runtime 200/401 benar.
+10. Route `api/auth/[...catch-all]` milik Better Auth menangkap semua sub-path; penanganan "wajib ganti password" **tidak** dikerjakan di route catch-all, melainkan di helper `requireKaryawan()` yang dipanggil setiap route API aplikasi (lihat §7b).
+
+## 7b. Jebakan Better Auth 1.7.17 (terbukti di sesi ini)
+
+1. **`databaseHooks.user.create.after` tidak menerima field non-schema.** Adapter membuang key di luar skema, dan objek `user` hasil insert tidak memuatnya. Solusi terpakai: `before` menyimpan profil di `ctx.context` (object milik context auth) dengan key privat, `after` membacanya dari `ctx` yang sama.
+2. **`auth.api.createUser` adalah endpoint plugin admin**: butuh sesi admin (`headers` request) dan memvalidasi `role` against `roles`/default. Desain saat ini memang memakai sesi admin — aman karena hanya dipanggil dari route admin.
+3. **`changePassword` dengan `revokeOtherSessions: true`**: `nextCookies` membuat sesi pengganti **setelah** `changePassword` selesai; kalau ada penulisan cookie sebelumnya (`cookies().set`), sesi baru tidak bisa disimpan. Urutan di route: reset flag di DB **dulu**, baru `changePassword`.
+4. **`disableSignUp: true`** membuat `sign-up/email` → 400/403 (bukan membuat akun). `autoSignIn: false` tidak membuat cookie saat `createUser`.
+5. **Rate limit** in-memory default memuat hit `/sign-in/email` (429 bila smoke dijalankan berulang dalam 60 detik). Konfigurasi sekarang: window 60s, max 20, `/sign-in/email` dan `/change-password` max 10. Reset cepat saat uji: restart `next start` atau tunggu 60 detik.
+6. **Origin check**: request `POST /api/auth/*` harus ber-`Origin` sama dengan `BETTER_AUTH_URL` (403 `INVALID_ORIGIN`). Smoke dan curl harus memakai port yang sama dengan `.env.local`.
+7. Password admin hasil `seed-admin` **berubah** setiap kali lewat `/api/auth/change-password`. Smoke menerima `SMOKE_ADMIN_PASSWORD` bila sudah diganti.
 
 ## 8. Aturan kerja untuk sesi berikutnya
 
@@ -115,22 +136,25 @@ Tidak dipakai lagi setelah auth lokal aktif (hapus): `NEON_AUTH_BASE_URL`, `NEON
 
 ## 9. Langkah berikutnya (mulai dari sini)
 
-Implementasi **Commit 2 — auth lokal** (`plan.md` §3, `todo.md` bagian "Commit 2"):
+Implementasi **Commit 3 — API laporan pekan** (`plan.md` §3.4, `todo.md` bagian "Commit 3"):
 
-1. `src/lib/http.ts`: `AppError`, `jsonOk`, `handle()`.
-2. `src/lib/auth/server.ts` (betterAuth + drizzleAdapter + admin plugin + `nextCookies()` terakhir), `client.ts`, `current.ts`; `api/auth/[...path]` → `toNextJsHandler`.
-3. `scripts/seed-admin.mts` (ADR-0003), `POST /api/admin/karyawan`.
-4. Hapus `@neon/auth`/`@neon/functions` **bersamaan** dengan `src/db/index.ts` (buang `attachDatabasePool`), `page.tsx`, `layout.tsx`, `auth-panel.tsx`; hapus `todo-list.tsx`, `/api/ping-function`, `src/lib/functions.ts`, `hello.ts`, `neon.ts`, `scripts/verify-db.mts`, dan tulis ulang `scripts/smoke.mts`.
-5. `pnpm build` lulus; login + ganti password manual.
+1. Uji serial dulu (red): `src/lib/waktu.test.ts` (batas pekan WIB) dan uji otorisasi laporan.
+2. `src/lib/pekan/bootstrap.ts` (Draf + catch-up, idempoten), `src/lib/laporan/{queries,mutations}.ts`.
+3. Route `GET /api/me` sudah ada; tambah `POST /api/pekan/bootstrap`, `GET /api/laporan/[id]`, `PATCH .../baris/[anggotaId]`, `POST .../submit`, `POST .../koreksi`.
+4. Perluas `scripts/smoke.mts` (fase laporan) — jalankan serial setelah build.
+5. `pnpm build` + `pnpm test` + smoke lulus; commit.
+
+Hook `bootstrapPekan()` di layout `(app)` bisa dipasang di Commit 3 (akan memicu Draf lebih awal) atau ditunda ke Commit 5.
 
 **Adapter & snake_case:** `drizzleAdapter(db, { provider: "pg", schema })` menerima objek schema apa adanya; `usePlural` (default `false`) cocok karena nama tabel tunggal (`user`, `session`, …). Nama kolom DB di-**override eksplisit** di `src/db/schema.ts` (`account_id`, `email_verified`, dst.), jadi **jangan** menambah `casing: "snake_case"` — default Drizzle (preserve) sudah benar. Export `schema` (`import * as schema`) harus memuat tabel domain juga agar adapter menemukan `user`.
 
 ### TDD (mulai Commit 2)
 
-- Tanpa framework baru: `node:test` + `assert` lewat `tsx`. Sudah diuji di Node 24: `pnpm exec tsx --test "src/**/*.test.ts"` menerima glob. `package.json`: `"test": "tsx --test \"src/**/*.test.ts\" \"scripts/**/*.test.mts\""`.
+- Tanpa framework baru: `node:test` + `assert` lewat `tsx`. Sudah diuji di Node 24: `pnpm exec tsx --test "src/**/*.test.ts"` menerima glob. `package.json`: `"test": "tsx --test --test-concurrency=1 \"src/**/*.test.ts\""` — **selalu serial**.
 - Unit (murni, tanpa DB): `src/lib/waktu.test.ts` (batas Minggu 00:00 Sabtu 23:59:59 WIB, pergantian bulan), helper otorisasi (`isSupervisorOf`, `isAtasanOf`, cek siklus supervisor), `http.ts` (format `{ error: { code } }`, status per kode).
 - DB (trigger & CHECK): `scripts/test-db.mts` — pola psql Commit 1 dipindah ke Drizzle langsung, setiap kasus dalam transaksi yang di-`ROLLBACK`, exit non-nol bila ada yang lolos. Butuh `DATABASE_URL_UNPOOLED`; jangan pernah commit data uji.
 - Urutan kerja per fitur: uji gagal → implementasi → uji hijau → `pnpm build` → commit.
+- **Jalankan test secara serial** (`pnpm test` sudah `--test-concurrency=1`; skrip DB/HTTP satu per satu, tidak paralel).
 - Backlog: `src/lib/waktu.test.ts` untuk `waktu.ts` yang sudah ada (Commit 1) ditulis belakangan, boleh jadi bagian commit Commit 2.
 
 ### Catatan operasional baru

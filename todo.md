@@ -20,18 +20,19 @@ Urutan commit mengikuti `plan.md` §9; setiap commit wajib lulus `pnpm build`.
 
 ## Commit 2 — Auth lokal
 
-- [ ] `src/lib/http.ts`: `AppError`, `jsonOk`, `handle()`, kode error
-- [ ] `src/lib/auth/server.ts`: `betterAuth` + `drizzleAdapter`, `disableSignUp`, `autoSignIn: false`, plugin `admin`, `nextCookies()`
-- [ ] `databaseHooks`: buat `karyawan` saat user dibuat; tolak sesi karyawan nonaktif/banned
-- [ ] `src/lib/auth/client.ts`: `better-auth/react` + `adminClient`
-- [ ] `src/lib/auth/current.ts`: `requireKaryawan`, `requireAdmin`, `isSupervisorOf`, `isAtasanOf`
-- [ ] `src/app/api/auth/[...path]/route.ts`: `toNextJsHandler`
-- [ ] `scripts/seed-admin.mts` (ADR-0003): idempoten, transaksi, `user`+`account`+`karyawan`
-- [ ] `POST /api/admin/karyawan` via `auth.api.createUser` + `harus_ganti_password = true`
-- [ ] Enforcement `PASSWORD_CHANGE_REQUIRED` di helper (403) + revoke sesi lain setelah ganti password
-- [ ] Hapus `@neon/auth`, `@neon/functions` **bersamaan** dengan update `src/db/index.ts`, `page.tsx`, `layout.tsx`, `auth-panel.tsx`
-- [ ] Hapus scaffold: `todo-list.tsx`, `/api/todos`, `/api/ping-function`, `src/lib/functions.ts`, `scripts/verify-db.mts`
-- [ ] `pnpm build` lulus; login + ganti password manual
+- [x] `src/lib/http.ts`: `AppError`, `jsonOk`, `handle()`, kode error
+- [x] `src/lib/auth/server.ts`: `betterAuth` + `drizzleAdapter`, `disableSignUp`, `autoSignIn: false`, plugin `admin`, `nextCookies()`
+- [x] `databaseHooks`: buat `karyawan` saat user dibuat; tolak sesi karyawan nonaktif/banned
+- [x] `src/lib/auth/client.ts`: `better-auth/react` + `adminClient`
+- [x] `src/lib/auth/current.ts`: `requireKaryawan`, `requireAdmin`, `bacaSesiSekarang`, `requireSession` (helper `periksaSupervisor`/`membentukSiklus` di `otorisasi.ts`)
+- [x] `src/app/api/auth/[...path]/route.ts`: `toNextJsHandler`
+- [x] `scripts/seed-admin.mts` (ADR-0003): idempoten, transaksi, `user`+`account`+`karyawan`
+- [x] `POST /api/admin/karyawan` via `auth.api.createUser` + `harus_ganti_password = true`
+- [x] Enforcement `PASSWORD_CHANGE_REQUIRED` di helper (403) + revoke sesi lain setelah ganti password (`POST /api/auth/change-password`)
+- [x] Hapus `@neon/auth`, `@neon/functions` **bersamaan** dengan update `src/db/index.ts`, `page.tsx`, `layout.tsx`, `auth-panel.tsx`
+- [x] Hapus scaffold: `todo-list.tsx`, `/api/todos`, `/api/ping-function`, `src/lib/functions.ts`, `scripts/verify-db.mts`, `hello.ts`, `neon.ts`
+- [x] `pnpm build` lulus; login + ganti password manual (smoke 21/21 lulus terhadap `next start`)
+- [ ] UI `/dashboard` / `(app)` shell penuh + `bootstrapPekan()` → dipindah ke Commit 5 (shell minimal ada di Commit 2)
 
 ## Commit 3 — API laporan pekan
 

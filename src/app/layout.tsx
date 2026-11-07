@@ -13,14 +13,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "pekanan",
-  description: "Next.js on Vercel with Neon Postgres, Auth, and Functions",
+  title: "Pekanan",
+  description: "Pencatatan kinerja pekanan tim penjualan.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="en"
+      lang="id"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>

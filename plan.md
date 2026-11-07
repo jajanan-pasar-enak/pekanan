@@ -47,7 +47,7 @@ Target deploy final: **Vercel Hobby (Free) + Neon Free**, non-komersial/internal
 | `src/app/api/auth/[...path]/route.ts` | `toNextJsHandler(auth)` |
 | `src/components/auth-panel.tsx` | Sign-in tetap; sign-up dihapus; pesan error Better Auth; bahasa Indonesia |
 | `drizzle.config.ts` | Tambah `schemaFilter: ["public"]` |
-| `scripts/smoke.mts` | Ditulis ulang e2e |
+| `scripts/smoke.mts` | Ditulis ulang e2e (fase auth sudah ada; laporan/klien/iuran menyusul) |
 | `src/app/layout.tsx`, `src/app/page.tsx` | Lepas import `@neon/auth` / `@neon/functions` (satu commit dengan Task 2) |
 
 ## Arsitektur Kode (kesepakatan sesi arsitektur)
