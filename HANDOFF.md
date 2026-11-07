@@ -1,15 +1,28 @@
 # HANDOFF — pekanan
 
-> **Baca ini dulu.** Status terakhir: **Commit 3 (API laporan pekan) selesai.** Bootstrap Draf lazy + catch-up, `getLaporan`/`patchBaris`/`submitLaporan`/`koreksiLaporan`, 5 route laporan, `bootstrapPekan()` di layout `(app)`. `pnpm build`, `pnpm test` (17 uji, serial), dan `scripts/smoke.mts` (**50/50**) lulus terhadap `next start`. Berikutnya: Commit 4 (API klien, follow-up, iuran, admin).
+> **Baca ini dulu.** Status terakhir: **Commit 4 (API klien, follow-up, iuran, rekap, admin kepegawaian) selesai**, commit `bd64c4a`. `pnpm build` exit 0, `pnpm test` **28/28** (serial), `pnpm smoke` **77/77** dua kali berturut-turut terhadap `next start`. Berikutnya: **Commit 5 — UI** (install shadcn, halaman dashboard/laporan/klien/iuran/admin).
 
 ## 1. Ringkasan
 
 Aplikasi **Next.js 16.4.5 (App Router, Cache Components)** + **Neon Postgres** (Drizzle + `pg`) di `/home/xan/project/skrmb/pekanan`. Mencatat kinerja pekanan tim: Laporan Pekan (kehadiran, sebar media, one-on-one), Klien + Follow-up, dan Iuran bulanan.
 
 - Package manager: **pnpm 12.16.1** · Node **v24.22.1** lokal (environment Qoder menyebut v26; yang dipakai `pnpm exec` adalah v24)
-- Git: branch `main`, commit terakhir **`feat(api): laporan pekan`** (Commit 3).
-- **Belum di-push.** Admin lokal `admin@pekanan.local`: password kini **`AdminSmokeBaru999!`** (= `SMOKE_ADMIN_PASSWORD_BARU`), `harus_ganti_password = false`. Smoke mencoba `SMOKE_ADMIN_PASSWORD` dulu, baru `SMOKE_ADMIN_PASSWORD_BARU`, jadi cukup jalankan dengan `ADMIN_PASSWORD='AdminSmokeBaru999!'`.
+- Git: branch `main`, commit terakhir **`bd64c4a feat(api): klien, follow-up, iuran, rekap, admin kepegawaian`** (Commit 4).
+- **Belum di-push.** Admin lokal `admin@pekanan.local`: password kini **`AdminBaru123!`** (= `SMOKE_ADMIN_PASSWORD_BARU`), `harus_ganti_password = false`, akun `aktif = true`. Smoke mencoba `SMOKE_ADMIN_PASSWORD` dulu, baru `SMOKE_ADMIN_PASSWORD_BARU`, jadi jalankan dengan `ADMIN_PASSWORD='AdminBaru123!'`. (Catatan: probe lama sempat menonaktifkan admin — sudah diaktifkan kembali lewat psql; bila smoke fase admin "SKIP (admin bukan ADMIN_EMAIL)", periksa `karyawan.aktif` untuk admin.)
+- **Data seed lokal `@seed.local` tidak ada di DB** saat Commit 4 diverifikasi (sudah dibersihkan). Smoke tidak butuh seed; `scripts/seed.mts` membuat data contoh bila diinginkan.
 - **Testing:** Commit 1 diverifikasi manual (psql rollback + `drizzle-kit pull`), **bukan dengan suite tersimpan**. Mulai Commit 2 dipakai TDD berbasis `node:test` (lihat §9).
+
+### Hasil Commit 4 (jangan diulang)
+
+- `src/lib/klien/{aturan,queries,mutations}.ts`: `klienSchema`, `followupSchema` (tanggal ≤ hari ini WIB), `alihKlienSchema`, `hasilFollowupSchema`; `daftarKlienSaya`, `getKlien` (pemilik atau atasan langsung; selain itu 404), `daftarHasilFollowup`; `buatKlien`, `alihKlien` (target ada/aktif/bukan pemilik sekarang), `catatFollowup`, `tambahHasilFollowup`.
+- `src/lib/iuran/{aturan,queries,mutations}.ts`: `bulanSah` (YYYY-MM-01), `alasanBulanDitolak` (bulan depan ditolak; CHECK DB juga), `pembayaranIuranSchema`, `nominalIuranSchema`; `catatPembayaranIuran(viewerId, input, karyawanId?)` — hanya diri sendiri atau Anggota Langsung, duplikat `(karyawan, bulan)` → 409.
+- `src/lib/kepegawaian/{aturan,queries,mutations}.ts`: `ubahKaryawan` dalam satu transaksi di bawah `pg_advisory_xact_lock(4242)`; guard siklus (CTE rekursif), Magang wajib supervisor Tetap aktif, demote ditolak bila masih membimbing Magang atau masih punya supervisor, nonaktif ditolak bila masih punya Klien/anggota (anggota boleh bila Draf naik ke atasan atau supervisor diganti dalam PATCH yang sama); baris Draf kosong pekan berjalan pindah ke supervisor baru; `revokeUserSessions` setelah transaksi. `daftarKaryawan`, `getRekapPekan` (Admin / pemilik / atasan langsung).
+- Route baru: `GET/POST /api/klien`, `GET/PATCH /api/klien/[id]`, `POST /api/klien/[id]/alih` (Admin), `GET/POST /api/klien/[id]/followup`, `GET/POST /api/pembayaran-iuran` (body boleh `karyawanId`), `GET/POST /api/nominal-iuran`, `GET/POST /api/hasil-followup`, `GET /api/rekap/pekan/[id]`, `GET/POST /api/admin/karyawan`, `PATCH /api/admin/karyawan/[id]` → `{ id, nama, level, supervisorId, aktif, sesiDicabut }`.
+- `src/lib/http.ts`: `validationError` (400 `VALIDATION` + `details.issues`), `bacaJson`, `isUniqueViolation` (23505 → 409 `CONFLICT`).
+- `src/lib/pekan/bootstrap.ts`: `siapkanDrafPekanBerjalan`; **`buatDraf` kini tidak membuat Draf untuk karyawan nonaktif** (kecuali ia masih memegang Anggota).
+- Bug yang diperbaiki karena smoke: `db.update().set({})` → 500 "No values to set" bila PATCH hanya mengirim `supervisorId` yang sama (kini dilewati).
+- `scripts/seed.mts` (`@seed.local`, uuid v5, `--cleanup`, tolak host produksi dari `.neon` kecuali `FORCE=1`); **belum dicoba ulang** untuk email admin lokal.
+- Uji: `klien/aturan.test.ts`, `iuran/aturan.test.ts`, `kepegawaian/aturan.test.ts` → total 28.
 
 ### Hasil Commit 3 (jangan diulang)
 
@@ -149,14 +162,20 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
 
 ## 9. Langkah berikutnya (mulai dari sini)
 
-Implementasi **Commit 4 — API klien, follow-up, iuran, admin** (`plan.md` §4, `todo.md` bagian "Commit 4"). Urutan kerja sama: uji (murni dulu) → implementasi → uji hijau → `pnpm build` → smoke → commit. Semua test/skrip **serial**.
+Implementasi **Commit 5 — UI** (`todo.md` bagian "Commit 5"). Semua API sudah ada; pekerjaan ini murni frontend. Urutan: shadcn init → halaman login/ganti password → dashboard → laporan → klien → iuran → admin → uji manual di browser.
 
-1. `src/lib/kepegawaian/*` (queries/mutations): `PATCH /api/admin/karyawan/[id]` dengan semua guard `plan.md` §4 (siklus di bawah `pg_advisory_xact_lock`, demote Magang ditolak bila membimbing Magang, nonaktif hanya tanpa Anggota & Klien, pindah supervisor memindahkan baris Draf pekan berjalan). Helper `assertTidakCeklik` masuk `otorisasi.ts`.
-2. `src/lib/klien/*`: pemilik klien + Atasan langsung boleh baca riwayat follow-up; `POST /api/klien/[id]/alih` Admin-only (target aktif).
-3. `src/lib/iuran/*`: `bulan` ≤ bulan berjalan (CHECK DB juga), duplikat `(karyawan, bulan)` → 409.
-4. `GET /api/rekap/pekan/[id]` (saya/Atasan/Admin) + follow-up per pekan dihitung dari kejadian.
-5. `scripts/seed.mts` (`@seed.local`, id deterministik, `--cleanup` berurutan) — **bootstrapPekan tidak menyentuh data seed**; jalankan seed setelah commit ini.
-6. Perluas smoke: follow-up tanggal besok ditolak, rekap menghitung kejadian, iuran bulan depan ditolak/duplikat 409, nonaktif dengan klien 400, alih klien non-admin 403.
+1. `pnpm dlx shadcn@latest init` lalu `add button input label select textarea table badge dialog sonner alert card tabs`. Tailwind v4 lewat plugin Turbopack (tanpa PostCSS) — ikuti default shadcn v4; jangan tambahkan `postcss.config`.
+2. Shell yang **sudah ada**: `src/app/(app)/layout.tsx` (gate `requireKaryawan`, redirect ganti-password, `bootstrapPekan`, nav minimal) dan `(auth)/ganti-password`. `(auth)` **belum punya `layout.tsx`**; `/` (login) masih di `src/app/page.tsx` — pindahkan ke `(auth)` bila perlu dan pastikan tidak bentrok dengan `(app)`.
+3. Halaman yang belum ada: `/dashboard` lengkap (laporan saya + status anggota langsung), `/laporan/[id]` (auto-save per baris `onBlur`, Kirim terkunci sampai lengkap, pekan lampau read-only), `/laporan/[id]/koreksi` (Atasan, alasan wajib), `/klien` + `/klien/[id]`, `/iuran`, `/admin` (karyawan + master iuran + master hasil follow-up). Tambahkan `Toaster` (sonner) di `(app)/layout.tsx`.
+4. Pola: baca = Server Component memanggil `src/lib/<domain>/queries.ts` langsung (jangan lewat `fetch` ke API sendiri); tulis = `fetch('/api/...')` + `router.refresh()`. Tampilkan `error.message` dari `{ error }`.
+5. Tambah nav di shell untuk halaman baru (hanya Admin melihat `/admin`).
+6. **Uji di browser** (bukan hanya build): login → ganti password → dashboard → isi & kirim laporan → koreksi sebagai atasan → klien/follow-up → catat iuran → admin tambah karyawan & nonaktifkan. Catat hasil per halaman di bagian akhir sesi.
+
+**Catatan smoke yang mahal ditemukan di Commit 4 (jangan diulang):**
+- Parser cookie harus memisah `Set-Cookie` per atribut; regex `max-age=0` cocok juga dengan `Max-Age=60480` dan membuang token baru setelah `change-password`.
+- **Token sesi Better Auth berotasi saat sesi dibaca.** Jangan membaca sesi admin dengan jar lain di sekitar PATCH; cukup satu jar per peran. Di smoke, X/Y/Z memakai satu jar bersama (`jadi(email)`).
+- `revokeUserSessions` mencabut **semua** sesi akun; jangan pakai jar lama setelah target dinonaktifkan.
+- Urutan fase admin: nonaktifkan Z **sebelum** Y (Z butuh Y aktif sebagai supervisor).
 
 **Keputusan implementasi Commit 3 yang perlu diingat:**
 - "Orang lain tanpa hak" di API laporan dikembalikan **404**, bukan 403 (pemilik yang mencoba melanggar aturan → 403). Pertahankan pola ini di endpoint lain.
@@ -164,7 +183,7 @@ Implementasi **Commit 4 — API klien, follow-up, iuran, admin** (`plan.md` §4,
 - Koreksi menyimpan `sebelum`/`sesudah` hanya untuk baris yang **benar-benar berubah**; tanpa diff → 400.
 - `isSupervisorOf`/`isAtasanOf` dibatalkan sebagai helper terpisah: relasi cukup dibaca dari `karyawan.supervisor_id` yang sudah di-join di query (`queries.ts` predikat `bolehUbahLaporan`/`bolehKoreksiLaporan`).
 
-**Status akun admin lokal saat ini:** `admin@pekanan.local`, password terakhir `AdminSmokeBaru999!` (`harus_ganti_password = false`, sudah diubah smoke). `pnpm seed:admin` tidak mengubahnya (idempoten). Ganti lewat `/api/auth/change-password` atau UI bila perlu.
+**Status akun admin lokal saat ini:** `admin@pekanan.local`, password `AdminBaru123!` (`harus_ganti_password = false`, `aktif = true`; diubah smoke Commit 4). `pnpm seed:admin` tidak mengubahnya (idempoten). Ganti lewat `/api/auth/change-password` atau UI bila perlu. Tabel `session` berisi ~60 sesi lama smoke — aman dibiarkan, atau bersihkan dengan `DELETE FROM session` bila perlu.
 
 **Adapter & snake_case:** `drizzleAdapter(db, { provider: "pg", schema })` menerima objek schema apa adanya; `usePlural` (default `false`) cocok karena nama tabel tunggal (`user`, `session`, …). Nama kolom DB di-**override eksplisit** di `src/db/schema.ts` (`account_id`, `email_verified`, dst.), jadi **jangan** menambah `casing: "snake_case"` — default Drizzle (preserve) sudah benar. Export `schema` (`import * as schema`) harus memuat tabel domain juga agar adapter menemukan `user`.
 
@@ -175,14 +194,16 @@ Implementasi **Commit 4 — API klien, follow-up, iuran, admin** (`plan.md` §4,
 - DB (trigger & CHECK): `scripts/test-db.mts` — pola psql Commit 1 dipindah ke Drizzle langsung, setiap kasus dalam transaksi yang di-`ROLLBACK`, exit non-nol bila ada yang lolos. Butuh `DATABASE_URL_UNPOOLED`; jangan pernah commit data uji.
 - Urutan kerja per fitur: uji gagal → implementasi → uji hijau → `pnpm build` → commit.
 - **Jalankan test secara serial** (`pnpm test` sudah `--test-concurrency=1`; skrip DB/HTTP satu per satu, tidak paralel).
-- Commit 2: `src/lib/http.test.ts` (6 uji). Commit 3: `src/lib/waktu.test.ts` (7), `src/lib/laporan/aturan.test.ts` (4). Backlog Commit 4: uji murni hitung follow-up per pekan & bulan iuran.
+- Commit 2: `src/lib/http.test.ts` (6 uji). Commit 3: `src/lib/waktu.test.ts` (7), `src/lib/laporan/aturan.test.ts` (4). Commit 4: `klien/aturan.test.ts`, `iuran/aturan.test.ts`, `kepegawaian/aturan.test.ts` → total **28**.
+- Commit 5 (UI) tidak butuh uji unit baru; verifikasi lewat build + uji manual browser.
 
 ### Catatan operasional baru
 
 - **Rate limit**: smoke melakukan >10 login; `BETTER_AUTH_LOGIN_LIMIT` default 60 menit-per-jendela. Untuk pengujian berkali-kali, jalankan `next start` dengan `BETTER_AUTH_LOGIN_LIMIT=1000` atau restart server (limiter in-memory). Smoke punya `tungguBilaDibatasi()` sebagai jaring pengaman.
 - **Restart server**: cek `ss -ltnp | grep :3000`. Jika port sudah dipakai proses lama, `pnpm start` gagal diam-diam (`EADDRINUSE` di log) dan smoke menguji build lama. Selalu `kill <pid>` lalu tunggu port bebas.
 - **Ganti password**: smoke membuat sesinya sendiri lalu mengganti password admin. Bila `next start` baru dijalankan (secret sama), sesi lama tetap valid. Jangan mengubah password lalu memakai ulang sesi yang dibuat sebelum perubahan dengan password lama → `Invalid password`.
-- **Cleanup smoke** harus berurutan: `koreksi_laporan` → `laporan_pekan` → `karyawan` → `user` (FK RESTRICT). Email uji berawalan `smoke-` berakhiran `@seed.local`.
+- **Cleanup smoke** (satu transaksi, FK RESTRICT): `koreksi_laporan` → `laporan_pekan` → `followup` → `pembayaran_iuran` → `klien` → `karyawan` → `user`, lalu master `LIKE 'Smoke %'`. Email uji berawalan `smoke-` berakhiran `@seed.local`.
+- Smoke fase klien/iuran butuh master `hasil_followup` & `nominal_iuran`; bila admin bukan `ADMIN_EMAIL`, fase itu di-skip dengan pesan SKIP. Seed `@seed.local` tidak wajib.
 - `uuidDari()` di smoke hanya untuk UUID acak (mis. anggota fiktif) — ID karyawan selalu diambil dari DB.
 - `.env.local` tidak memuat `ADMIN_PASSWORD`, jadi jalankan smoke dengan `ADMIN_PASSWORD='...' pnpm exec tsx scripts/smoke.mts`.
 - `drizzle-kit generate` akan memunculkan prompt interaktif "table created or renamed?" setiap kali snapshot lama punya tabel yang di-drop; di terminal non-TTY gagal. Jawab Enter (create) atau jalankan lewat pty.
@@ -198,5 +219,5 @@ set -a && . ./.env.local && set +a
 pnpm db:generate && pnpm db:migrate
 pnpm test && pnpm build
 pnpm start &            # pastikan port 3000 bebas dulu
-ADMIN_PASSWORD='AdminSmokeBaru999!' pnpm exec tsx scripts/smoke.mts
+ADMIN_PASSWORD='AdminBaru123!' pnpm exec tsx scripts/smoke.mts
 ```
