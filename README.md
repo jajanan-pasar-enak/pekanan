@@ -33,7 +33,8 @@ Vercel ke Pro — tidak ada perubahan kode.
 | `DATABASE_URL_UNPOOLED` | ✓ | – | migrasi Drizzle dari lokal |
 | `BETTER_AUTH_SECRET` | ✓ | ✓ | `openssl rand -base64 32` |
 | `BETTER_AUTH_URL` | ✓ | ✓ | origin app (`http://localhost:3000`, `https://<domain>`) |
-| `ADMIN_EMAIL` | ✓ | ✓ | email admin pertama (bootstrap sekali) |
+| `ADMIN_EMAIL` | ✓ | ✓ | email admin pertama (dipakai `seed:admin`) |
+| `ADMIN_PASSWORD` | – | – | opsional; password awal admin untuk `seed:admin` |
 
 Setelah auth lokal aktif, `NEON_AUTH_*`, `NEON_FUNCTION_HELLO_BASE_URL`, dan
 `NEON_AUTH_COOKIE_SECRET` tidak dipakai lagi — hapus dari `.env.local` dan Vercel.
@@ -102,7 +103,7 @@ scripts/smoke.mts               # tes end-to-end
    `DATABASE_URL_UNPOOLED` untuk runtime.
 3. Jalankan migrasi dari lokal ke branch produksi.
 4. Import repo di Vercel (region `sin1`, Framework Next.js), lalu deploy.
-5. Buka `/`, bootstrap admin dengan `ADMIN_EMAIL`, lalu login dan ganti password.
+5. Jalankan `pnpm seed:admin` dari lokal ke DB produksi (ADR-0003), lalu login dan ganti password.
 6. Tidak ada cron, `vercel.json`, atau Neon Function yang perlu dikonfigurasi.
 
 Kuota Neon Free yang perlu dijaga: 1 GB storage/project, 100 CU-hours/project

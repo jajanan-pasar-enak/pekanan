@@ -7,9 +7,10 @@ Aplikasi Next.js 16 di proyek ini masih berupa scaffold (todos, auth lewat proxy
 Sumber kebenaran aturan domain: `CONTEXT.md`. Keputusan berat tercatat di `docs/adr/`:
 - `0001-sesi-auth-dilayani-better-auth-lokal.md`
 - `0002-keunikan-laporan-per-pekan-dijaga-trigger.md`
+- `0003-admin-pertama-dibuat-skrip-lokal.md`
 
 Keputusan tambahan dari sesi perencanaan:
-- Admin pertama ditentukan env `ADMIN_EMAIL`; sign-up dengan email itu menjadi admin.
+- Admin pertama dibuat skrip lokal `scripts/seed-admin.mts` (ADR-0003); tidak ada route bootstrap HTTP.
 - Setelah admin pertama ada, **sign-up mandiri ditolak**; akun dibuat admin (nama, email, password awal, level, supervisor) dan karyawan wajib ganti password saat login pertama.
 - Scaffold lama dihapus total (todos, visits, `/api/todos`, TodoList, `/api/ping-function`, `hello.ts`, `neon.ts`, `src/lib/functions.ts`, `scripts/verify-db.mts`, `@neon/functions`).
 - UI berbahasa Indonesia.
@@ -49,14 +50,76 @@ Target deploy final: **Vercel Hobby (Free) + Neon Free**, non-komersial/internal
 | `scripts/smoke.mts` | Ditulis ulang e2e |
 | `src/app/layout.tsx`, `src/app/page.tsx` | Lepas import `@neon/auth` / `@neon/functions` (satu commit dengan Task 2) |
 
+## Arsitektur Kode (kesepakatan sesi arsitektur)
+
+**Baca vs tulis**
+- Halaman = Server Component yang memanggil `src/lib/<domain>/queries.ts` di dalam `<Suspense>` + `await connection()`.
+- Mutasi = route handler `/api/*` yang dipanggil client component lewat `fetch`, lalu `router.refresh()`.
+- Layout `(app)` memanggil `bootstrapPekan()` langsung dari server component (fungsi di `src/lib/pekan/bootstrap.ts`), bukan lewat HTTP.
+
+**Batas impor (aturan keras)**
+- Hanya `src/lib/<domain>/{queries,mutations}.ts` dan `src/lib/auth/*`, `scripts/*` yang boleh impor `@/db`.
+- Route handler, komponen, dan halaman **tidak** boleh impor `db`/`schema` langsung. Tujuannya: kalau perlu lapisan repository di masa depan, hanya file-file ini yang disentuh. Tidak ada class/repository/DI sekarang.
+
+**Struktur**
+```
+src/lib/
+  http.ts                 # AppError, jsonOk, handle(), skema error
+  waktu.ts                # helper WIB
+  auth/{server,client,current}.ts
+  laporan/{queries,mutations}.ts
+  klien/{queries,mutations}.ts
+  iuran/{queries,mutations}.ts
+  kepegawaian/{queries,mutations}.ts   # karyawan, master, rekap
+  pekan/bootstrap.ts                   # lazy + catch-up
+src/app/
+  (auth)/page.tsx                      # login
+  (auth)/ganti-password/page.tsx
+  (app)/layout.tsx                     # gate sesi + bootstrap + navigasi + Toaster
+  (app)/dashboard/page.tsx
+  (app)/laporan/[id]/page.tsx
+  (app)/laporan/[id]/koreksi/page.tsx
+  (app)/klien/page.tsx
+  (app)/klien/[id]/page.tsx
+  (app)/iuran/page.tsx
+  (app)/admin/page.tsx
+  api/...                              # tipis: parse zod -> panggil mutations -> JSON
+src/components/
+  ui/                                  # shadcn
+  <form spesifik>.tsx                  # "use client"
+```
+
+**Validasi & error**
+- `zod` untuk body tiap endpoint; skema tinggal di file route atau `mutations.ts` yang sama.
+- `AppError(code, message, status)` dan `handle(fn)` di `src/lib/http.ts`:
+  - `UNAUTHORIZED` 401, `FORBIDDEN` 403, `PASSWORD_CHANGE_REQUIRED` 403, `INACTIVE` 403,
+    `NOT_FOUND` 404, `CONFLICT` 409, `VALIDATION` 400, `INTERNAL` 500.
+- Sukses: `{ data }`; gagal: `{ error: { code, message, details? } }`.
+- Pesan error berbahasa Indonesia, dibuat di satu tempat.
+
+**Gate halaman**
+- `(app)/layout.tsx`: `auth.api.getSession()` → redirect `/` bila tanpa sesi → `requireKaryawan()` → redirect `/ganti-password` bila flag aktif → render shell.
+- Ini hanya kenyamanan; enforcement sebenarnya tetap di API (§3.3).
+
+**State form**
+- `useState` per form; tidak ada library state.
+- Form laporan: auto-save per baris saat `onBlur` (`PATCH .../baris/[anggotaId]`), indikator "Tersimpan", tombol Kirim disabled bila ada nilai kosong (server juga menolak).
+- Notifikasi sukses/gagal via `sonner` (`Toaster` di layout `(app)`).
+
+**Penamaan**
+- Domain memakai bahasa Indonesia (`laporan`, `pekan`, `koreksi`, `iuran`, `klien`, `alih`, `rekap`, tipe `Karyawan`, `LaporanPekan`, helper `requireKaryawan`).
+- Infrastruktur memakai bahasa Inggris (`db`, `auth`, `queries`, `mutations`, `AppError`, `handle`, `router`).
+
 ## 1. Dependensi & Konfigurasi
 
-- `pnpm add better-auth@1.7.17` (pin persis; plan bergantung on internal 1.7.x); `pnpm remove @neon/auth @neon/functions`; `pnpm add -D @better-auth/core@1.7.17`.
-- **Urutan penting:** `@neon/auth` / `@neon/functions` baru dihapus **bersamaan** dengan perubahan `src/db/index.ts`, `src/lib/auth/*`, `auth-panel.tsx`, `page.tsx`, `layout.tsx` di Task 2 — kalau dihapus di Task 1, build Rusak. Task 1 hanya menambah.
-- `.env.local` (dan Vercel Project Env): tambah `BETTER_AUTH_SECRET` (`openssl rand -base64 32`), `BETTER_AUTH_URL` (origin app, mis. `https://<proyek>.vercel.app`), `ADMIN_EMAIL`. Pastikan `DATABASE_URL_POOLED` (runtime) dan `DATABASE_URL_UNPOOLED` (migrasi lokal/CI) ada; jangan biarkan `neon env pull` menulis `DATABASE_URL` tanpa `_POOLED`.
-- `drizzle.config.ts`: `schemaFilter: ["public"]`; hapus skrip `db:push` dan `neon:deploy` dari `package.json`.
+- Runtime: `pnpm add better-auth@1.7.17 zod`; `pnpm add @radix-ui/* sonner clsx tailwind-merge class-variance-authority` (via shadcn nanti); **jangan** jadikan `better-auth` devDependency.
+- Dev: `pnpm add -D @better-auth/core@1.7.17`.
+- `pnpm remove @neon/auth @neon/functions` **bersamaan** dengan perubahan `src/db/index.ts`, `src/lib/auth/*`, `auth-panel.tsx`, `page.tsx`, `layout.tsx` di commit auth — kalau dihapus lebih dulu, build rusak.
+- shadcn/ui: `pnpm dlx shadcn@latest init` + `add button input label select textarea table badge dialog sonner alert card tabs` pada commit UI; hasil di `src/components/ui/` dan `src/lib/utils.ts`.
+- `.env.local` (dan Vercel Project Env): `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `ADMIN_EMAIL`, opsional `ADMIN_PASSWORD` untuk `seed-admin`. Pastikan `DATABASE_URL_POOLED` (runtime) dan `DATABASE_URL_UNPOOLED` (migrasi/seed lokal) ada; jangan biarkan `neon env pull` menulis `DATABASE_URL` tanpa `_POOLED`.
+- `drizzle.config.ts`: `schemaFilter: ["public"]`.
 - `src/db/index.ts`: `DATABASE_URL_POOLED`; hapus `attachDatabasePool`.
-- `next.config.ts`: tidak perlu perubahan (`cacheComponents` tetap). Route handler auth dan domain dijalankan di Node runtime (default); jangan menambahkan `export const runtime = "edge"`.
+- `next.config.ts`: tidak perlu perubahan; jangan menambahkan `export const runtime = "edge"`.
 
 ## 2. Schema Drizzle (`src/db/schema.ts`)
 
@@ -96,19 +159,16 @@ Aplikasi tidak pernah melakukan `UPDATE laporan_pekan.supervisor_id` (laporan te
 ### 3.1 Konfigurasi
 - `betterAuth({ secret: env.BETTER_AUTH_SECRET, baseURL: env.BETTER_AUTH_URL, database: drizzleAdapter(db, { provider: "pg", schema }), emailAndPassword: { enabled: true, autoSignIn: false, disableSignUp: true, minPasswordLength: 8 }, user: { additionalFields: { role: { type: "string", input: false, defaultValue: "user" } } }, plugins: [admin({ adminRoles: ["admin"], defaultRole: "user" })], databaseHooks })`.
   - `autoSignIn: false` wajib: pembuatan akun oleh admin tidak boleh mengganti cookie sesi admin.
-  - `disableSignUp: true` untuk sign-up publik; bootstrap admin memakai jalur internal (3.2).
+  - `disableSignUp: true` untuk sign-up publik; akun hanya dibuat admin lewat `auth.api.createUser` (3.2).
 - Plugin `admin` dipakai **tanpa** access-control penuh; otorisasi tetap di helper aplikasi (§4). `nextCookies()` dipasang **terakhir** di plugin agar `auth.api.*` dari server action/route bisa menulis cookie.
 - `databaseHooks.user.create.before/after`: simpan `karyawan` (nama, level, supervisor) dari payload; tolak bila tidak ada level/supervisor valid. `databaseHooks.session.create.before`: tolak sesi untuk `karyawan.aktif = false` atau `user.banned`.
 - **Session validate:** helper `requireKaryawan()` (§4) cek `aktif` + `harus_ganti_password` di setiap request API (DB read per request; pool Neon di-cache di `globalThis`).
 
-### 3.2 Bootstrap admin
-- Rute `POST /api/auth/bootstrap` (satu-satunya jalur sign-up):
-  1. Validasi `email === ADMIN_EMAIL`.
-  2. Dalam transmisi `pg_advisory_xact_lock` + cek "belum ada user role admin", panggil `auth.api.createUser` (plugin admin) untuk admin, lalu set `role = "admin"`.
-  3. Setelah admin ada, setiap percobaan sign-up/bootstrap ditolak (`403`). Sign-up publik tetap `disableSignUp` → `404`/`SIGN_UP_DISABLED`.
-  4. Admin dibuat dengan `emailVerified = true` (tidak ada verifikasi email di deploy ini; tanpa SMTP).
-  5. Admin juga mendapat `karyawan` level `Tetap`, supaya Admin Perhimpunan memenuhi definisi CONTEXT (Karyawan Tetap).
-- Admin membuat karyawan: `POST /api/admin/karyawan` → `auth.api.createUser` (password awal) → set `karyawan.harus_ganti_password = true`. **Tidak** memakai `signUpEmail` (tidak ada efek sesi).
+### 3.2 Admin pertama (ADR-0003)
+- Tidak ada route bootstrap HTTP.
+- `scripts/seed-admin.mts`: baca `ADMIN_EMAIL` dan `ADMIN_PASSWORD` (prompt bila kosong); tolak bila sudah ada `user.role = 'admin'`; dalam satu transaksi buat `user` (`emailVerified = true`, `role = 'admin'`), `account` (hash Better Auth), `karyawan` (`level = 'Tetap'`, `harus_ganti_password = true`).
+- Idempoten: bila admin sudah ada → keluar 0 tanpa perubahan.
+- Admin membuat karyawan: `POST /api/admin/karyawan` → `auth.api.createUser` (dengan sesi admin) → `karyawan.harus_ganti_password = true`. **Tidak** memakai `signUpEmail` (tidak ada efek sesi).
 
 ### 3.3 Ganti password wajib
 - Flag `harus_ganti_password` di `karyawan`. Helper `requireKaryawan()` melempar `403 PASSWORD_CHANGE_REQUIRED` untuk semua endpoint selain `GET /api/me`, `POST /api/auth/change-password`, `POST /api/auth/sign-out`.
@@ -119,7 +179,7 @@ Aplikasi tidak pernah melakukan `UPDATE laporan_pekan.supervisor_id` (laporan te
   1. Tentukan pekan WIB sekarang; buat baris `pekan` bila belum ada.
   2. Untuk user yang login (supervisor aktif dengan ≥1 Anggota Langsung), buat Draf untuk pekan berjalan via `ON CONFLICT (supervisor_id, pekan_id) WHERE deleted_at IS NULL DO NOTHING`; isi `laporan_anggota` untuk setiap Anggota Langsung **saat ini**.
   3. **Catch-up:** untuk setiap supervisor aktif, cari `MAX(pekan.selesai)` dari laporan terakhirnya; untuk setiap pekan yang sudah berakhir setelah tanggal itu dan belum punya laporan, buat Draf kosong + baris anggota (hanya bila supervisor punya anggota). Batas bawah ini menjaga biaya konstan.
-  4. Idempoten. Dipanggil oleh layout shell `src/app/(app)/layout.tsx` (server action dalam `<Suspense>`) setiap kali halaman aplikasi dibuka, sehingga supervisor maupun Atasan yang membuka dashboard memicu pembuatan Draf.
+  4. Idempoten. Dipanggil `bootstrapPekan()` dari layout `(app)` pada setiap load halaman aplikasi, sehingga supervisor maupun Atasan yang membuka aplikasi memicu pembuatan Draf.
 - Konsekuensi yang diterima: Atasan baru melihat "Tidak Terkirim" setelah supervisor atau Atasan membuka aplikasi; tidak ada pembuatan Draf di latar belakang.
 
 ## 4. API (cek session → karyawan aktif)
@@ -129,7 +189,7 @@ Matriks otorisasi (semua endpoint wajib `requireKaryawan()` = aktif + password s
 | Endpoint | Siapa |
 |---|---|
 | `GET /api/me` | user sendiri |
-| `POST /api/pekan/bootstrap` | user login |
+| `POST /api/pekan/bootstrap` | user login (dipakai smoke; halaman memanggil `bootstrapPekan()` langsung) |
 | `GET /api/laporan/[id]` | pemilik (`supervisor_id` = saya) **atau** Atasan Supervisor langsung pemilik |
 | `PATCH /api/laporan/[id]/baris/[anggotaId]` | pemilik saja, status `Draf`, pekan berjalan, baris `anggota_id` harus ada di `laporan_anggota` milik laporan itu |
 | `POST /api/laporan/[id]/submit` | pemilik saja, status `Draf`, pekan berjalan, semua nilai wajib terisi |
@@ -155,9 +215,18 @@ Helper `src/lib/auth/current.ts`: `requireKaryawan()`, `requireAdmin()`, `isSupe
 ## 5. UI
 
 - `/` login · `/ganti-password` · `/dashboard` · `/laporan/[id]` · `/laporan/[id]/koreksi` · `/klien` · `/klien/[id]` · `/iuran` · `/admin`.
-- Shell `src/app/(app)/layout.tsx` memicu `POST /api/pekan/bootstrap` lewat server action di dalam `<Suspense>` pada setiap load halaman aplikasi (idempoten).
+- Route group dan shell sesuai §Arsitektur Kode; `(app)/layout.tsx` menjalankan gate sesi + `aktif` + `harus_ganti_password` lalu bootstrap.
+- shadcn/ui untuk semua kontrol (`Button`, `Input`, `Select`, `Table`, `Dialog`, `Badge`, `Card`, `Tabs`) + `sonner` untuk notifikasi; `Dialog` hanya untuk konfirmasi kirim laporan dan nonaktif karyawan.
 - Cache Components: tidak ada `dynamic = "force-dynamic"`; data via server component di dalam `<Suspense>` dengan `await connection()`.
-- `/laporan/[id]`: tombol Kirim disabled selama ada nilai kosong atau submit API gagal (server-side guard tetap ada). Laporan pekan lampau read-only untuk pemilik.
+- `/laporan/[id]`: auto-save per baris `onBlur`; tombol Kirim disabled selama ada nilai kosong; laporan pekan lampau read-only untuk pemilik.
+- Semua teks UI berbahasa Indonesia.
+
+## 5b. Seed & reset lokal (`scripts/seed.mts`)
+
+- **Penanda:** semua akun seed memakai email berakhiran `@seed.local` dan ID deterministik (uuid v5 dari email) → `ON CONFLICT DO NOTHING`, aman dijalankan ulang walau sudah ada data real.
+- **Isi:** 1 admin seed, 3 supervisor (`Tetap`), 4 anggota (2 `Magang`, 2 `Tetap`), 3 klien, 2 nominal iuran, 3 hasil follow-up, beberapa follow-up di pekan berjalan.
+- **`--cleanup`:** menghapus berurutan `followup` → `klien` → `pembayaran_iuran` → `koreksi_laporan` → `laporan_anggota` → `laporan_pekan` → `karyawan` → `session`/`account` → `user`, semuanya dibatasi `id IN (SELECT id FROM user WHERE email LIKE '%@seed.local')` (atau FK ke baris tersebut). Data real tidak tersentuh.
+- Menolak berjalan bila `DATABASE_URL_UNPOOLED` tidak ada. Bila host cocok dengan project produksi (dibaca dari `.neon`), minta `FORCE=1`.
 
 ## 6. Hapus Scaffold
 
@@ -167,7 +236,8 @@ Hapus `src/components/todo-list.tsx`, `src/app/api/todos/`, `src/app/api/ping-fu
 ## 7. Uji
 
 `scripts/smoke.mts` (HTTP + Drizzle langsung, tanpa import modul auth):
-- bootstrap admin: sukses sekali, percobaan kedua 403; sign-up publik ditolak.
+- seed admin via `scripts/seed-admin` (sudah ada di DB uji), lalu login `signIn.email`.
+- sign-up publik ditolak (`disableSignUp`).
 - admin buat karyawan; password awal tidak bisa akses API (403 `PASSWORD_CHANGE_REQUIRED`) sampai ganti password.
 - alur laporan: bootstrap → isi baris → submit kosong ditolak → isi lengkap → submit → ubah setelah submit ditolak → koreksi oleh atasan (alasan kosong ditolak; non-atasan 403).
 - follow-up: tanggal besok ditolak; rekap menghitung jumlah kejadian, bukan angka manual.
@@ -175,6 +245,8 @@ Hapus `src/components/todo-list.tsx`, `src/app/api/todos/`, `src/app/api/ping-fu
 - nonaktif dengan klien/anggota 400; alih klien oleh non-admin 403; alih klien lalu nonaktif 200.
 - trigger: `UPDATE laporan_pekan SET supervisor_id` ke target yang sudah punya baris hidup → baris lama ber-`deleted_at`, target utuh (dalam transaksi + rollback).
 - IDOR: akses laporan/rekap/follow-up orang lain → 403/404.
+- format error: `{ error: { code } }` konsisten untuk 400/403/404/409.
+- `scripts/seed.mts --cleanup` menghapus hanya baris `@seed.local` (uji di DB uji).
 
 `pnpm build` lulus. Smoke dijalankan terhadap `pnpm start` (bukan `pnpm dev`) agar perilaku menyerupai build produksi. Uji manual browser semua halaman (golden path + edge: submit kosong, laporan lampau read-only, ganti password paksa, Draf baru setelah pekan berganti).
 
@@ -196,4 +268,17 @@ pnpm exec tsx scripts/smoke.mts
 - **Bersihkan env Neon Auth**: hapus `NEON_AUTH_*`, `NEON_FUNCTION_HELLO_BASE_URL`, cookie secret Neon dari `.env.local` dan Vercel setelah auth lokal aktif.
 - **Kuota Free**: 1 GB storage/project, 100 CU-hours/project/bulan, egress 5 GB/project; logs Vercel 1 jam → `console.log` seminimal mungkin.
 - **Kebijakan**: Hobby hanya untuk non-komersial (dikonfirmasi). Bila berubah, upgrade Pro tanpa perubahan kode.
-- Deploy pertama: migrasi → deploy → buka `/` → bootstrap admin dengan `ADMIN_EMAIL`.
+- Deploy pertama: migrasi → deploy → `pnpm seed:admin` (dari lokal ke DB produksi) → buka `/` dan login.
+
+## 9. Urutan commit
+
+Setiap commit wajib lulus `pnpm build`.
+
+| # | Commit | Isi | Verifikasi |
+|---|---|---|---|
+| 1 | `feat(db): schema domain, auth tables, trigger` | `schema.ts`, migration, `waktu.ts`, trigger SQL, `drizzle.config.ts` | `psql` cek tabel/CHECK/trigger/unique parsial |
+| 2 | `feat(auth): better-auth lokal + seed-admin` | auth server/client, `http.ts`, `current.ts`, `seed-admin.mts`, hapus scaffold | login + ganti password manual |
+| 3 | `feat(api): laporan pekan` | `lib/laporan/*`, `lib/pekan/bootstrap.ts`, route laporan | smoke bagian laporan |
+| 4 | `feat(api): klien, follow-up, iuran, admin` | sisa API + `seed.mts` | `pnpm smoke` lengkap |
+| 5 | `feat(ui): shadcn shell + halaman` | shadcn init, route group, 9 halaman | uji manual browser |
+| 6 | `chore: deploy prep` | README/HANDOFF, `.env` cleanup, Vercel env | build + smoke terhadap `next start` |
