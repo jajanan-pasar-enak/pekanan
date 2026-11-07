@@ -36,7 +36,7 @@ Aplikasi **Next.js 16.4.5 (App Router, Cache Components)** + **Neon Postgres** (
 | `HANDOFF.md` | (file ini) status, jebakan, langkah berikutnya |
 | `CONTEXT.md` | **Glosarium domain (sumber kebenaran aturan bisnis)** |
 | `plan.md` | Rencana implementasi yang disetujui + **§Arsitektur Kode** + **§9 urutan commit** |
-| `todo.md` | Checklist per commit (Commit 1 sudah dicentang; Commit 2–6 belum) |
+| `todo.md` | Checklist per commit (Commit 1 & 2 sudah dicentang; Commit 3–6 belum) |
 | `docs/adr/0001-sesi-auth-dilayani-better-auth-lokal.md` | Better Auth lokal, bukan proxy Neon Auth |
 | `docs/adr/0002-keunikan-laporan-per-pekan-dijaga-trigger.md` | Unique parsial + trigger; **direvisi** (tanpa auto-kirim Draf, tanpa `move_karyawan()`) |
 | `docs/adr/0003-admin-pertama-dibuat-skrip-lokal.md` | Admin pertama via `scripts/seed-admin.mts`, **tanpa route bootstrap HTTP** |
@@ -53,7 +53,7 @@ Aplikasi **Next.js 16.4.5 (App Router, Cache Components)** + **Neon Postgres** (
 - Supervisi = **pohon berantai**; Magang wajib supervisor Tetap.
 - Detail lengkap di `CONTEXT.md`.
 
-## 4. Keputusan teknis & arsitektur yang sudah dikunci (belum dikodekan)
+## 4. Keputusan teknis & arsitektur yang sudah dikunci (auth sudah dikodekan di Commit 2; sisanya belum)
 
 **Deploy:** Vercel **Hobby** (non-komersial) + Neon **Free**. Runtime Node.js, region Vercel `sin1`, Neon `aws-ap-southeast-1`. **Tanpa scheduler**: Neon Functions/Triggers/pg_cron dan Vercel Cron sengaja tidak dipakai.
 
@@ -83,10 +83,12 @@ DATABASE_URL_UNPOOLED    # drizzle-kit migrate + seed lokal
 BETTER_AUTH_SECRET       # openssl rand -base64 32
 BETTER_AUTH_URL          # http://localhost:3000 / https://<domain>
 ADMIN_EMAIL
-ADMIN_PASSWORD           # opsional, untuk seed:admin
+ADMIN_PASSWORD           # seed:admin; opsional (prompt bila TTY)
+ADMIN_NAMA               # opsional, default "Admin Perhimpunan"
+# opsional smoke: SMOKE_BASE_URL, SMOKE_ADMIN_PASSWORD, SMOKE_ADMIN_PASSWORD_BARU
 ```
 
-Tidak dipakai lagi setelah auth lokal aktif (hapus): `NEON_AUTH_BASE_URL`, `NEON_AUTH_JWKS_URL`, `NEON_AUTH_COOKIE_SECRET`, `NEON_FUNCTION_HELLO_BASE_URL`, `NEON_BRANCH`.
+`.env.local` **masih** memuat sisa Neon: `NEON_AUTH_BASE_URL`, `NEON_AUTH_JWKS_URL`, `NEON_AUTH_COOKIE_SECRET`, `NEON_FUNCTION_HELLO_BASE_URL`, `NEON_BRANCH` — sudah tidak dibaca kode, dihapus di Commit 6 (deploy prep).
 
 ### Jebakan env
 - `neon deploy` / `neon env pull` menimpa `.env.local` dan menulis `DATABASE_URL` (tanpa `_POOLED`); hapus baris itu setelahnya.
@@ -136,15 +138,24 @@ Tidak dipakai lagi setelah auth lokal aktif (hapus): `NEON_AUTH_BASE_URL`, `NEON
 
 ## 9. Langkah berikutnya (mulai dari sini)
 
-Implementasi **Commit 3 — API laporan pekan** (`plan.md` §3.4, `todo.md` bagian "Commit 3"):
+Implementasi **Commit 3 — API laporan pekan** (`plan.md` §3.4 & §4, `todo.md` bagian "Commit 3"). Urutan kerja: tulis uji (gagal) → implementasi → uji hijau → `pnpm build` → smoke → commit. Semua test/skrip dijalankan **serial**.
 
-1. Uji serial dulu (red): `src/lib/waktu.test.ts` (batas pekan WIB) dan uji otorisasi laporan.
-2. `src/lib/pekan/bootstrap.ts` (Draf + catch-up, idempoten), `src/lib/laporan/{queries,mutations}.ts`.
-3. Route `GET /api/me` sudah ada; tambah `POST /api/pekan/bootstrap`, `GET /api/laporan/[id]`, `PATCH .../baris/[anggotaId]`, `POST .../submit`, `POST .../koreksi`.
-4. Perluas `scripts/smoke.mts` (fase laporan) — jalankan serial setelah build.
-5. `pnpm build` + `pnpm test` + smoke lulus; commit.
+1. **Uji dulu (merah):**
+   - `src/lib/waktu.test.ts` — batas pekan (Minggu 00:00 s.d. Sabtu 23:59:59 WIB): Sabtu 23:59 WIB masih pekan berjalan, Minggu 00:00 WIB mulai pekan baru, kasus pergantian bulan/tahun, `bulanBerjalan`.
+   - Uji otorisasi (murni/DB): pemilik vs Atasan Supervisor langsung vs orang lain untuk baca/submit/koreksi; laporan lampau read-only untuk pemilik.
+2. **`src/lib/pekan/bootstrap.ts`** — `bootstrapPekan()`: buat baris `pekan` WIB bila belum ada; untuk user login, buat Draf pekan berjalan + baris `laporan_anggota` untuk setiap Anggota Langsung **saat ini** (hanya bila ≥1); catch-up untuk setiap supervisor aktif sejak `MAX(pekan.selesai)` laporan terakhirnya. Idempoten via `ON CONFLICT (supervisor_id, pekan_id) WHERE deleted_at IS NULL DO NOTHING`. Batasi bukan-supervisor (tanpa anggota) supaya murah.
+3. **`src/lib/laporan/queries.ts` / `mutations.ts`** (hanya file ini yang impor `@/db`):
+   - `getLaporan(id, viewer)` (pemilik atau Atasan langsung), `patchBaris` (pemilik, `Draf`, pekan berjalan, `anggota_id` harus ada di laporan itu), `submitLaporan` (semua nilai wajib terisi, selain itu 400 `VALIDATION`), `koreksiLaporan` (Atasan langsung, pekan lampau, alasan wajib; satu transaksi: `koreksi_laporan` + `sebelum`/`sesudah` + `status = 'Dikoreksi'`).
+   - Tambah helper di `src/lib/auth/otorisasi.ts`: `isSupervisorOf(supervisorId, anggotaId)`, `isAtasanOf(karyawanId, calonAtasanId)` (supervisor langsung), lalu uji unit-nya.
+4. **Route (tipis, `zod` + `handle()` + `requireKaryawan()` + `await connection()`):**
+   - `POST /api/pekan/bootstrap` (untuk smoke), `GET /api/laporan/[id]`,
+   - `PATCH /api/laporan/[id]/baris/[anggotaId]`, `POST /api/laporan/[id]/submit`, `POST /api/laporan/[id]/koreksi`.
+   - Ingat jebakan #9: route handler wajib `await connection()`.
+5. **`scripts/smoke.mts` fase laporan** (jalankan serial setelah `pnpm build` + `pnpm start`, port harus = `BETTER_AUTH_URL`): bootstrap → isi baris → submit kosong ditolak → isi lengkap → submit → ubah setelah submit 403/409 → koreksi (alasan kosong ditolak, non-atasan 403) → IDOR 403/404. Bersihkan data uji di `finally` (prefix `smoke-%@seed.local`).
+6. Pasang `bootstrapPekan()` di `(app)/layout.tsx` pada commit ini (supaya smoke lewat halaman juga memicu Draf); `Toaster`/shadcn tetap di Commit 5.
+7. Commit `feat(api): laporan pekan`, lalu perbarui `todo.md` + `HANDOFF.md`.
 
-Hook `bootstrapPekan()` di layout `(app)` bisa dipasang di Commit 3 (akan memicu Draf lebih awal) atau ditunda ke Commit 5.
+**Status akun admin lokal saat ini:** `admin@pekanan.local`, password terakhir `AdminSmokeBaru999!` (`harus_ganti_password = false`, sudah diubah smoke). `pnpm seed:admin` tidak mengubahnya (idempoten). Ganti lewat `/api/auth/change-password` atau UI bila perlu.
 
 **Adapter & snake_case:** `drizzleAdapter(db, { provider: "pg", schema })` menerima objek schema apa adanya; `usePlural` (default `false`) cocok karena nama tabel tunggal (`user`, `session`, …). Nama kolom DB di-**override eksplisit** di `src/db/schema.ts` (`account_id`, `email_verified`, dst.), jadi **jangan** menambah `casing: "snake_case"` — default Drizzle (preserve) sudah benar. Export `schema` (`import * as schema`) harus memuat tabel domain juga agar adapter menemukan `user`.
 
@@ -155,7 +166,7 @@ Hook `bootstrapPekan()` di layout `(app)` bisa dipasang di Commit 3 (akan memicu
 - DB (trigger & CHECK): `scripts/test-db.mts` — pola psql Commit 1 dipindah ke Drizzle langsung, setiap kasus dalam transaksi yang di-`ROLLBACK`, exit non-nol bila ada yang lolos. Butuh `DATABASE_URL_UNPOOLED`; jangan pernah commit data uji.
 - Urutan kerja per fitur: uji gagal → implementasi → uji hijau → `pnpm build` → commit.
 - **Jalankan test secara serial** (`pnpm test` sudah `--test-concurrency=1`; skrip DB/HTTP satu per satu, tidak paralel).
-- Backlog: `src/lib/waktu.test.ts` untuk `waktu.ts` yang sudah ada (Commit 1) ditulis belakangan, boleh jadi bagian commit Commit 2.
+- Commit 2 sudah menulis `src/lib/http.test.ts` (6 uji). Backlog: `src/lib/waktu.test.ts` dan uji otorisasi → dikerjakan di awal Commit 3.
 
 ### Catatan operasional baru
 
