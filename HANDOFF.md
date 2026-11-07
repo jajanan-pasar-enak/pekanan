@@ -1,131 +1,116 @@
 # HANDOFF — pekanan
 
+> **Baca ini dulu.** Status terakhir: **desain domain selesai, implementasi BELUM mulai.** Tidak ada perubahan kode aplikasi di sesi terakhir; hanya dokumen desain yang ditambahkan.
+
 ## 1. Ringkasan
 
-Aplikasi **Next.js 16.4.5 (App Router)** yang di-deploy ke **Vercel** dengan backend **Neon**: Postgres (lakebase), Neon Auth (Managed Better Auth) dan Neon Functions. Project awalnya kosong; scaffold dibuat di sesi sebelumnya.
+Aplikasi **Next.js 16.4.5 (App Router)** + **Neon Postgres** (Drizzle + `pg`) di `/home/xan/project/skrmb/pekanan`. Tujuannya mencatat kinerja pekanan tim: Laporan Pekan (kehadiran, sebar media, one-on-one), klien + follow-up, dan iuran bulanan.
 
-- Lokasi: `/home/xan/project/skrmb/pekanan`
-- Package manager: **pnpm 12.16.1** (npm tidak dipakai)
-- Node: v24.22.1 · Neon CLI: 8.23.3
-- Git: repo diinisialisasi oleh `create-next-app`. Hanya ada 1 commit (`b1e7d8a Initial commit from Create Next App`); **semua pekerjaan masih uncommitted**.
+- Package manager: **pnpm 12.16.1** · Node **v24.22.1** lokal (environment Qoder menyebut v26; yang dipakai `pnpm exec` adalah v24)
+- Git: branch `main`, commit terakhir `374fe23 docs: replace create-next-app README with project setup guide`
+- **Belum ada commit** untuk pekerjaan sesi terakhir.
 
-## 2. Resource Neon
+## 2. Lokasi dokumen (baca berurutan)
 
-| Item | Value |
+| File | Isi |
 |---|---|
-| Org | `org-empty-credit-57766595` |
-| Project | `still-firefly-08452520` |
-| Branch | `production` (`br-floral-tooth-aog0qwgs`) |
-| Region | `aws-ap-southeast-1` |
-| Postgres host (pooled) | `ep-shy-frog-aox88nsm-pooler.c-2.ap-southeast-1.aws.neon.tech` |
-| Auth Base URL | `https://ep-shy-frog-aox88nsm.neonauth.c-2.ap-southeast-1.aws.neon.tech/neondb/auth` |
-| Function `hello` | `https://br-floral-tooth-aog0qwgs-hello.compute.c-2.ap-southeast-1.aws.neon.tech/` |
-| Neon Auth setting | Email/password aktif, `Require Verification: false`, `Disable Sign Up: false`, trusted domain `http://localhost:3000` |
+| `HANDOFF.md` | (file ini) status, jebakan, langkah berikutnya |
+| `CONTEXT.md` | **Glosarium domain (sumber kebenaran aturan bisnis)** |
+| `plan.md` | Rencana implementasi yang **sudah disetujui** (schema, API, UI, uji) |
+| `todo.md` | Checklist implementasi (semua belum dicentang) |
+| `docs/adr/0001-sesi-auth-dilayani-better-auth-lokal.md` | Keputusan pindah dari Neon Auth proxy ke Better Auth lokal |
+| `docs/adr/0002-keunikan-laporan-per-pekan-dijaga-trigger.md` | Unik laporan per (supervisor, pekan) via unique parsial + trigger |
 
-`.neon` berisi org/project/branch link (gitignored). Kredensial ada di `.env.local` (gitignored).
+## 3. Keputusan domain yang sudah dikunci (ringkas)
 
-## 3. Env vars (`.env.local`)
+- Laporan Pekan ditulis **Supervisor** untuk **Anggota Langsungnya saja**; Atasan Supervisor (supervisor-nya supervisor) boleh **Koreksi** dengan alasan, benar-benar disimpan.
+- Pekan = **Minggu 00:00 – Sabtu 23:59:59 WIB**. Laporan Draf dibuat otomatis saat pekan mulai **hanya bila supervisor punya ≥1 Anggota Langsung**.
+- Laporan wajib **diisi manual** (Mengisi Sendiri): tombol Kirim terkunci selama ada nilai kosong; draf kosong tidak boleh terkirim.
+- Kehadiran 5 status (Tepat Waktu, Terlambat <15, Terlambat >15, Sakit=tidak hadir, Tanpa Keterangan) + keterangan.
+- Sebar media: dua angka integer ≥0 (online, offline) diketik supervisor.
+- One-on-One: satu cara per anggota (Pribadi / Sebelum Meeting Pekanan / Alpa) + keterangan.
+- Follow-up **hanya dari kejadian** (klien, tanggal ≤ hari ini, master hasil + deskripsi opsional); jumlah per pekan = hitungan kejadian.
+- Klien punya **satu pemilik**; wajib dialihkan bila pemilik nonaktif/pindah supervisor.
+- Iuran: master Nominal, kejadian Pembayaran Iuran per (karyawan, bulan), dicatat sendiri atau oleh supervisor; tampil kosong di pekan setelah lunas.
+- Struktur supervisi = **pohon berantai** (Tetap punya supervisor Tetap; Magang wajib supervisor Tetap). Relasi dan keputusan lengkap ada di `CONTEXT.md`.
 
+## 4. Keputusan teknis yang sudah dibuat (belum dikodekan)
+
+1. **Auth: Better Auth lokal**, bukan proxy Neon Auth (ADR-0001). Tabel auth pindah ke skema `public` (`user`, `session`, `account`, `verification`). `neon_auth.*` **tidak disentuh**.
+2. **Bootstrap admin via env `ADMIN_EMAIL`**: hanya email itu boleh sign-up dan hanya saat belum ada admin. **Setelah admin ada, sign-up mandiri ditolak**; admin membuat akun karyawan + password awal → karyawan wajib ganti password.
+3. **Scaffold lama dihapus total**: `todos`, `visits`, `/api/todos`, `TodoList`, `/api/ping-function`, `hello.ts`, `neon.ts`, `src/lib/functions.ts`, `scripts/verify-db.mts`, `@neon/functions`.
+4. `drizzle.config.ts` **wajib** `tablesFilter` mengecualikan `neon_auth` (jangan sampai drizzle men-drop skema auth).
+5. Better Auth harus `advanced.database.validateSchema: false` (tabel `neon_auth` lama tidak memenuhi unique index Better Auth).
+6. UI berbahasa Indonesia.
+
+## 5. Env vars (`.env.local`, gitignored)
+
+Sudah ada:
 ```
-DATABASE_URL_POOLED      # pooled, dipakai runtime app (di-rename dari DATABASE_URL)
-DATABASE_URL_UNPOOLED    # direct, dipakai drizzle-kit migrate
+DATABASE_URL_POOLED      # pooled, runtime app
+DATABASE_URL_UNPOOLED    # direct, drizzle-kit migrate
 NEON_BRANCH
-NEON_AUTH_BASE_URL
-NEON_AUTH_JWKS_URL
-NEON_FUNCTION_HELLO_BASE_URL
-NEON_AUTH_COOKIE_SECRET  # dibuat manual: openssl rand -base64 32
+NEON_AUTH_BASE_URL       # tidak dipakai lagi setelah auth dilokalkan
+NEON_AUTH_JWKS_URL       # tidak dipakai lagi
+NEON_FUNCTION_HELLO_BASE_URL  # tidak dipakai setelah scaffold dihapus
+NEON_AUTH_COOKIE_SECRET
 ```
 
-### Penting: setelah `neon deploy` / `neon env pull`
-Keduanya **menulis ulang** `DATABASE_URL` (pooled) dan menimpa file. Langkah wajib:
-
-```bash
-# hapus DATABASE_URL ambigu, pastikan DATABASE_URL_POOLED ada
-python3 - <<'EOF'
-p='.env.local'
-lines=[l for l in open(p).read().splitlines() if not l.startswith('DATABASE_URL=')]
-open(p,'w').write('\n'.join(lines)+'\n')
-EOF
+**Belum ada, harus ditambahkan saat implementasi:**
+```
+BETTER_AUTH_SECRET=<openssl rand -base64 32>
+ADMIN_EMAIL=<email admin pertama>
 ```
 
-`NEON_AUTH_COOKIE_SECRET` tidak di-inject Neon; harus ditambahkan manual jika file terhapus.
+### Jebakan env
+- `neon deploy` / `neon env pull` **menimpa** `.env.local` dan menulis `DATABASE_URL` (tanpa `_POOLED`). Setelah itu hapus baris `DATABASE_URL=` dan pastikan `DATABASE_URL_POOLED` ada.
+- `.neon` berisi org/project/branch (gitignored). `psql` butuh `set -a && . ./.env.local && set +a` dulu, jika tidak konek ke socket lokal dan gagal.
 
-### Untuk deploy ke Vercel
-Set env yang sama di project Vercel. `NEON_FUNCTION_*` dan `NEON_AUTH_*` dapat dari `neon env pull`. Jangan commit `.env.local`.
+## 6. Fakta environment yang sudah diverifikasi (dengan `psql`)
 
-## 4. Struktur file yang dibuat
+- DB: Neon Postgres 18.6. Skema: `public`, `drizzle` (tabel `__drizzle_migrations`, 1 migrasi baseline), `neon_auth`.
+- `neondb_owner` adalah anggota role `neon_auth` → FK dari `public` ke `neon_auth."user"(id)` **berhasil** (diuji dalam transaksi + rollback).
+- Tidak ada trigger yang ditemukan di skema `neon_auth`; tabel: `account, invitation, jwks, member, organization, project_config, session, user, verification`.
+- 2 akun uji di `neon_auth.user`: `aku@kamu.com`, `apa@iya.com` (email belum diverifikasi). **Password tidak diketahui dan tidak tersimpan di repo** — jangan cari di luar folder proyek.
+- `better-auth@1.7.17` ada di `node_modules/.pnpm` sebagai dependency `@neon/auth`, tetapi **tidak bisa di-`import` langsung** sampai ditambahkan ke `package.json`.
+- Node di luar bundler Next **tidak me-resolve** `@neon/auth/next/server` (peer `next` tidak ter-link) → skrip uji harus lewat HTTP / Drizzle langsung, jangan import modul auth.
+- Verifikasi dari membaca kode library (bukan dites runtime):
+  - `options.hooks.before/after` Better Auth **dijalankan** (dibaca di `dist/api/dispatch.mjs`).
+  - `runPluginInit` (opsi dari `plugin.init`) dijalankan **setelah** `createAuthContext`; **hooks instance lebih dulu** daripada hooks plugin (penting untuk bootstrap admin).
+  - `getSetCookie` dan `Response` body bisa dipakai ulang untuk menjeda/merusak respons auth.
 
-```
-neon.ts                     # infra-as-code: auth:true + functions.hello
-hello.ts                    # Neon Function: Response("Hello from Neon Functions")
-drizzle.config.ts           # pakai DATABASE_URL_UNPOOLED
-drizzle/                    # migrasi 0000_kind_satana.sql (todos, visits)
-src/db/schema.ts            # tabel todos, visits
-src/db/index.ts             # Pool pg pooled, max:5, attachDatabasePool, singleton dev
-src/lib/auth/server.ts      # createNeonAuth (cookie secret)
-src/lib/auth/client.ts      # createAuthClient() tanpa argumen (same-origin proxy)
-src/lib/functions.ts        # functionUrl(slug) dari NEON_FUNCTION_<SLUG>_BASE_URL
-src/app/api/auth/[...path]/route.ts
-src/app/api/todos/route.ts            # GET publik; POST/DELETE wajib session; validasi 1-500 char
-src/app/api/ping-function/route.ts    # proxy ke Neon Function hello
-src/app/page.tsx                      # Suspense + connection(); status function
-src/components/auth-panel.tsx         # sign in/up/out, try/catch isAuthError
-src/components/todo-list.tsx          # list + add/delete (butuh login)
-scripts/verify-db.mts                 # cek tabel + seed 2 todos (destruktif: menambah baris)
-scripts/smoke.mts                     # 11 tes end-to-end
-```
+## 7. Jebakan Next 16 / framework (dari sesi sebelumnya, masih berlaku)
 
-## 5. Perintah
+1. **Cache Components**: `export const dynamic = "force-dynamic"` **dilarang**. Gunakan `await connection()` di dalam `<Suspense>`.
+2. Setelah login, aplikasi `window.location.reload()` (pola lama di `auth-panel.tsx`) — aman.
+3. Build memakai Turbopack; dev `--no-turbopack`.
+4. `pnpm-workspace.yaml` berisi `allowBuilds: esbuild: true` — jangan dihapus, atau `pnpm add` gagal `ERR_PNPM_IGNORED_BUILDS`.
+5. `AGENTS.md` bawaan Next 16 — jangan dihapus. `git status` sesi ini menunjukkan `M AGENTS.md` (tidak sengaja berubah); **cek diff sebelum commit**.
+6. Warning SSL `sslmode=verify-full` dari `pg-connection-string` — harmless.
+7. Vercel Hobby non-komersial.
 
-```bash
-pnpm dev                          # dev server
-pnpm build && pnpm start          # build + produksi
-pnpm db:generate                  # generate migrasi (set -a && . ./.env.local && set +a dulu)
-set -a && . ./.env.local && set +a && pnpm db:migrate
-neon deploy                       # apply neon.ts (lihat langkah env di atas!)
-neon neon-auth status
-neon neon-auth config email-password get
-neon functions list
-pnpm exec tsx scripts/smoke.mts   # butuh server jalan di :3000
-```
+## 8. Aturan kerja untuk sesi berikutnya
 
-## 6. Status verifikasi (sesi sebelumnya)
+- **Pencarian file hanya di dalam folder proyek.** Kalau file tidak ada di proyek, laporkan; jangan mencari ke luar `/home/xan/project/skrmb/pekanan`. Jangan jalankan `find` dari `/home/xan` (sesi lalu timeout).
+- Perintah `psql` butuh env dimuat dulu (lihat 5).
+- Jangan mengubah `neon_auth.*` dan jangan menghapus data tanpa persetujuan.
+- Grilling/desain domain sudah selesai — **jangan mengulang pertanyaan**; semua aturan ada di `CONTEXT.md`.
 
-- `pnpm build` lulus. Route: `/` (◐ PPR), `/api/auth/[...path]`, `/api/ping-function`, `/api/todos`.
-- `scripts/smoke.mts`: **11/11 PASS** (postgres read/write/delete/validasi/401, auth sign-up/session/sign-out/sign-in/wrong-password 401, function via app).
-- Log server bersih dari `unhandledRejection`.
-- **Belum** diverifikasi di browser sungguhan (form diklik manual) — jalur API sudah dicek.
+## 9. Langkah berikutnya (mulai dari sini)
 
-## 7. Keputusan teknis & jebakan
+Ikuti `plan.md` dan centang `todo.md`. Urutan:
 
-1. **`@neon/auth` melempar error, tidak mengembalikan `{ error }`.** SDK memakai `throw: true` di custom fetch; `signIn.email` dkk. throw `AuthApiError`. Selalu bungkus `try/catch` dan pakai `isAuthError()` untuk pesan user-friendly. Ini bug yang sudah diperbaiki di `auth-panel.tsx`.
-2. **Next 16 Cache Components**: `export const dynamic = "force-dynamic"` dilarang. Pakai `await connection()` di dalam `<Suspense>`.
-3. **Driver**: `pg` + `drizzle-orm/node-postgres` (bukan serverless driver) karena Next 16 + Cache Components = Node runtime. Di Vercel: pertimbangkan `import { attachDatabasePool } from "@vercel/functions"` (skill Neon menyarankan ini + Fluid compute). Saat ini `attachDatabasePool` dari `@neon/functions` (no-op di luar Neon) — **perlu ditinjau untuk produksi Vercel**.
-4. **`Disable Sign Up` pernah berubah sendiri ke `true`** setelah `neon deploy`/konfigurasi. Selalu cek ulang setelah deploy; perbaiki dengan `neon neon-auth config email-password update --disable-sign-up false`.
-5. **`neon env pull`/`neon deploy` menimpa `.env.local`** dan menulis `DATABASE_URL` — lihat bagian 3.
-6. `pnpm-workspace.yaml` berisi `allowBuilds: esbuild: true` (wajib, jika tidak `pnpm add` gagal `ERR_PNPM_IGNORED_BUILDS`).
-7. `create-next-app` menulis `AGENTS.md` (bawaan Next 16) — jangan dihapus sembarangan; `next dev` menambahkannya kembali.
-8. Warning SSL `sslmode=verify-full` dari `pg-connection-string` muncul di log — harmless.
-9. `create-next-app` memilih `--no-turbopack` untuk dev, tetapi build memakai Turbopack (bawaan Next 16).
+1. **Task 1 — Fondasi DB**: `pnpm add better-auth`; `pnpm remove @neon/auth @neon/functions`; `pnpm add -D @better-auth/core @better-auth/drizzle-adapter`; tulis ulang `src/db/schema.ts`; `drizzle.config.ts` + `tablesFilter`; generate migration lalu tambahkan trigger/unique parsial/CHECK manual; `DROP TABLE IF EXISTS todos, visits`; uji dengan `psql`.
+2. **Task 2 — Auth lokal**: `betterAuth` + `drizzleAdapter`, `toNextJsHandler`, client `better-auth/react`, bootstrap `ADMIN_EMAIL`, tolak sign-up mandiri, `POST /api/admin/karyawan` (pra-uji jalur pembuatan user), `/ganti-password`, hapus scaffold.
+3. **Task 3 — API domain**, lalu **Task 4 — UI**, lalu **Task 5 — verifikasi** (`scripts/smoke.mts` baru, trigger test, `pnpm build`, uji browser).
 
-## 8. Yang belum dikerjakan / kandidat lanjutan
-
-- Belum ada commit; perubahan belum di-review sebagai satu set.
-- Belum ada test UI browser (Playwright) untuk form auth.
-- `src/app/api/todos` belum memfilter berdasarkan user (todos global, siapa pun yang login bisa hapus). Jika multi-user: tambah `user_id` + RLS atau cek di handler.
-- Belum ada deploy Vercel; belum ada `vercel.json`/CI.
-- `scripts/verify-db.mts` selalu insert 2 baris — jangan dijalankan ke produksi.
-- Function `hello` masih stub.
-- Vercel Hobby **non-komersial** — eskalasi jika dipakai komersial.
-
-## 9. Mulai sesi berikutnya
-
+Perintah dasar:
 ```bash
 cd /home/xan/project/skrmb/pekanan
-git status && cat HANDOFF.md
-neon whoami                      # cek login Neon (~/.config/neonctl)
-neon neon-auth config email-password get   # pastikan Disable Sign Up false
+git status --short
 set -a && . ./.env.local && set +a
-pnpm build && pnpm start &
+pnpm db:generate && pnpm db:migrate
+pnpm build
+pnpm dev &            # atau pnpm start
 pnpm exec tsx scripts/smoke.mts
 ```
