@@ -1,14 +1,16 @@
 # HANDOFF — pekanan
 
-> **Baca ini dulu.** Status terakhir: **Commit 5 (UI) selesai dan sudah di-commit — `8dc453d feat(ui): halaman dashboard, laporan, klien, iuran, dan admin`** (working tree bersih). `pnpm build` exit 0, `pnpm test` **28/28**, uji browser Playwright terhadap `next start` semua fase OK. **Belum di-push**: repo **belum punya remote** (`git remote -v` kosong) — perlu URL repo sebelum `git push -u origin main`. Berikutnya: **Commit 6 — Deploy Vercel Hobby + Neon Free**.
+> **Baca ini dulu.** Status terakhir: **Commit 5 (UI) selesai** dan sudah di-push. Remote: `https://github.com/sini-sana/pekanan.git` (publik), `main` sinkron dengan `origin/main`. **Commit 6 (deploy) sedang berjalan**: `README.md` sudah memuat runbook Vercel Hobby + Neon Free dan `NEON_*` lama sudah dihapus dari `.env.local`; sisa langkah Commit 6 butuh akun Vercel/Neon produksi. `pnpm build` exit 0, `pnpm test` **28/28**.
+
+> **Catatan keamanan:** repo publik dan riwayat memuat email admin lokal + password uji (`AdminBaru123!`) di dokumen ini, serta di commit `de13912` ke belakang. Ganti password admin lokal; scrub riwayat bila perlu.
 
 ## 1. Ringkasan
 
 Aplikasi **Next.js 16.4.5 (App Router, Cache Components)** + **Neon Postgres** (Drizzle + `pg`) di `/home/xan/project/skrmb/pekanan`. Mencatat kinerja pekanan tim: Laporan Pekan (kehadiran, sebar media, one-on-one), Klien + Follow-up, dan Iuran bulanan.
 
 - Package manager: **pnpm 12.16.1** · Node **v24.22.1** lokal (environment Qoder menyebut v26; yang dipakai `pnpm exec` adalah v24)
-- Git: branch `main`, commit terakhir **`8dc453d feat(ui): halaman dashboard, laporan, klien, iuran, dan admin`** (Commit 5); sebelumnya `d4e5a76` (docs) dan `bd64c4a` (Commit 4).
-- **Belum di-push dan belum ada remote.** Tambahkan dulu (`git remote add origin <url>`), lalu `git push -u origin main`. Sebelum memilih remote publik: `HANDOFF.md` memuat email admin lokal & password uji (`AdminBaru123!`) dan `.env.example` berisi nama env — jangan jadikan repo publik tanpa membersihkan itu.
+- Git: branch `main`, commit **`de13912 docs: handoff ke Commit 5 selesai, push dan deploy belum`** (terakhir di-push); sebelumnya `8dc453d` (Commit 5 UI), `d4e5a76` (docs), `bd64c4a` (Commit 4).
+- **Remote**: `origin` = `https://github.com/sini-sana/pekanan.git` (publik, sudah di-push). Riwayat memuat email admin lokal & password uji (`AdminBaru123!`) di `HANDOFF.md` — sudah terekspos di GitHub; ganti password lokal dan/atau scrub riwayat via `git filter-repo` bila repo harus tetap publik.
 - Admin lokal `admin@pekanan.local`: password kini **`AdminBaru123!`** (= `SMOKE_ADMIN_PASSWORD_BARU`), `harus_ganti_password = false`, akun `aktif = true`. Smoke mencoba `SMOKE_ADMIN_PASSWORD` dulu, baru `SMOKE_ADMIN_PASSWORD_BARU`, jadi jalankan dengan `ADMIN_PASSWORD='AdminBaru123!'`. (Catatan: probe lama sempat menonaktifkan admin — sudah diaktifkan kembali lewat psql; bila smoke fase admin "SKIP (admin bukan ADMIN_EMAIL)", periksa `karyawan.aktif` untuk admin.)
 - **Data seed lokal `@seed.local` tidak ada di DB** saat Commit 4 diverifikasi (sudah dibersihkan). Smoke tidak butuh seed; `scripts/seed.mts` membuat data contoh bila diinginkan.
 - **Testing:** Commit 1 diverifikasi manual (psql rollback + `drizzle-kit pull`), **bukan dengan suite tersimpan**. Mulai Commit 2 dipakai TDD berbasis `node:test` (lihat §9).
@@ -134,7 +136,7 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
 # opsional smoke: SMOKE_BASE_URL, SMOKE_ADMIN_PASSWORD, SMOKE_ADMIN_PASSWORD_BARU
 ```
 
-`.env.local` **masih** memuat sisa Neon: `NEON_AUTH_BASE_URL`, `NEON_AUTH_JWKS_URL`, `NEON_AUTH_COOKIE_SECRET`, `NEON_FUNCTION_HELLO_BASE_URL`, `NEON_BRANCH` — sudah tidak dibaca kode, dihapus di Commit 6 (deploy prep).
+`.env.local` **sudah bersih**: `NEON_AUTH_BASE_URL`, `NEON_AUTH_JWKS_URL`, `NEON_AUTH_COOKIE_SECRET`, `NEON_FUNCTION_HELLO_BASE_URL`, `NEON_BRANCH` dihapus di Commit 6 (backup di `/tmp/env.local.bak.*`). `.env.example` memang tidak pernah memuatnya.
 
 ### Jebakan env
 - `neon deploy` / `neon env pull` menimpa `.env.local` dan menulis `DATABASE_URL` (tanpa `_POOLED`); hapus baris itu setelahnya.
@@ -184,13 +186,12 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
 
 ## 9. Langkah berikutnya (mulai dari sini)
 
-1. **Push**: tentukan remote tujuan, `git remote add origin <url>`, `git push -u origin main`. Riwayat memuat kata sandi uji admin di `HANDOFF.md` — pertimbangkan repo privat atau bersihkan dokumen dulu.
-2. **Commit 6 — Deploy Vercel Hobby + Neon Free** (`todo.md` bagian "Commit 6"):
-   - `.env.local`: hapus `NEON_AUTH_BASE_URL`, `NEON_AUTH_JWKS_URL`, `NEON_AUTH_COOKIE_SECRET`, `NEON_FUNCTION_HELLO_BASE_URL`, `NEON_BRANCH` (tidak dibaca kode). Perbarui `.env.example`.
-   - Vercel: project Hobby non-komersial, region `sin1`, runtime Node.js, **tanpa** `vercel.json`/cron. Env: `DATABASE_URL_POOLED`, `BETTER_AUTH_SECRET` (baru untuk produksi), `BETTER_AUTH_URL` (domain produksi), `ADMIN_EMAIL`.
+1. ~~**Push**~~ — selesai: `origin` = `https://github.com/sini-sana/pekanan.git`, `main` sinkron.
+2. **Commit 6 — Deploy Vercel Hobby + Neon Free** (`todo.md` bagian "Commit 6"). Sudah dikerjakan: `.env.local` dibersihkan dari `NEON_*`, `README.md` memuat runbook deploy lengkap (Neon → migrasi → seed admin → import Vercel → verifikasi). Sisa butuh akun:
+   - Vercel: project Hobby non-komersial, region `sin1`, runtime Node.js, **tanpa** `vercel.json`/cron. Env: `DATABASE_URL_POOLED`, `BETTER_AUTH_SECRET` (baru untuk produksi), `BETTER_AUTH_URL` (domain produksi), `ADMIN_EMAIL`. Jangan set `DATABASE_URL_UNPOOLED`/`ADMIN_PASSWORD`/`SMOKE_*`.
    - Migrasi **manual dari lokal** dengan `DATABASE_URL_UNPOOLED` sebelum deploy (`pnpm db:migrate`); tidak ada migrasi saat build.
-   - `pnpm seed:admin` ke DB produksi, lalu login dan ganti password admin produksi.
-   - Perbarui `README.md` sesuai rencana deploy yang disetujui (Vercel Hobby + Neon Free, lazy+catch-up Draf, migrasi lokal). Rencana dokumen ada di `/home/xan/.qoder/plans/infinite-mist-widgeon.md` (luar repo).
+   - `pnpm seed:admin` ke DB produksi (no-op bila admin sudah ada — **tidak** mereset password admin yang ada), lalu login dan ganti password admin produksi.
+   - Setelah deploy: `BETTER_AUTH_URL` harus persis origin produksi (kalau tidak, `INVALID_ORIGIN`).
 3. **Pembersihan data uji (butuh persetujuan pengguna, belum dikerjakan):** akun `uji-browser*`/`uji-browser<N>@pekanan.local` (puluhan), klien "Toko Uji Browser" (milik Sari, sebagian sudah dialihkan ke Tono), baris koreksi + perubahan baris pada laporan Tono `bb887a4d-09d4-4a19-a312-a56283d4f6c3`, pembayaran iuran uji (Des 2025–Nov 2026 beberapa karyawan), fixture laporan pekan lampau Tono. Urutan FK: `koreksi_laporan` → `laporan_pekan`/`laporan_anggota` → `followup` → `pembayaran_iuran` → `klien` → `karyawan` → `session`/`account` → `user`.
 4. **Uji manual belum dilakukan:** rekap Atasan (`GET /api/rekap/pekan/[id]`) hanya diuji lewat smoke API, belum ada layar; bootstrap setelah pergantian pekan (Draf baru + catch-up) diuji smoke, belum manual browser.
 5. Skrip uji browser ada di `/tmp/pw/uji.mjs` (+ `node_modules` Playwright-Core di `/tmp/pw`); **tidak di repo** dan bisa hilang saat `/tmp` dibersihkan. `pnpm start` saat ini berjalan di port 3000 (pid dari build terakhir) — restart bila memakai build baru.

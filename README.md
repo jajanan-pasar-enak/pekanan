@@ -34,10 +34,11 @@ Vercel ke Pro — tidak ada perubahan kode.
 | `BETTER_AUTH_SECRET` | ✓ | ✓ | `openssl rand -base64 32` |
 | `BETTER_AUTH_URL` | ✓ | ✓ | origin app (`http://localhost:3000`, `https://<domain>`) |
 | `ADMIN_EMAIL` | ✓ | ✓ | email admin pertama (dipakai `seed:admin`) |
-| `ADMIN_PASSWORD` | – | – | opsional; password awal admin untuk `seed:admin` |
+| `ADMIN_PASSWORD` | – | – | opsional; password awal admin untuk `seed:admin` (jangan diset di Vercel) |
 
-Setelah auth lokal aktif, `NEON_AUTH_*`, `NEON_FUNCTION_HELLO_BASE_URL`, dan
-`NEON_AUTH_COOKIE_SECRET` tidak dipakai lagi — hapus dari `.env.local` dan Vercel.
+`NEON_AUTH_*`, `NEON_FUNCTION_HELLO_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`, dan
+`NEON_BRANCH` tidak dipakai kode — jangan ditambahkan ke `.env.local` atau
+Vercel.
 
 ## Setup lokal
 
@@ -46,7 +47,10 @@ pnpm install
 cp .env.example .env.local   # isi nilai sesuai tabel di atas
 ```
 
-Bila memakai `neon env pull` / `neon deploy`, hapus baris `DATABASE_URL=` agar
+`allowBuilds: esbuild: true` di `pnpm-workspace.yaml` harus tetap ada, atau
+`pnpm add` gagal `ERR_PNPM_IGNORED_BUILDS`.
+
+Bila memakai `neon env pull`, hapus baris `DATABASE_URL=` hasil pull agar
 tidak ambigu dengan URL pooled:
 
 ```bash
@@ -98,13 +102,81 @@ scripts/smoke.mts               # tes end-to-end
 
 ## Deploy (Vercel Hobby + Neon Free)
 
-1. Buat project Neon di region `aws-ap-southeast-1`; salin pooled dan unpooled URL.
-2. Set env Vercel pada tabel di atas (Production + Preview). Jangan set
-   `DATABASE_URL_UNPOOLED` untuk runtime.
-3. Jalankan migrasi dari lokal ke branch produksi.
-4. Import repo di Vercel (region `sin1`, Framework Next.js), lalu deploy.
-5. Jalankan `pnpm seed:admin` dari lokal ke DB produksi (ADR-0003), lalu login dan ganti password.
-6. Tidak ada cron, `vercel.json`, atau Neon Function yang perlu dikonfigurasi.
+Tidak ada `vercel.json`, cron, atau Neon Function. Build Vercel hanya
+`pnpm build`; migrasi dan pembuatan admin pertama dijalankan **manual dari
+lokal** sebelum deploy pertama (dan setiap kali schema berubah).
 
-Kuota Neon Free yang perlu dijaga: 1 GB storage/project, 100 CU-hours/project
-per bulan, egress 5 GB/project. Runtime log Vercel hanya tersimpan 1 jam.
+### 1. Siapkan Neon (Free)
+
+1. Buat project Neon di region **`aws-ap-southeast-1` (Singapore)**, Postgres
+   versi 18, database `neondb`.
+2. Salin dua connection string dari dashboard (Connect):
+   - **Pooled** (`-pooler` di host) → `DATABASE_URL_POOLED`
+   - **Direct / unpooled** → `DATABASE_URL_UNPOOLED`
+3. Jangan mengaktifkan skema `neon_auth.*`; auth memakai tabel di `public`.
+
+### 2. Terapkan migrasi dari lokal
+
+`drizzle.config.ts` memakai `DATABASE_URL_UNPOOLED`, jadi migrasi tidak
+melewati pooler.
+
+```bash
+# sementara isi .env.local dengan URL Neon produksi
+set -a && . ./.env.local && set +a && pnpm db:migrate
+```
+
+Kosongkan kembali URL Neon produksi dari `.env.local` setelah selesai.
+Setiap perubahan schema: `pnpm db:generate` → periksa SQL → commit → jalankan
+`pnpm db:migrate` ke produksi **sebelum** deploy.
+
+### 3. Buat admin pertama (produksi)
+
+```bash
+set -a && . ./.env.local && set +a
+pnpm seed:admin
+```
+
+Skrip memakai `DATABASE_URL_UNPOOLED`, `ADMIN_EMAIL`, dan `ADMIN_PASSWORD`
+(atau prompt). Idempoten: bila sudah ada user `role = 'admin'`, tidak ada
+perubahan (ADR-0003) — pada project Neon yang sudah berisi admin, langkah ini
+tidak mengubah password. Admin baru dari seed ber-flag
+`harus_ganti_password = true`, sehingga password diganti lewat UI saat login
+pertama.
+
+### 4. Import repo di Vercel
+
+1. Add New → Project → import `sini-sana/pekanan`, framework **Next.js**
+   (deteksi otomatis), root directory default.
+2. Function region **Singapore (`sin1`)** — Project Settings → Functions.
+3. Environment variables untuk **Production** dan **Preview**:
+
+   | Variabel | Nilai |
+   | --- | --- |
+   | `DATABASE_URL_POOLED` | URL pooled Neon |
+   | `BETTER_AUTH_SECRET` | `openssl rand -base64 32` (baru, jangan pakai secret lokal) |
+   | `BETTER_AUTH_URL` | `https://<domain>` (domain produksi, tanpa slash) |
+   | `ADMIN_EMAIL` | email admin pertama |
+
+   Jangan set `DATABASE_URL_UNPOOLED`, `ADMIN_PASSWORD`, atau `SMOKE_*` di
+   Vercel; semuanya hanya untuk lokal.
+4. Deploy.
+
+### 5. Verifikasi go-live
+
+1. Buka `https://<domain>` → login `ADMIN_EMAIL` → ganti password.
+2. Tambah satu karyawan, isi & kirim satu Laporan Pekan, buka `/admin` untuk
+   master nominal iuran dan hasil follow-up.
+3. Buka dashboard setelah pekan berganti: Draf pekan baru dan catch-up pekan
+   terlewat dibuat otomatis (lazy + catch-up, tanpa cron).
+
+### Catatan operasional
+
+- `BETTER_AUTH_URL` harus persis sama dengan origin yang dibuka; Login
+  menolak request dari origin lain (403 `INVALID_ORIGIN`).
+- Neon Free scale-to-zero setelah 5 menit idle; request pertama terasa
+  beberapa ratus ms (cold start), diterima untuk skala tim kecil.
+- Kuota Neon Free: 1 GB storage/project, 100 CU-hours/project per bulan,
+  egress 5 GB/project.
+- Runtime log Vercel hanya tersimpan 1 jam → jaga `console.log` minimal.
+- Hobby hanya untuk non-komersial. Bila status berubah, upgrade Vercel ke Pro
+  tanpa perubahan kode.
