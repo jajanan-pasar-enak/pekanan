@@ -7,8 +7,8 @@
 Aplikasi **Next.js 16.4.5 (App Router, Cache Components)** + **Neon Postgres** (Drizzle + `pg`) di `/home/xan/project/skrmb/pekanan`. Mencatat kinerja pekanan tim: Laporan Pekan (kehadiran, sebar media, one-on-one), Klien + Follow-up, dan Iuran bulanan.
 
 - Package manager: **pnpm 12.16.1** · Node **v24.22.1** lokal (environment Qoder menyebut v26; yang dipakai `pnpm exec` adalah v24)
-- Git: branch `main`, commit terakhir `4eb60e8 docs: record test strategy and refresh handoff status` (di atas `9b99e95 feat(db): ...`); Commit 2 di-commit setelah sesi ini.
-- Working tree bersih; **belum di-push**.
+- Git: branch `main`, commit terakhir **`bc1f075 feat(auth): better-auth lokal + seed-admin`**.
+- Working tree bersih (kecuali perubahan dokumen ini); **belum di-push**. Admin lokal `admin@pekanan.local` sudah di-seed; password-nya **telah diganti** lewat smoke (bukan `ADMIN_PASSWORD` asal) dan flag wajib-ganti tetap `true`.
 - **Testing:** Commit 1 diverifikasi manual (psql rollback + `drizzle-kit pull`), **bukan dengan suite tersimpan**. Mulai Commit 2 dipakai TDD berbasis `node:test` (lihat §9).
 
 ### Hasil Commit 2 (jangan diulang)
