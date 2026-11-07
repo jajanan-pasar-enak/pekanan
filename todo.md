@@ -36,12 +36,14 @@ Urutan commit mengikuti `plan.md` §9; setiap commit wajib lulus `pnpm build`.
 
 ## Commit 3 — API laporan pekan
 
-- [ ] `src/lib/pekan/bootstrap.ts`: Draf pekan berjalan + catch-up sejak `MAX(pekan.selesai)`, idempoten
-- [ ] `src/lib/laporan/queries.ts`, `src/lib/laporan/mutations.ts`
-- [ ] `GET /api/me`, `POST /api/pekan/bootstrap`
-- [ ] `GET /api/laporan/[id]`, `PATCH .../baris/[anggotaId]`, `POST .../submit`
-- [ ] `POST /api/laporan/[id]/koreksi` (+ diff dan alasan; izin Atasan Supervisor langsung)
-- [ ] `pnpm build` lulus
+- [x] `src/lib/pekan/bootstrap.ts`: Draf pekan berjalan + catch-up sejak `MAX(pekan.selesai)`, idempoten
+- [x] `src/lib/laporan/queries.ts`, `src/lib/laporan/mutations.ts` (+ `aturan.ts` murni: skema zod, "Mengisi Sendiri")
+- [x] `GET /api/me` (dari Commit 2), `POST /api/pekan/bootstrap`
+- [x] `GET /api/laporan/[id]`, `PATCH .../baris/[anggotaId]`, `POST .../submit`
+- [x] `POST /api/laporan/[id]/koreksi` (+ diff dan alasan; izin Atasan Supervisor langsung)
+- [x] `bootstrapPekan()` dipasang di `(app)/layout.tsx`
+- [x] Uji unit `waktu.test.ts`, `laporan/aturan.test.ts`; smoke fase laporan (50/50)
+- [x] `pnpm build` lulus
 
 ## Commit 4 — API klien, follow-up, iuran, admin
 

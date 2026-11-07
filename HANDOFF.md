@@ -1,15 +1,25 @@
 # HANDOFF — pekanan
 
-> **Baca ini dulu.** Status terakhir: **Commit 2 (auth lokal) selesai.** Better Auth lokal aktif, `seed-admin` jalan, `POST /api/admin/karyawan`, wajib ganti password, scaffold Neon Functions/todos terhapus. `pnpm build`, `pnpm test` (serial), dan `scripts/smoke.mts` (21/21) lulus terhadap `next start`. Berikutnya: Commit 3 (API laporan pekan).
+> **Baca ini dulu.** Status terakhir: **Commit 3 (API laporan pekan) selesai.** Bootstrap Draf lazy + catch-up, `getLaporan`/`patchBaris`/`submitLaporan`/`koreksiLaporan`, 5 route laporan, `bootstrapPekan()` di layout `(app)`. `pnpm build`, `pnpm test` (17 uji, serial), dan `scripts/smoke.mts` (**50/50**) lulus terhadap `next start`. Berikutnya: Commit 4 (API klien, follow-up, iuran, admin).
 
 ## 1. Ringkasan
 
 Aplikasi **Next.js 16.4.5 (App Router, Cache Components)** + **Neon Postgres** (Drizzle + `pg`) di `/home/xan/project/skrmb/pekanan`. Mencatat kinerja pekanan tim: Laporan Pekan (kehadiran, sebar media, one-on-one), Klien + Follow-up, dan Iuran bulanan.
 
 - Package manager: **pnpm 12.16.1** · Node **v24.22.1** lokal (environment Qoder menyebut v26; yang dipakai `pnpm exec` adalah v24)
-- Git: branch `main`, commit terakhir **`bc1f075 feat(auth): better-auth lokal + seed-admin`**.
-- Working tree bersih (kecuali perubahan dokumen ini); **belum di-push**. Admin lokal `admin@pekanan.local` sudah di-seed; password-nya **telah diganti** lewat smoke (bukan `ADMIN_PASSWORD` asal) dan flag wajib-ganti tetap `true`.
+- Git: branch `main`, commit terakhir **`feat(api): laporan pekan`** (Commit 3).
+- **Belum di-push.** Admin lokal `admin@pekanan.local`: password kini **`AdminSmokeBaru999!`** (= `SMOKE_ADMIN_PASSWORD_BARU`), `harus_ganti_password = false`. Smoke mencoba `SMOKE_ADMIN_PASSWORD` dulu, baru `SMOKE_ADMIN_PASSWORD_BARU`, jadi cukup jalankan dengan `ADMIN_PASSWORD='AdminSmokeBaru999!'`.
 - **Testing:** Commit 1 diverifikasi manual (psql rollback + `drizzle-kit pull`), **bukan dengan suite tersimpan**. Mulai Commit 2 dipakai TDD berbasis `node:test` (lihat §9).
+
+### Hasil Commit 3 (jangan diulang)
+
+- `src/lib/pekan/bootstrap.ts`: `bootstrapPekan(viewerId)`, `daftarAnggotaLangsung`. CTE tunggal `laporan_pekan ← ON CONFLICT … DO NOTHING RETURNING` + `laporan_anggota ← CROSS JOIN anggota` membuat Draf hanya bila supervisor punya Anggota Langsung. **Catch-up hanya untuk viewer** sejak `MAX(pekan.selesai)` laporannya sendiri; viewer tanpa laporan hanya mendapat pekan berjalan (mencegah supervisor baru mengisi data historis orang lain).
+- `src/lib/laporan/aturan.ts` (murni): `STATUS_KEHADIRAN`, `CARA_ONE_ON_ONE`, `patchBarisSchema`, `kolomKosong`, `barisLengkap`, `normalisasiPatch`. `queries.ts`: `getLaporan`, `daftarLaporanSaya`, predikat `bolehUbahLaporan`/`bolehKoreksiLaporan`. `mutations.ts`: `patchBaris`, `submitLaporan`, `koreksiLaporan`.
+- Route: `POST /api/pekan/bootstrap`, `GET /api/laporan/[id]`, `PATCH /api/laporan/[id]/baris/[anggotaId]`, `POST /api/laporan/[id]/submit`, `POST /api/laporan/[id]/koreksi`. Parameter path divalidasi `z.uuid()` → non-UUID = 400.
+- Semantik akses yang dipakai (diuji smoke): orang lain baca/koreksi → **404** (tidak membocorkan keberadaan laporan); pemilik ubah setelah kirim / pekan lampau → 403; atasan ubah baris → 403; koreksi pekan berjalan → 403; koreksi tanpa diff → 400.
+- `BETTER_AUTH_LOGIN_LIMIT` (default 60) di `server.ts` untuk `/sign-in/email` & `/change-password`; limiter in-memory tetap aktif.
+- Uji: `src/lib/waktu.test.ts` (7), `src/lib/laporan/aturan.test.ts` (4) + `http.test.ts` (6) = 17.
+- `scripts/smoke.mts` dirombak: `masukAdmin()` mencoba `SMOKE_ADMIN_PASSWORD` lalu `SMOKE_ADMIN_PASSWORD_BARU`, `tungguBilaDibatasi()`, fase laporan dalam `faseLaporan()`, pembersihan di `finally` menghapus `koreksi_laporan` → `laporan_pekan` → `karyawan` → `user` untuk email `smoke-%@seed.local`.
 
 ### Hasil Commit 2 (jangan diulang)
 
@@ -85,6 +95,7 @@ BETTER_AUTH_URL          # http://localhost:3000 / https://<domain>
 ADMIN_EMAIL
 ADMIN_PASSWORD           # seed:admin; opsional (prompt bila TTY)
 ADMIN_NAMA               # opsional, default "Admin Perhimpunan"
+BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/menit)
 # opsional smoke: SMOKE_BASE_URL, SMOKE_ADMIN_PASSWORD, SMOKE_ADMIN_PASSWORD_BARU
 ```
 
@@ -138,22 +149,20 @@ ADMIN_NAMA               # opsional, default "Admin Perhimpunan"
 
 ## 9. Langkah berikutnya (mulai dari sini)
 
-Implementasi **Commit 3 — API laporan pekan** (`plan.md` §3.4 & §4, `todo.md` bagian "Commit 3"). Urutan kerja: tulis uji (gagal) → implementasi → uji hijau → `pnpm build` → smoke → commit. Semua test/skrip dijalankan **serial**.
+Implementasi **Commit 4 — API klien, follow-up, iuran, admin** (`plan.md` §4, `todo.md` bagian "Commit 4"). Urutan kerja sama: uji (murni dulu) → implementasi → uji hijau → `pnpm build` → smoke → commit. Semua test/skrip **serial**.
 
-1. **Uji dulu (merah):**
-   - `src/lib/waktu.test.ts` — batas pekan (Minggu 00:00 s.d. Sabtu 23:59:59 WIB): Sabtu 23:59 WIB masih pekan berjalan, Minggu 00:00 WIB mulai pekan baru, kasus pergantian bulan/tahun, `bulanBerjalan`.
-   - Uji otorisasi (murni/DB): pemilik vs Atasan Supervisor langsung vs orang lain untuk baca/submit/koreksi; laporan lampau read-only untuk pemilik.
-2. **`src/lib/pekan/bootstrap.ts`** — `bootstrapPekan()`: buat baris `pekan` WIB bila belum ada; untuk user login, buat Draf pekan berjalan + baris `laporan_anggota` untuk setiap Anggota Langsung **saat ini** (hanya bila ≥1); catch-up untuk setiap supervisor aktif sejak `MAX(pekan.selesai)` laporan terakhirnya. Idempoten via `ON CONFLICT (supervisor_id, pekan_id) WHERE deleted_at IS NULL DO NOTHING`. Batasi bukan-supervisor (tanpa anggota) supaya murah.
-3. **`src/lib/laporan/queries.ts` / `mutations.ts`** (hanya file ini yang impor `@/db`):
-   - `getLaporan(id, viewer)` (pemilik atau Atasan langsung), `patchBaris` (pemilik, `Draf`, pekan berjalan, `anggota_id` harus ada di laporan itu), `submitLaporan` (semua nilai wajib terisi, selain itu 400 `VALIDATION`), `koreksiLaporan` (Atasan langsung, pekan lampau, alasan wajib; satu transaksi: `koreksi_laporan` + `sebelum`/`sesudah` + `status = 'Dikoreksi'`).
-   - Tambah helper di `src/lib/auth/otorisasi.ts`: `isSupervisorOf(supervisorId, anggotaId)`, `isAtasanOf(karyawanId, calonAtasanId)` (supervisor langsung), lalu uji unit-nya.
-4. **Route (tipis, `zod` + `handle()` + `requireKaryawan()` + `await connection()`):**
-   - `POST /api/pekan/bootstrap` (untuk smoke), `GET /api/laporan/[id]`,
-   - `PATCH /api/laporan/[id]/baris/[anggotaId]`, `POST /api/laporan/[id]/submit`, `POST /api/laporan/[id]/koreksi`.
-   - Ingat jebakan #9: route handler wajib `await connection()`.
-5. **`scripts/smoke.mts` fase laporan** (jalankan serial setelah `pnpm build` + `pnpm start`, port harus = `BETTER_AUTH_URL`): bootstrap → isi baris → submit kosong ditolak → isi lengkap → submit → ubah setelah submit 403/409 → koreksi (alasan kosong ditolak, non-atasan 403) → IDOR 403/404. Bersihkan data uji di `finally` (prefix `smoke-%@seed.local`).
-6. Pasang `bootstrapPekan()` di `(app)/layout.tsx` pada commit ini (supaya smoke lewat halaman juga memicu Draf); `Toaster`/shadcn tetap di Commit 5.
-7. Commit `feat(api): laporan pekan`, lalu perbarui `todo.md` + `HANDOFF.md`.
+1. `src/lib/kepegawaian/*` (queries/mutations): `PATCH /api/admin/karyawan/[id]` dengan semua guard `plan.md` §4 (siklus di bawah `pg_advisory_xact_lock`, demote Magang ditolak bila membimbing Magang, nonaktif hanya tanpa Anggota & Klien, pindah supervisor memindahkan baris Draf pekan berjalan). Helper `assertTidakCeklik` masuk `otorisasi.ts`.
+2. `src/lib/klien/*`: pemilik klien + Atasan langsung boleh baca riwayat follow-up; `POST /api/klien/[id]/alih` Admin-only (target aktif).
+3. `src/lib/iuran/*`: `bulan` ≤ bulan berjalan (CHECK DB juga), duplikat `(karyawan, bulan)` → 409.
+4. `GET /api/rekap/pekan/[id]` (saya/Atasan/Admin) + follow-up per pekan dihitung dari kejadian.
+5. `scripts/seed.mts` (`@seed.local`, id deterministik, `--cleanup` berurutan) — **bootstrapPekan tidak menyentuh data seed**; jalankan seed setelah commit ini.
+6. Perluas smoke: follow-up tanggal besok ditolak, rekap menghitung kejadian, iuran bulan depan ditolak/duplikat 409, nonaktif dengan klien 400, alih klien non-admin 403.
+
+**Keputusan implementasi Commit 3 yang perlu diingat:**
+- "Orang lain tanpa hak" di API laporan dikembalikan **404**, bukan 403 (pemilik yang mencoba melanggar aturan → 403). Pertahankan pola ini di endpoint lain.
+- `submitLaporan` memakai `UPDATE … WHERE status = 'Draf'` + `RETURNING`; hasil kosong → 409 `CONFLICT` (submit ganda bersamaan).
+- Koreksi menyimpan `sebelum`/`sesudah` hanya untuk baris yang **benar-benar berubah**; tanpa diff → 400.
+- `isSupervisorOf`/`isAtasanOf` dibatalkan sebagai helper terpisah: relasi cukup dibaca dari `karyawan.supervisor_id` yang sudah di-join di query (`queries.ts` predikat `bolehUbahLaporan`/`bolehKoreksiLaporan`).
 
 **Status akun admin lokal saat ini:** `admin@pekanan.local`, password terakhir `AdminSmokeBaru999!` (`harus_ganti_password = false`, sudah diubah smoke). `pnpm seed:admin` tidak mengubahnya (idempoten). Ganti lewat `/api/auth/change-password` atau UI bila perlu.
 
@@ -166,13 +175,20 @@ Implementasi **Commit 3 — API laporan pekan** (`plan.md` §3.4 & §4, `todo.md
 - DB (trigger & CHECK): `scripts/test-db.mts` — pola psql Commit 1 dipindah ke Drizzle langsung, setiap kasus dalam transaksi yang di-`ROLLBACK`, exit non-nol bila ada yang lolos. Butuh `DATABASE_URL_UNPOOLED`; jangan pernah commit data uji.
 - Urutan kerja per fitur: uji gagal → implementasi → uji hijau → `pnpm build` → commit.
 - **Jalankan test secara serial** (`pnpm test` sudah `--test-concurrency=1`; skrip DB/HTTP satu per satu, tidak paralel).
-- Commit 2 sudah menulis `src/lib/http.test.ts` (6 uji). Backlog: `src/lib/waktu.test.ts` dan uji otorisasi → dikerjakan di awal Commit 3.
+- Commit 2: `src/lib/http.test.ts` (6 uji). Commit 3: `src/lib/waktu.test.ts` (7), `src/lib/laporan/aturan.test.ts` (4). Backlog Commit 4: uji murni hitung follow-up per pekan & bulan iuran.
 
 ### Catatan operasional baru
 
+- **Rate limit**: smoke melakukan >10 login; `BETTER_AUTH_LOGIN_LIMIT` default 60 menit-per-jendela. Untuk pengujian berkali-kali, jalankan `next start` dengan `BETTER_AUTH_LOGIN_LIMIT=1000` atau restart server (limiter in-memory). Smoke punya `tungguBilaDibatasi()` sebagai jaring pengaman.
+- **Restart server**: cek `ss -ltnp | grep :3000`. Jika port sudah dipakai proses lama, `pnpm start` gagal diam-diam (`EADDRINUSE` di log) dan smoke menguji build lama. Selalu `kill <pid>` lalu tunggu port bebas.
+- **Ganti password**: smoke membuat sesinya sendiri lalu mengganti password admin. Bila `next start` baru dijalankan (secret sama), sesi lama tetap valid. Jangan mengubah password lalu memakai ulang sesi yang dibuat sebelum perubahan dengan password lama → `Invalid password`.
+- **Cleanup smoke** harus berurutan: `koreksi_laporan` → `laporan_pekan` → `karyawan` → `user` (FK RESTRICT). Email uji berawalan `smoke-` berakhiran `@seed.local`.
+- `uuidDari()` di smoke hanya untuk UUID acak (mis. anggota fiktif) — ID karyawan selalu diambil dari DB.
+- `.env.local` tidak memuat `ADMIN_PASSWORD`, jadi jalankan smoke dengan `ADMIN_PASSWORD='...' pnpm exec tsx scripts/smoke.mts`.
 - `drizzle-kit generate` akan memunculkan prompt interaktif "table created or renamed?" setiap kali snapshot lama punya tabel yang di-drop; di terminal non-TTY gagal. Jawab Enter (create) atau jalankan lewat pty.
 - `check(name, sql)` multi-argumen: drizzle-kit **hanya** mengeluarkan argumen pertama → pisah jadi beberapa `check()`.
 - `.next/dev/types` yang basi bisa memicu error TypeScript saat build (`Cannot find module .../route.js`); `rm -rf .next` lalu build.
+- `pnpm lint` masih merah: `@typescript-eslint/ban-ts-comment` untuk `// @ts-nocheck` di setiap `*.test.ts` (pola yang disengaja: `node:test` dimuat `tsx`, tipe Node tidak di-resolve) dan `no-explicit-any` di `scripts/smoke.mts`. Bukan gerbang commit; `pnpm build` lulus tanpa lint.
 
 Perintah dasar:
 ```bash
@@ -180,5 +196,7 @@ cd /home/xan/project/skrmb/pekanan
 git status --short
 set -a && . ./.env.local && set +a
 pnpm db:generate && pnpm db:migrate
-pnpm build
+pnpm test && pnpm build
+pnpm start &            # pastikan port 3000 bebas dulu
+ADMIN_PASSWORD='AdminSmokeBaru999!' pnpm exec tsx scripts/smoke.mts
 ```

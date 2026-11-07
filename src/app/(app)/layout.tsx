@@ -4,11 +4,13 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { KeluarButton } from "@/components/keluar-button";
 import { requireKaryawan } from "@/lib/auth/current";
+import { bootstrapPekan } from "@/lib/pekan/bootstrap";
 
 async function AppShell({ children }: { children: React.ReactNode }) {
   await connection();
   const { sesi, profil } = await requireKaryawan({ izinkanGantiPassword: true });
   if (profil.harusGantiPassword) redirect("/ganti-password");
+  await bootstrapPekan(profil.id);
 
   return (
     <div className="flex min-h-full flex-1 flex-col">

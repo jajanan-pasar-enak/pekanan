@@ -16,6 +16,10 @@ type ProfilDariPayload = {
   supervisorId: string | null;
 };
 
+// Uji otomatis memakai banyak login berturut-turut dari satu IP; kuota login
+// tidak dimatikan agar perilaku produksi tetap sama, hanya dilonggarkan.
+const BATAS_LOGIN = Number(process.env.BETTER_AUTH_LOGIN_LIMIT ?? 60);
+
 function tolak(pesan: string, kode: string): never {
   throw new APIError("BAD_REQUEST", { message: pesan, code: kode });
 }
@@ -48,10 +52,10 @@ export const auth = betterAuth({
   rateLimit: {
     enabled: true,
     window: 60,
-    max: 20,
+    max: BATAS_LOGIN,
     customRules: {
-      "/sign-in/email": { window: 60, max: 10 },
-      "/change-password": { window: 60, max: 10 },
+      "/sign-in/email": { window: 60, max: BATAS_LOGIN },
+      "/change-password": { window: 60, max: BATAS_LOGIN },
     },
   },
   databaseHooks: {
