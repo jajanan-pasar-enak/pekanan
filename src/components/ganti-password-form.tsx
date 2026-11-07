@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-
-type HasilError = { error?: { code?: string; message?: string } };
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { kirimApi } from "@/lib/api-client";
 
 export function GantiPasswordForm({ wajib }: { wajib: boolean }) {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -20,83 +22,71 @@ export function GantiPasswordForm({ wajib }: { wajib: boolean }) {
     }
     setBusy(true);
     try {
-      const res = await fetch("/api/auth/change-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
+      const hasil = await kirimApi("POST", "/api/auth/change-password", {
+        currentPassword,
+        newPassword,
       });
-      if (!res.ok) {
-        const json = (await res.json()) as HasilError;
-        setError(
-          json.error?.message ??
-            (res.status === 401
-              ? "Password lama salah."
-              : "Password gagal diganti."),
-        );
+      if (!hasil.ok) {
+        setError(hasil.message);
         return;
       }
       // Sesi lain sudah dicabut; cookie ini sudah diganti server.
       window.location.href = "/dashboard";
-    } catch {
-      setError("Tidak dapat menghubungi server.");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <form
-      onSubmit={submit}
-      className="flex w-full flex-col gap-3 rounded-lg border border-black/10 p-4 dark:border-white/15"
-    >
+    <form onSubmit={submit} className="flex w-full flex-col gap-4">
       {wajib && (
         <p className="text-sm">
           Anda wajib mengganti password sebelum memakai aplikasi.
         </p>
       )}
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="opacity-60">Password saat ini</span>
-        <input
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="currentPassword">Password saat ini</Label>
+        <Input
+          id="currentPassword"
           type="password"
           value={currentPassword}
           onChange={(e) => setCurrentPassword(e.target.value)}
           autoComplete="current-password"
           required
-          className="rounded-md border border-black/15 bg-transparent px-3 py-2 dark:border-white/20"
         />
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="opacity-60">Password baru (minimal 8 karakter)</span>
-        <input
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="newPassword">Password baru (minimal 8 karakter)</Label>
+        <Input
+          id="newPassword"
           type="password"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
           autoComplete="new-password"
           minLength={8}
           required
-          className="rounded-md border border-black/15 bg-transparent px-3 py-2 dark:border-white/20"
         />
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="opacity-60">Ulangi password baru</span>
-        <input
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="ulangi">Ulangi password baru</Label>
+        <Input
+          id="ulangi"
           type="password"
           value={ulangi}
           onChange={(e) => setUlangi(e.target.value)}
           autoComplete="new-password"
           minLength={8}
           required
-          className="rounded-md border border-black/15 bg-transparent px-3 py-2 dark:border-white/20"
         />
-      </label>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <button
-        type="submit"
-        disabled={busy}
-        className="rounded-md bg-foreground px-3 py-2 text-sm font-medium text-background disabled:opacity-50"
-      >
+      </div>
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      <Button type="submit" disabled={busy}>
         {busy ? "Menyimpan…" : "Simpan password"}
-      </button>
+      </Button>
     </form>
   );
 }

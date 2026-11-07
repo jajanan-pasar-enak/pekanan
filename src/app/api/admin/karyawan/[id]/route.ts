@@ -15,7 +15,11 @@ export async function PATCH(
     await connection();
     await requireAdmin();
     const id = idSchema.parse((await params).id);
-    const { sesudah, perluCabutSesi } = await ubahKaryawan(id, await bacaJson(request));
+    const { sesudah, perluCabutSesi } = await ubahKaryawan(
+      id,
+      await bacaJson(request),
+      request.headers,
+    );
     return jsonOk({
       id: sesudah.id,
       nama: sesudah.nama,

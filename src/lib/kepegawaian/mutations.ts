@@ -88,6 +88,8 @@ async function pindahkanBarisDraf(tx: Tx, anggotaId: string, lama: string, baru:
     .limit(1);
   if (!laporanBaru) return;
 
+  // UPDATE tidak mendukung ON CONFLICT; lewati bila baris kosong untuk
+  // anggota ini sudah ada di Draf baru (Draf baru pasti sudah diisi barisnya).
   await tx.execute(sql`
     UPDATE laporan_anggota la SET laporan_id = ${laporanBaru.id}::uuid
     WHERE la.anggota_id = ${anggotaId}::uuid
@@ -100,7 +102,10 @@ async function pindahkanBarisDraf(tx: Tx, anggotaId: string, lama: string, baru:
       AND la.media_online IS NULL
       AND la.media_offline IS NULL
       AND la.one_on_one IS NULL
-    ON CONFLICT (laporan_id, anggota_id) DO NOTHING
+      AND NOT EXISTS (
+        SELECT 1 FROM laporan_anggota x
+        WHERE x.laporan_id = ${laporanBaru.id}::uuid AND x.anggota_id = la.anggota_id
+      )
   `);
 
   await tx.execute(sql`
@@ -117,7 +122,11 @@ export type HasilUbahKaryawan = {
   userId: string;
 };
 
-export async function ubahKaryawan(id: string, input: unknown): Promise<HasilUbahKaryawan> {
+export async function ubahKaryawan(
+  id: string,
+  input: unknown,
+  headers: Headers,
+): Promise<HasilUbahKaryawan> {
   const body = ubahKaryawanSchema.parse(input);
 
   const hasil = await db.transaction(async (tx) => {
@@ -194,11 +203,11 @@ export async function ubahKaryawan(id: string, input: unknown): Promise<HasilUba
   });
 
   // Pencabutan sesi tidak boleh di dalam transaksi: revokeUserSessions
-  // memakai koneksi pool sendiri.
+  // memakai koneksi pool sendiri. Endpoint admin mewajibkan sesi admin.
   if (hasil.perluCabutSesi) {
     await auth.api.revokeUserSessions({
       body: { userId: hasil.userId },
-      headers: {} as Headers,
+      headers,
     });
   }
   return hasil;

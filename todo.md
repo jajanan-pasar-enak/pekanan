@@ -57,17 +57,18 @@ Urutan commit mengikuti `plan.md` §9; setiap commit wajib lulus `pnpm build`.
 
 ## Commit 5 — UI
 
-- [ ] `pnpm dlx shadcn@latest init` + `add button input label select textarea table badge dialog sonner alert card tabs`
-- [ ] Route group `(auth)` dan `(app)`; `(app)/layout.tsx` gate sesi + `aktif` + `harus_ganti_password` + `bootstrapPekan()` + `Toaster`
-- [ ] `/` login
-- [ ] `/ganti-password`
-- [ ] `/dashboard` (laporan saya + status anggota langsung)
-- [ ] `/laporan/[id]` (auto-save per baris `onBlur`, kirim terkunci sampai lengkap, lampau read-only)
-- [ ] `/laporan/[id]/koreksi` (atasan, alasan wajib)
-- [ ] `/klien`, `/klien/[id]` (riwayat follow-up)
-- [ ] `/iuran` (12 bulan + catat bayar)
-- [ ] `/admin` (karyawan, master iuran, master hasil follow-up)
-- [ ] Uji manual browser semua halaman
+- [x] `pnpm dlx shadcn@latest init` + `add button input label select textarea table badge dialog sonner alert card tabs`
+- [x] Route group `(auth)` dan `(app)`; `(app)/layout.tsx` gate sesi + `aktif` + `harus_ganti_password` + `bootstrapPekan()` + `Toaster`
+- [x] `/` login
+- [x] `/ganti-password`
+- [x] `/dashboard` (laporan saya + status anggota langsung)
+- [x] `/laporan/[id]` (auto-save per baris `onBlur`, kirim terkunci sampai lengkap, lampau read-only)
+- [x] `/laporan/[id]/koreksi` (atasan, alasan wajib)
+- [x] `/klien`, `/klien/[id]` (riwayat follow-up)
+- [x] `/iuran` (12 bulan + catat bayar)
+- [x] `/admin` (karyawan, master iuran, master hasil follow-up)
+- [x] Uji manual browser semua halaman (`pnpm start` + Playwright, semua OK; lihat HANDOFF)
+- [x] Perbaikan dari uji browser: `UPDATE ... ON CONFLICT` ilegal di `pindahkanBarisDraf`; `revokeUserSessions` tanpa header admin (401) saat nonaktifkan
 
 ## Verifikasi akhir
 

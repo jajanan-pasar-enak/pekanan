@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth/client";
 
 export function KeluarButton() {
@@ -9,11 +10,8 @@ export function KeluarButton() {
   }
 
   return (
-    <button
-      onClick={keluar}
-      className="rounded-md border border-black/15 px-3 py-1.5 text-sm dark:border-white/20"
-    >
+    <Button variant="outline" size="sm" onClick={keluar}>
       Keluar
-    </button>
+    </Button>
   );
 }

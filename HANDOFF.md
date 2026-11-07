@@ -1,6 +1,6 @@
 # HANDOFF — pekanan
 
-> **Baca ini dulu.** Status terakhir: **Commit 4 (API klien, follow-up, iuran, rekap, admin kepegawaian) selesai**, commit `bd64c4a`. `pnpm build` exit 0, `pnpm test` **28/28** (serial), `pnpm smoke` **77/77** dua kali berturut-turut terhadap `next start`. Berikutnya: **Commit 5 — UI** (install shadcn, halaman dashboard/laporan/klien/iuran/admin).
+> **Baca ini dulu.** Status terakhir: **Commit 5 (UI) selesai, belum di-commit.** Semua halaman UI terpasang dan sudah diuji di browser terhadap `next start` (Playwright, semua fase OK). `pnpm build` exit 0, `pnpm test` **28/28**. Dua bug nyata ditemukan lewat uji browser dan sudah diperbaiki (lihat §1a). Berikutnya: commit Commit 5, lalu **Commit 6 — Deploy Vercel Hobby + Neon Free**.
 
 ## 1. Ringkasan
 
@@ -8,9 +8,30 @@ Aplikasi **Next.js 16.4.5 (App Router, Cache Components)** + **Neon Postgres** (
 
 - Package manager: **pnpm 12.16.1** · Node **v24.22.1** lokal (environment Qoder menyebut v26; yang dipakai `pnpm exec` adalah v24)
 - Git: branch `main`, commit terakhir **`bd64c4a feat(api): klien, follow-up, iuran, rekap, admin kepegawaian`** (Commit 4).
-- **Belum di-push.** Admin lokal `admin@pekanan.local`: password kini **`AdminBaru123!`** (= `SMOKE_ADMIN_PASSWORD_BARU`), `harus_ganti_password = false`, akun `aktif = true`. Smoke mencoba `SMOKE_ADMIN_PASSWORD` dulu, baru `SMOKE_ADMIN_PASSWORD_BARU`, jadi jalankan dengan `ADMIN_PASSWORD='AdminBaru123!'`. (Catatan: probe lama sempat menonaktifkan admin — sudah diaktifkan kembali lewat psql; bila smoke fase admin "SKIP (admin bukan ADMIN_EMAIL)", periksa `karyawan.aktif` untuk admin.)
+- **Belum di-push.** Commit 5 masih di working tree (belum di-commit); Admin lokal `admin@pekanan.local`: password kini **`AdminBaru123!`** (= `SMOKE_ADMIN_PASSWORD_BARU`), `harus_ganti_password = false`, akun `aktif = true`. Smoke mencoba `SMOKE_ADMIN_PASSWORD` dulu, baru `SMOKE_ADMIN_PASSWORD_BARU`, jadi jalankan dengan `ADMIN_PASSWORD='AdminBaru123!'`. (Catatan: probe lama sempat menonaktifkan admin — sudah diaktifkan kembali lewat psql; bila smoke fase admin "SKIP (admin bukan ADMIN_EMAIL)", periksa `karyawan.aktif` untuk admin.)
 - **Data seed lokal `@seed.local` tidak ada di DB** saat Commit 4 diverifikasi (sudah dibersihkan). Smoke tidak butuh seed; `scripts/seed.mts` membuat data contoh bila diinginkan.
 - **Testing:** Commit 1 diverifikasi manual (psql rollback + `drizzle-kit pull`), **bukan dengan suite tersimpan**. Mulai Commit 2 dipakai TDD berbasis `node:test` (lihat §9).
+
+### Hasil Commit 5 — UI (jangan diulang)
+
+- shadcn/ui v4 (radix-nova, paket `cn`), lucide, sonner. Komponen di `src/components/ui/*`; domain: `auth-panel`, `ganti-password-form`, `nav-utama`, `keluar-button`, `form-laporan`, `select-baris`, `form-koreksi`, `form-klien-baru`, `form-followup`, `catat-iuran`, `admin/{kelola-karyawan,kelola-klien,master-nominal-iuran,master-hasil-followup}`.
+- Halaman: `/` login (pindah ke `src/app/(auth)/page.tsx`), `/ganti-password`, `/dashboard`, `/laporan/[id]`, `/laporan/[id]/koreksi`, `/klien`, `/klien/[id]`, `/iuran`, `/admin` (tab Karyawan/Klien/Nominal Iuran/Hasil Follow-up). Shell `(app)/layout.tsx`: header nav (Admin hanya melihat `/admin`), `<main>`, `Toaster`.
+- Form laporan: auto-save per baris (debounce 400 ms + paksa simpan saat `onBlur`), snapshot `tersimpan` untuk menolak PATCH tanpa perubahan, dan tombol **Kirim hanya tampil** saat status `Draf` dan masih ada baris belum lengkap / belum tersimpan. Pekan lampau atau status bukan Draf → input `readOnly`.
+- `select-baris`: Radix Select memindahkan fokus ke trigger; handler melepas fokus setelah memilih agar auto-save jalan.
+- `catat-iuran`: preset `?catat=<karyawanId>|<bulan>` diinisialisasi lewat `useState` (bukan `useLayoutEffect`, yang jalan sebelum form ada).
+
+### 1a. Bug yang ditemukan uji browser Commit 5 (sudah diperbaiki)
+
+- `src/lib/kepegawaian/mutations.ts` `pindahkanBarisDraf`: ditulis `UPDATE … ON CONFLICT` — Postgres hanya mengizinkan `ON CONFLICT` di `INSERT` → **500 setiap PATCH supervisor**. Diganti `AND NOT EXISTS (SELECT 1 FROM laporan_anggota …)`.
+- `ubahKaryawan` memanggil `auth.api.revokeUserSessions` dengan `headers: {}`; endpoint itu lewat `adminMiddleware` → **401**, dialog Nonaktifkan menggantung "Memproses…". Kini `headers` request admin diteruskan (`ubahKaryawan(id, input, headers)`).
+- Uji manual (Playwright terhadap `pnpm start`, skrip di `/tmp/pw/uji.mjs`, tidak di repo): login admin → master nominal/hasil → tambah karyawan → paksa ganti password → dashboard kosong → koreksi laporan pekan lampau Tono (Simpan terkunci tanpa alasan/perubahan; setelah simpan status **Dikoreksi**, Riwayat Koreksi memuat alasan + diff `12 → 15`) → admin ubah (nama + supervisor) & nonaktifkan (sesi dicabut) & alih klien → Sari dashboard → laporan Terkirim read-only, Kirim terkunci saat tidak lengkap, nilai bertahan setelah reload → klien + follow-up → catat iuran dari baris rekap → non-admin ditolak `/admin`. **Semua OK.**
+
+### Jebakan uji browser (Next 16, penting bila mengulang)
+
+- **Activity menyimpan ≤3 rute lama di DOM** (`display:none`) → locator strict-mode bisa menemukan 2 elemen (mis. tabel laporan lama + baru). Batasi locator ke `<main>` yang terlihat; untuk `<header>` pakai selector `body > header …`; portal Radix (dialog/option/listbox) dan toast berada di luar `<main>`.
+- Konteks browser bersarang bisa berbagi cookie Better Auth; lepas cookie (`ctx.clearCookies()`) sebelum konteks berikutnya login, atau tombol Keluar yang memanggil `revokeUserSessions` akan mencabut sesi admin dan memunculkan 401.
+- Neon dari mesin ini sesekali `ETIMEDOUT`/`ENETUNREACH` (IPv6) → login/aksi gagal acak; itu jaringan, ulangi.
+- Halaman lambat karena DB remote: tunggu dialog tertutup (`waitFor state: hidden`, 30 s) dan beri jeda sebelum membaca tabel setelah `router.refresh()`.
 
 ### Hasil Commit 4 (jangan diulang)
 
@@ -59,7 +80,7 @@ Aplikasi **Next.js 16.4.5 (App Router, Cache Components)** + **Neon Postgres** (
 | `HANDOFF.md` | (file ini) status, jebakan, langkah berikutnya |
 | `CONTEXT.md` | **Glosarium domain (sumber kebenaran aturan bisnis)** |
 | `plan.md` | Rencana implementasi yang disetujui + **§Arsitektur Kode** + **§9 urutan commit** |
-| `todo.md` | Checklist per commit (Commit 1 & 2 sudah dicentang; Commit 3–6 belum) |
+| `todo.md` | Checklist per commit (Commit 1–5 sudah dicentang; Commit 6 belum) |
 | `docs/adr/0001-sesi-auth-dilayani-better-auth-lokal.md` | Better Auth lokal, bukan proxy Neon Auth |
 | `docs/adr/0002-keunikan-laporan-per-pekan-dijaga-trigger.md` | Unique parsial + trigger; **direvisi** (tanpa auto-kirim Draf, tanpa `move_karyawan()`) |
 | `docs/adr/0003-admin-pertama-dibuat-skrip-lokal.md` | Admin pertama via `scripts/seed-admin.mts`, **tanpa route bootstrap HTTP** |
@@ -127,7 +148,7 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
 - `drizzle-kit@0.31.11`: `tablesFilter: string | string[]` (glob nama tabel, hanya untuk `push`); `schemaFilter: string | string[]`.
 - Neon Functions + Triggers tersedia di Free (10 active Capacity-Hours, 1M invocation/bulan, cron per menit, UTC) — **sengaja tidak dipakai**. pg_cron hanya jalan saat compute aktif.
 - Vercel Hobby: cron min 1×/hari (presisi per jam), function 300s, log runtime 1 jam, build 45 menit.
-- shadcn/ui belum di-init (`components.json` belum ada); Tailwind v4 dipakai lewat plugin Turbopack, tanpa PostCSS.
+- shadcn/ui sudah di-init (Commit 5, `components.json`, paket `cn`); Tailwind v4 lewat plugin Turbopack, tanpa `postcss.config`.
 
 ## 7. Jebakan Next 16 / framework (masih berlaku)
 
@@ -162,14 +183,10 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
 
 ## 9. Langkah berikutnya (mulai dari sini)
 
-Implementasi **Commit 5 — UI** (`todo.md` bagian "Commit 5"). Semua API sudah ada; pekerjaan ini murni frontend. Urutan: shadcn init → halaman login/ganti password → dashboard → laporan → klien → iuran → admin → uji manual di browser.
-
-1. `pnpm dlx shadcn@latest init` lalu `add button input label select textarea table badge dialog sonner alert card tabs`. Tailwind v4 lewat plugin Turbopack (tanpa PostCSS) — ikuti default shadcn v4; jangan tambahkan `postcss.config`.
-2. Shell yang **sudah ada**: `src/app/(app)/layout.tsx` (gate `requireKaryawan`, redirect ganti-password, `bootstrapPekan`, nav minimal) dan `(auth)/ganti-password`. `(auth)` **belum punya `layout.tsx`**; `/` (login) masih di `src/app/page.tsx` — pindahkan ke `(auth)` bila perlu dan pastikan tidak bentrok dengan `(app)`.
-3. Halaman yang belum ada: `/dashboard` lengkap (laporan saya + status anggota langsung), `/laporan/[id]` (auto-save per baris `onBlur`, Kirim terkunci sampai lengkap, pekan lampau read-only), `/laporan/[id]/koreksi` (Atasan, alasan wajib), `/klien` + `/klien/[id]`, `/iuran`, `/admin` (karyawan + master iuran + master hasil follow-up). Tambahkan `Toaster` (sonner) di `(app)/layout.tsx`.
-4. Pola: baca = Server Component memanggil `src/lib/<domain>/queries.ts` langsung (jangan lewat `fetch` ke API sendiri); tulis = `fetch('/api/...')` + `router.refresh()`. Tampilkan `error.message` dari `{ error }`.
-5. Tambah nav di shell untuk halaman baru (hanya Admin melihat `/admin`).
-6. **Uji di browser** (bukan hanya build): login → ganti password → dashboard → isi & kirim laporan → koreksi sebagai atasan → klien/follow-up → catat iuran → admin tambah karyawan & nonaktifkan. Catat hasil per halaman di bagian akhir sesi.
+1. **Commit 5**: review `git status --short`, lalu commit UI (shadcn + halaman + dua perbaikan bug §1a) setelah `pnpm build` & `pnpm test` hijau. Jangan commit `AGENTS.md`.
+2. **Commit 6 — Deploy Vercel Hobby + Neon Free** (`todo.md` bagian "Commit 6"): hapus sisa env Neon, region `sin1`, tanpa cron, migrasi manual dengan `DATABASE_URL_UNPOOLED` sebelum deploy, `pnpm seed:admin` di DB produksi, perbarui `README.md` (menunggu rencana dokumen deploy yang disetujui).
+3. Sisa data uji di DB dari uji browser (akun `uji-browser*`/`uji-browserN@pekanan.local`, klien "Toko Uji Browser", koreksi pada laporan Tono, pembayaran iuran uji) **sengaja belum dihapus** — butuh persetujuan pengguna sebelum `DELETE`.
+4. Server `pnpm start` di port 3000 saat ini menjalankan build terakhir (termasuk perbaikan §1a).
 
 **Catatan smoke yang mahal ditemukan di Commit 4 (jangan diulang):**
 - Parser cookie harus memisah `Set-Cookie` per atribut; regex `max-age=0` cocok juga dengan `Max-Age=60480` dan membuang token baru setelah `change-password`.
@@ -195,7 +212,7 @@ Implementasi **Commit 5 — UI** (`todo.md` bagian "Commit 5"). Semua API sudah 
 - Urutan kerja per fitur: uji gagal → implementasi → uji hijau → `pnpm build` → commit.
 - **Jalankan test secara serial** (`pnpm test` sudah `--test-concurrency=1`; skrip DB/HTTP satu per satu, tidak paralel).
 - Commit 2: `src/lib/http.test.ts` (6 uji). Commit 3: `src/lib/waktu.test.ts` (7), `src/lib/laporan/aturan.test.ts` (4). Commit 4: `klien/aturan.test.ts`, `iuran/aturan.test.ts`, `kepegawaian/aturan.test.ts` → total **28**.
-- Commit 5 (UI) tidak butuh uji unit baru; verifikasi lewat build + uji manual browser.
+- Commit 5 (UI) tidak butuh uji unit baru; verifikasi lewat build + uji manual browser (sudah: Playwright terhadap `pnpm start`, semua fase OK).
 
 ### Catatan operasional baru
 

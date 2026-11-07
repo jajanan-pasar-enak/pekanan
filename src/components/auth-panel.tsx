@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth/client";
 
 export function AuthPanel() {
@@ -19,7 +23,9 @@ export function AuthPanel() {
         setError(
           gagal.status === 401
             ? "Email atau password salah."
-            : "Gagal masuk. Coba lagi."
+            : gagal.status === 429
+              ? "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi."
+              : "Gagal masuk. Coba lagi.",
         );
         return;
       }
@@ -32,43 +38,46 @@ export function AuthPanel() {
   }
 
   return (
-    <form
-      onSubmit={submit}
-      className="flex flex-col gap-3 rounded-lg border border-black/10 p-4 dark:border-white/15"
-    >
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="opacity-60">Email</span>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="username"
-          required
-          className="rounded-md border border-black/15 bg-transparent px-3 py-2 dark:border-white/20"
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="opacity-60">Password</span>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password"
-          required
-          className="rounded-md border border-black/15 bg-transparent px-3 py-2 dark:border-white/20"
-        />
-      </label>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <button
-        type="submit"
-        disabled={busy}
-        className="rounded-md bg-foreground px-3 py-2 text-sm font-medium text-background disabled:opacity-50"
-      >
-        {busy ? "Memproses…" : "Masuk"}
-      </button>
-      <p className="text-xs opacity-60">
-        Akun dibuat oleh Admin Perhimpunan. Tidak ada pendaftaran mandiri.
-      </p>
-    </form>
+    <Card>
+      <form onSubmit={submit}>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="username"
+              required
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+            />
+          </div>
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
+          <Button type="submit" disabled={busy} className="w-full">
+            {busy ? "Memproses…" : "Masuk"}
+          </Button>
+        </CardContent>
+        <CardFooter>
+          <p className="text-xs text-muted-foreground">
+            Akun dibuat oleh Admin Perhimpunan. Tidak ada pendaftaran mandiri.
+          </p>
+        </CardFooter>
+      </form>
+    </Card>
   );
 }

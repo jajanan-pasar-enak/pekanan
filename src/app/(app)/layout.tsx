@@ -1,8 +1,10 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { KeluarButton } from "@/components/keluar-button";
+import { NavUtama } from "@/components/nav-utama";
+import { Badge } from "@/components/ui/badge";
+import { Toaster } from "@/components/ui/sonner";
 import { requireKaryawan } from "@/lib/auth/current";
 import { bootstrapPekan } from "@/lib/pekan/bootstrap";
 
@@ -14,30 +16,20 @@ async function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="border-b border-black/10 dark:border-white/15">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-6 py-3">
-          <nav className="flex items-center gap-4 text-sm">
-            <Link href="/dashboard" className="font-semibold">
-              Pekanan
-            </Link>
-            <Link href="/dashboard" className="opacity-70 hover:opacity-100">
-              Dashboard
-            </Link>
-          </nav>
+      <header className="sticky top-0 z-10 border-b bg-background/90 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-2.5">
+          <NavUtama admin={sesi.user.role === "admin"} />
           <div className="flex items-center gap-3 text-sm">
-            <span className="opacity-60">{profil.nama}</span>
-            {sesi.user.role === "admin" && (
-              <span className="rounded bg-black/10 px-1.5 py-0.5 text-xs dark:bg-white/15">
-                Admin
-              </span>
-            )}
+            <span className="text-muted-foreground">{profil.nama}</span>
+            {sesi.user.role === "admin" && <Badge variant="secondary">Admin</Badge>}
             <KeluarButton />
           </div>
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-8">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-8">
         {children}
       </main>
+      <Toaster position="top-center" richColors />
     </div>
   );
 }
