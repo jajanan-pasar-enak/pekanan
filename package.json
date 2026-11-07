@@ -9,9 +9,7 @@
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
-    "neon:deploy": "neon deploy",
-    "neon:dev": "neon dev"
+    "smoke": "tsx scripts/smoke.mts"
   },
   "dependencies": {
     "@neon/auth": "^0.8.2",

@@ -1,105 +1,109 @@
 # pekanan
 
-Aplikasi Next.js yang memakai Neon sebagai backend: Postgres untuk data, Neon Auth
-(Managed Better Auth) untuk login, dan Neon Function untuk endpoint di sisi Neon.
+Aplikasi pencatatan kinerja pekanan tim: Laporan Pekan (kehadiran, sebar media,
+one-on-one), Klien + Follow-up, dan Iuran bulanan.
 
 - Frontend + server: Next.js 16.4.5 (App Router, Cache Components)
-- Database: Neon Postgres via Drizzle ORM + `node-postgres`
-- Auth: Neon Auth (`@neon/auth`)
-- Function: Neon Functions (`neon.ts` + `hello.ts`)
+- Database: Neon Postgres via Drizzle ORM + `node-postgres` (pooled)
+- Auth: Better Auth lokal (`better-auth@1.7.17`), tabel auth di skema `public`
+- Hosting: Vercel **Hobby** (non-komersial) + **Neon Free**
 - Package manager: pnpm
 
-## Prasyarat
+Aturan domain ada di [CONTEXT.md](./CONTEXT.md); rencana implementasi di
+[plan.md](./plan.md); status pekerjaan di [HANDOFF.md](./HANDOFF.md).
 
-- Node.js 24
-- pnpm
-- Neon CLI (`neon`) dan akun Neon yang sudah login
+## Arsitektur deploy
 
-## Setup
+| Bagian | Teknologi | Catatan |
+| --- | --- | --- |
+| Web + API | Vercel Hobby, region `sin1` | runtime Node.js, tanpa Edge |
+| Database | Neon Free, branch produksi `aws-ap-southeast-1` | scale-to-zero 5 menit |
+| Auth | Better Auth lokal di route `/api/auth/[...path]` | `neon_auth.*` tidak dipakai |
+| Scheduler | **tidak ada** | Laporan Draf dibuat lazy + catch-up saat aplikasi dibuka |
+| Migrasi | manual dari lokal | tidak dijalankan saat build Vercel |
+
+Hobby hanya boleh untuk penggunaan non-komersial. Bila status berubah, upgrade
+Vercel ke Pro — tidak ada perubahan kode.
+
+## Environment variables
+
+| Variabel | Lokal | Vercel | Dipakai untuk |
+| --- | :---: | :---: | --- |
+| `DATABASE_URL_POOLED` | ✓ | ✓ | query runtime (`pg` Pool, `max: 5`) |
+| `DATABASE_URL_UNPOOLED` | ✓ | – | migrasi Drizzle dari lokal |
+| `BETTER_AUTH_SECRET` | ✓ | ✓ | `openssl rand -base64 32` |
+| `BETTER_AUTH_URL` | ✓ | ✓ | origin app (`http://localhost:3000`, `https://<domain>`) |
+| `ADMIN_EMAIL` | ✓ | ✓ | email admin pertama (bootstrap sekali) |
+
+Setelah auth lokal aktif, `NEON_AUTH_*`, `NEON_FUNCTION_HELLO_BASE_URL`, dan
+`NEON_AUTH_COOKIE_SECRET` tidak dipakai lagi — hapus dari `.env.local` dan Vercel.
+
+## Setup lokal
 
 ```bash
 pnpm install
-neon whoami                        # pastikan sudah login, jika belum: neon login
-neon init -y --org-id <org-id> --project-id <project-id> --branch production
-neon deploy                        # provisioning service + menulis env ke .env.local
+cp .env.example .env.local   # isi nilai sesuai tabel di atas
 ```
 
-Setelah `neon deploy` atau `neon env pull`, hapus key `DATABASE_URL` agar tidak ambigu
-dengan URL pooled, lalu tambahkan cookie secret:
+Bila memakai `neon env pull` / `neon deploy`, hapus baris `DATABASE_URL=` agar
+tidak ambigu dengan URL pooled:
 
 ```bash
-# hapus baris DATABASE_URL; runtime memakai DATABASE_URL_POOLED
 sed -i '/^DATABASE_URL=/d' .env.local
-# jika belum ada
-printf 'NEON_AUTH_COOKIE_SECRET=%s\n' "$(openssl rand -base64 32)" >> .env.local
 ```
 
-Jalankan migrasi (memakai koneksi direct):
+## Migrasi
+
+Migrasi Drizzle dijalankan manual dengan koneksi direct dan **tidak** memakai
+pooled:
 
 ```bash
 set -a && . ./.env.local && set +a && pnpm db:migrate
 ```
 
-## Environment variables
-
-| Variabel | Sumber | Dipakai untuk |
-| --- | --- | --- |
-| `DATABASE_URL_POOLED` | `neon deploy` (renamed dari `DATABASE_URL`) | query runtime |
-| `DATABASE_URL_UNPOOLED` | `neon deploy` | migrasi Drizzle |
-| `NEON_AUTH_BASE_URL` | `neon deploy` | server Neon Auth |
-| `NEON_AUTH_JWKS_URL` | `neon deploy` | verifikasi JWT |
-| `NEON_FUNCTION_HELLO_BASE_URL` | `neon deploy` | memanggil function `hello` |
-| `NEON_AUTH_COOKIE_SECRET` | dibuat manual | cookie session Next |
-| `NEON_BRANCH` | `neon deploy` | informasi branch |
+Saat schema berubah: jalankan `pnpm db:generate` → periksa SQL → `pnpm db:migrate`
+sebelum merge/deploy. Jangan gunakan `drizzle-kit push` (bisa mengubah skema lain).
 
 ## Script
 
 ```bash
-pnpm dev            # dev server
+pnpm dev            # dev server (Turbopack)
 pnpm build          # production build
 pnpm start          # jalankan hasil build
 pnpm db:generate    # generate migrasi dari schema
-pnpm db:migrate     # terapkan migrasi
-pnpm neon:deploy    # apply neon.ts
-pnpm neon:dev       # jalankan Neon Functions lokal
+pnpm db:migrate     # terapkan migrasi (DATABASE_URL_UNPOOLED)
+pnpm smoke          # tes end-to-end terhadap server yang sedang berjalan
+```
+
+Smoke test dijalankan terhadap hasil build, bukan dev server:
+
+```bash
+pnpm build && pnpm start &
+pnpm smoke
 ```
 
 ## Struktur
 
 ```
-neon.ts                         # infra-as-code: auth + functions
-hello.ts                        # Neon Function hello
-drizzle.config.ts, drizzle/     # konfigurasi dan migrasi Drizzle
+drizzle.config.ts, drizzle/     # konfigurasi (schemaFilter: ["public"]) dan migrasi
 src/db/                         # schema + pool Postgres
-src/lib/auth/                   # server & client Neon Auth
-src/lib/functions.ts            # helper URL Neon Function
-src/app/api/auth/[...path]/     # proxy Neon Auth
-src/app/api/todos/              # CRUD todos (POST/DELETE wajib login)
-src/app/api/ping-function/      # proxy ke function hello
-src/app/page.tsx                # beranda
-src/components/                 # panel auth dan daftar todo
+src/lib/auth/                   # server (Better Auth) & client
+src/lib/waktu.ts                # helper pekan/bulan WIB (Asia/Jakarta)
+src/app/api/auth/[...path]/     # handler Better Auth
+src/app/(app)/                  # shell aplikasi; memicu bootstrap laporan
+src/components/                 # UI (bahasa Indonesia)
 scripts/smoke.mts               # tes end-to-end
 ```
 
-## Tes
+## Deploy (Vercel Hobby + Neon Free)
 
-Dengan server berjalan di `localhost:3000`:
+1. Buat project Neon di region `aws-ap-southeast-1`; salin pooled dan unpooled URL.
+2. Set env Vercel pada tabel di atas (Production + Preview). Jangan set
+   `DATABASE_URL_UNPOOLED` untuk runtime.
+3. Jalankan migrasi dari lokal ke branch produksi.
+4. Import repo di Vercel (region `sin1`, Framework Next.js), lalu deploy.
+5. Buka `/`, bootstrap admin dengan `ADMIN_EMAIL`, lalu login dan ganti password.
+6. Tidak ada cron, `vercel.json`, atau Neon Function yang perlu dikonfigurasi.
 
-```bash
-pnpm exec tsx scripts/smoke.mts
-```
-
-`scripts/verify-db.mts` memeriksa tabel dan menambah dua todo contoh — jangan
-dijalankan terhadap database produksi.
-
-## Deploy ke Vercel
-
-1. Import repo di Vercel dan set semua variabel pada tabel di atas.
-2. Pastikan trusted domain Neon Auth mencakup domain produksi:
-   `neon neon-auth domain add https://<domain>`.
-3. Setelah `neon deploy`, periksa bahwa `Disable Sign Up` masih `false`:
-   `neon neon-auth config email-password get`.
-
-Tier Hobby Vercel hanya untuk penggunaan non-komersial.
-
-Catatan detail, jebakan, dan status pekerjaan ada di [HANDOFF.md](./HANDOFF.md).
+Kuota Neon Free yang perlu dijaga: 1 GB storage/project, 100 CU-hours/project
+per bulan, egress 5 GB/project. Runtime log Vercel hanya tersimpan 1 jam.
