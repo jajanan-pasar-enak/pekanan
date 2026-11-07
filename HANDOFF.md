@@ -7,8 +7,9 @@
 Aplikasi **Next.js 16.4.5 (App Router, Cache Components)** + **Neon Postgres** (Drizzle + `pg`) di `/home/xan/project/skrmb/pekanan`. Mencatat kinerja pekanan tim: Laporan Pekan (kehadiran, sebar media, one-on-one), Klien + Follow-up, dan Iuran bulanan.
 
 - Package manager: **pnpm 12.16.1** · Node **v24.22.1** lokal (environment Qoder menyebut v26; yang dipakai `pnpm exec` adalah v24)
-- Git: branch `main`, commit terakhir **`9b99e95 feat(db): schema domain, auth tables, trigger`**
+- Git: branch `main`, commit terakhir **`a4b14fb docs: refresh handoff after database foundation commit`** (di atas `9b99e95 feat(db): ...`)
 - Working tree bersih; **belum di-push**.
+- **Testing:** Commit 1 diverifikasi manual (psql rollback + `drizzle-kit pull`), **bukan dengan suite tersimpan**. Mulai Commit 2 dipakai TDD berbasis `node:test` (lihat §9).
 
 ### Hasil Commit 1 (jangan diulang)
 
@@ -16,7 +17,7 @@ Aplikasi **Next.js 16.4.5 (App Router, Cache Components)** + **Neon Postgres** (
 - `.env.local`: `BETTER_AUTH_SECRET` (acak), `BETTER_AUTH_URL=http://localhost:3000`, `ADMIN_EMAIL=admin@pekanan.local`. `ADMIN_PASSWORD` sengaja kosong (diisi saat seed).
 - `drizzle/0001_panoramic_legion.sql` (tabel + CHECK + unique parsial + `DROP todos, visits`), `drizzle/0002_retire_transferred_laporan.sql` (fungsi + trigger `laporan_pekan_retire_transferred`). Keduanya sudah **diterapkan** ke DB Neon.
 - `src/lib/waktu.ts`: `tanggalHariIni`, `pekanWIB`, `awalPekan`, `bulanBerjalan`, `tambahHari` (semua mengembalikan string `YYYY-MM-DD`).
-- `src/app/api/todos/route.ts` dihapus (tabelnya sudah di-drop). `todo-list.tsx` & `scripts/smoke.mts`/`verify-db.mts` masih menyebut `/api/todos` — dihapus ditulis ulang di Commit 2.
+- `src/app/api/todos/route.ts` dihapus (tabelnya sudah di-drop). Sisa scaffold yang masih ada dan **masih dirujuk `todo.md` Commit 2**: `src/components/todo-list.tsx`, `src/app/api/ping-function/`, `src/lib/functions.ts`, `hello.ts`, `neon.ts`, `scripts/verify-db.mts`, `scripts/smoke.mts` (masih menyebut `/api/todos`).
 - Diverifikasi via psql: 14 tabel, 15 CHECK, unique parsial hidup, trigger memensiunkan baris yang kalah tanpa menghapus, `neon_auth` utuh. Uji constraint dilakukan dalam transaksi `ROLLBACK` (DB bersih).
 
 ## 2. Lokasi dokumen (baca berurutan)
@@ -26,7 +27,7 @@ Aplikasi **Next.js 16.4.5 (App Router, Cache Components)** + **Neon Postgres** (
 | `HANDOFF.md` | (file ini) status, jebakan, langkah berikutnya |
 | `CONTEXT.md` | **Glosarium domain (sumber kebenaran aturan bisnis)** |
 | `plan.md` | Rencana implementasi yang disetujui + **§Arsitektur Kode** + **§9 urutan commit** |
-| `todo.md` | Checklist per commit (semua belum dicentang) |
+| `todo.md` | Checklist per commit (Commit 1 sudah dicentang; Commit 2–6 belum) |
 | `docs/adr/0001-sesi-auth-dilayani-better-auth-lokal.md` | Better Auth lokal, bukan proxy Neon Auth |
 | `docs/adr/0002-keunikan-laporan-per-pekan-dijaga-trigger.md` | Unique parsial + trigger; **direvisi** (tanpa auto-kirim Draf, tanpa `move_karyawan()`) |
 | `docs/adr/0003-admin-pertama-dibuat-skrip-lokal.md` | Admin pertama via `scripts/seed-admin.mts`, **tanpa route bootstrap HTTP** |
@@ -122,7 +123,15 @@ Implementasi **Commit 2 — auth lokal** (`plan.md` §3, `todo.md` bagian "Commi
 4. Hapus `@neon/auth`/`@neon/functions` **bersamaan** dengan `src/db/index.ts` (buang `attachDatabasePool`), `page.tsx`, `layout.tsx`, `auth-panel.tsx`; hapus `todo-list.tsx`, `/api/ping-function`, `src/lib/functions.ts`, `hello.ts`, `neon.ts`, `scripts/verify-db.mts`, dan tulis ulang `scripts/smoke.mts`.
 5. `pnpm build` lulus; login + ganti password manual.
 
-Jika tabel auth diberi nama kolom alias (kita memakai snake_case di DB), pastikan adapter memakai `usePlural: false` dan schema Better Auth mendeklarasikan `fieldName` snake_case — **sudah** diatur lewat bentuk schema Drizzle (`account_id` dst.), jadi `drizzleAdapter(db, { provider: "pg", schema })` harus menerima objek schema domain juga.
+**Adapter & snake_case:** `drizzleAdapter(db, { provider: "pg", schema })` menerima objek schema apa adanya; `usePlural` (default `false`) cocok karena nama tabel tunggal (`user`, `session`, …). Nama kolom DB di-**override eksplisit** di `src/db/schema.ts` (`account_id`, `email_verified`, dst.), jadi **jangan** menambah `casing: "snake_case"` — default Drizzle (preserve) sudah benar. Export `schema` (`import * as schema`) harus memuat tabel domain juga agar adapter menemukan `user`.
+
+### TDD (mulai Commit 2)
+
+- Tanpa framework baru: `node:test` + `assert` lewat `tsx`. Sudah diuji di Node 24: `pnpm exec tsx --test "src/**/*.test.ts"` menerima glob. `package.json`: `"test": "tsx --test \"src/**/*.test.ts\" \"scripts/**/*.test.mts\""`.
+- Unit (murni, tanpa DB): `src/lib/waktu.test.ts` (batas Minggu 00:00 Sabtu 23:59:59 WIB, pergantian bulan), helper otorisasi (`isSupervisorOf`, `isAtasanOf`, cek siklus supervisor), `http.ts` (format `{ error: { code } }`, status per kode).
+- DB (trigger & CHECK): `scripts/test-db.mts` — pola psql Commit 1 dipindah ke Drizzle langsung, setiap kasus dalam transaksi yang di-`ROLLBACK`, exit non-nol bila ada yang lolos. Butuh `DATABASE_URL_UNPOOLED`; jangan pernah commit data uji.
+- Urutan kerja per fitur: uji gagal → implementasi → uji hijau → `pnpm build` → commit.
+- Backlog: `src/lib/waktu.test.ts` untuk `waktu.ts` yang sudah ada (Commit 1) ditulis belakangan, boleh jadi bagian commit Commit 2.
 
 ### Catatan operasional baru
 
