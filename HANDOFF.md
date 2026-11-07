@@ -1,14 +1,23 @@
 # HANDOFF — pekanan
 
-> **Baca ini dulu.** Status terakhir: **desain domain + arsitektur kode selesai, implementasi BELUM mulai.** Tidak ada perubahan kode aplikasi; yang berubah hanya dokumen (`plan.md`, `todo.md`, `README.md`, ADR-0002 revisi, ADR-0003 baru, `.env.example`, skrip `package.json`).
+> **Baca ini dulu.** Status terakhir: **Commit 1 (fondasi database) selesai & di-commit; implementasi fitur belum mulai.** Skema `public` (auth lokal + domain) sudah dimigrasikan ke DB, trigger terpasang, `pnpm build` lulus. Berikutnya: Commit 2 (auth lokal).
 
 ## 1. Ringkasan
 
 Aplikasi **Next.js 16.4.5 (App Router, Cache Components)** + **Neon Postgres** (Drizzle + `pg`) di `/home/xan/project/skrmb/pekanan`. Mencatat kinerja pekanan tim: Laporan Pekan (kehadiran, sebar media, one-on-one), Klien + Follow-up, dan Iuran bulanan.
 
 - Package manager: **pnpm 12.16.1** · Node **v24.22.1** lokal (environment Qoder menyebut v26; yang dipakai `pnpm exec` adalah v24)
-- Git: branch `main`, commit terakhir **`deb1838 docs: lock code architecture and local admin seeding`**
+- Git: branch `main`, commit terakhir **`9b99e95 feat(db): schema domain, auth tables, trigger`**
 - Working tree bersih; **belum di-push**.
+
+### Hasil Commit 1 (jangan diulang)
+
+- Terpasang: `zod@4.6.7`, `better-auth@1.7.17`, `@better-auth/core@1.7.17` (dev). `@neon/*` masih ada (dihapus di Commit 2).
+- `.env.local`: `BETTER_AUTH_SECRET` (acak), `BETTER_AUTH_URL=http://localhost:3000`, `ADMIN_EMAIL=admin@pekanan.local`. `ADMIN_PASSWORD` sengaja kosong (diisi saat seed).
+- `drizzle/0001_panoramic_legion.sql` (tabel + CHECK + unique parsial + `DROP todos, visits`), `drizzle/0002_retire_transferred_laporan.sql` (fungsi + trigger `laporan_pekan_retire_transferred`). Keduanya sudah **diterapkan** ke DB Neon.
+- `src/lib/waktu.ts`: `tanggalHariIni`, `pekanWIB`, `awalPekan`, `bulanBerjalan`, `tambahHari` (semua mengembalikan string `YYYY-MM-DD`).
+- `src/app/api/todos/route.ts` dihapus (tabelnya sudah di-drop). `todo-list.tsx` & `scripts/smoke.mts`/`verify-db.mts` masih menyebut `/api/todos` — dihapus ditulis ulang di Commit 2.
+- Diverifikasi via psql: 14 tabel, 15 CHECK, unique parsial hidup, trigger memensiunkan baris yang kalah tanpa menghapus, `neon_auth` utuh. Uji constraint dilakukan dalam transaksi `ROLLBACK` (DB bersih).
 
 ## 2. Lokasi dokumen (baca berurutan)
 
@@ -105,16 +114,21 @@ Tidak dipakai lagi setelah auth lokal aktif (hapus): `NEON_AUTH_BASE_URL`, `NEON
 
 ## 9. Langkah berikutnya (mulai dari sini)
 
-Implementasi **Commit 1 — fondasi database** (`plan.md` §9, `todo.md` bagian "Commit 1"):
+Implementasi **Commit 2 — auth lokal** (`plan.md` §3, `todo.md` bagian "Commit 2"):
 
-1. `pnpm add zod better-auth@1.7.17`; `pnpm add -D @better-auth/core@1.7.17`. **Jangan** remove `@neon/*` dulu (itu Commit 2).
-2. Isi `.env.local` (`BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `ADMIN_EMAIL`).
-3. `drizzle.config.ts`: `schemaFilter: ["public"]`.
-4. Tulis ulang `src/db/schema.ts` (auth lokal + domain, CHECK & unique parsial di schema).
-5. Buat `src/lib/waktu.ts` (helper WIB).
-6. `pnpm db:generate`, lalu `pnpm db:generate --custom` untuk trigger `retire_transferred_laporan`; `pnpm db:migrate`.
-7. Verifikasi dengan `psql`: tabel, CHECK, unique parsial, trigger, `todos`/`visits` ter-drop.
-8. `pnpm build` lulus → commit `feat(db): schema domain, auth tables, trigger`.
+1. `src/lib/http.ts`: `AppError`, `jsonOk`, `handle()`.
+2. `src/lib/auth/server.ts` (betterAuth + drizzleAdapter + admin plugin + `nextCookies()` terakhir), `client.ts`, `current.ts`; `api/auth/[...path]` → `toNextJsHandler`.
+3. `scripts/seed-admin.mts` (ADR-0003), `POST /api/admin/karyawan`.
+4. Hapus `@neon/auth`/`@neon/functions` **bersamaan** dengan `src/db/index.ts` (buang `attachDatabasePool`), `page.tsx`, `layout.tsx`, `auth-panel.tsx`; hapus `todo-list.tsx`, `/api/ping-function`, `src/lib/functions.ts`, `hello.ts`, `neon.ts`, `scripts/verify-db.mts`, dan tulis ulang `scripts/smoke.mts`.
+5. `pnpm build` lulus; login + ganti password manual.
+
+Jika tabel auth diberi nama kolom alias (kita memakai snake_case di DB), pastikan adapter memakai `usePlural: false` dan schema Better Auth mendeklarasikan `fieldName` snake_case — **sudah** diatur lewat bentuk schema Drizzle (`account_id` dst.), jadi `drizzleAdapter(db, { provider: "pg", schema })` harus menerima objek schema domain juga.
+
+### Catatan operasional baru
+
+- `drizzle-kit generate` akan memunculkan prompt interaktif "table created or renamed?" setiap kali snapshot lama punya tabel yang di-drop; di terminal non-TTY gagal. Jawab Enter (create) atau jalankan lewat pty.
+- `check(name, sql)` multi-argumen: drizzle-kit **hanya** mengeluarkan argumen pertama → pisah jadi beberapa `check()`.
+- `.next/dev/types` yang basi bisa memicu error TypeScript saat build (`Cannot find module .../route.js`); `rm -rf .next` lalu build.
 
 Perintah dasar:
 ```bash
