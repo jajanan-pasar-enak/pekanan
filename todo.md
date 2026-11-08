@@ -82,6 +82,13 @@ Urutan commit mengikuti `plan.md` §9; setiap commit wajib lulus `pnpm build`.
 - [x] `pnpm build` lulus; smoke terhadap `pnpm start` (bukan `pnpm dev`)
 - [x] Uji bootstrap: buka dashboard setelah pekan berganti membuat Draf baru + catch-up pekan terlewat (lewat smoke; belum dicoba manual di browser pada pergantian pekan nyata)
 
+## Commit 8 — Halaman ganti password mandiri
+
+- [x] `/akun` di shell `(app)` — form ganti password kapan saja, tidak menunggu `harus_ganti_password`
+- [x] Nama di header menjadi tautan ke `/akun` (satu-satunya titik masuk; `/ganti-password` tetap khusus paksa ganti)
+- [x] Pesan `INVALID_PASSWORD` Better Auth diterjemahkan ("Password saat ini salah.")
+- [x] Uji browser 12/12 (`/tmp/pw/akun.mjs`: salah password, ulangi beda, ganti sukses, password lama mati, sesi lain dicabut) + `pnpm test` 28/28 + `pnpm build` lulus
+
 ## Commit 7 — Layar Rekap Atasan
 
 - [x] `daftarRekapAnggota` di `src/lib/kepegawaian/queries.ts` (laporan Anggota Langsung, lintas pekan)
