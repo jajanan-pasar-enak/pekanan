@@ -1,7 +1,13 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { CatatIuran } from "@/components/catat-iuran";
-import { HalamanSkeleton, KartuSkeleton, KartuTabelSkeleton } from "@/components/skeleton";
+import {
+  BarisTabelSkeleton,
+  HalamanSkeleton,
+  IsiKartuSkeleton,
+  KartuSkeleton,
+  KartuTabelSkeleton,
+} from "@/components/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -225,15 +231,13 @@ export default async function IuranPage({ searchParams }: PageProps<"/iuran">) {
     <Suspense
       fallback={
         <HalamanSkeleton
+          judul="Iuran"
+          subjudul="Master Nominal Iuran diatur Admin. Satu pembayaran per karyawan per bulan."
           anak={
             <>
-              <header className="flex flex-col gap-1">
-                <h1 className="text-2xl font-semibold tracking-tight">Iuran</h1>
-                <p className="text-sm text-muted-foreground">
-                  Master Nominal Iuran diatur Admin. Satu pembayaran per karyawan per bulan.
-                </p>
-              </header>
-              <KartuSkeleton judul="Iuran bulanan" anak={<KartuTabelSkeleton />} />
+              <KartuSkeleton judul="Catat pembayaran" anak={<IsiKartuSkeleton />} />
+              <KartuTabelSkeleton />
+              <KartuSkeleton judul="Riwayat pembayaran" anak={<BarisTabelSkeleton />} />
             </>
           }
         />

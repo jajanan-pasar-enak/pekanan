@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { FormFollowup } from "@/components/form-followup";
-import { KartuSkeleton, KartuTabelSkeleton } from "@/components/skeleton";
+import { BarisTabelSkeleton, HalamanSkeleton, KartuSkeleton } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -129,17 +129,14 @@ export default async function KlienDetailPage({ params }: PageProps<"/klien/[id]
   return (
     <Suspense
       fallback={
-        <>
-          <header className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex flex-col gap-1">
-              <h1 className="text-2xl font-semibold tracking-tight">Klien</h1>
-            </div>
+        <HalamanSkeleton
+          aksi={
             <Button variant="outline" asChild>
               <Link href="/klien">Kembali</Link>
             </Button>
-          </header>
-          <KartuSkeleton judul="Riwayat follow-up" anak={<KartuTabelSkeleton />} />
-        </>
+          }
+          anak={<KartuSkeleton judul="Riwayat follow-up" anak={<BarisTabelSkeleton />} />}
+        />
       }
     >
       <IsiKlien id={id} />

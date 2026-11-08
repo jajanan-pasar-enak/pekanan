@@ -12,10 +12,10 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
+  BarisTabelSkeleton,
   HalamanSkeleton,
   KartuAnggotaSkeleton,
   KartuSkeleton,
-  KartuTabelSkeleton,
 } from "@/components/skeleton";
 import {
   Table,
@@ -149,7 +149,7 @@ function DashboardSkeleton() {
             <KartuSkeleton
               judul="Laporan Pekan Saya"
               className="lg:col-span-3"
-              anak={<KartuTabelSkeleton jumlahBaris={2} />}
+              anak={<BarisTabelSkeleton jumlahBaris={2} />}
             />
             <KartuSkeleton
               judul="Anggota Langsung"

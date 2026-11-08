@@ -84,7 +84,15 @@ async function IsiAdmin() {
 
 export default function AdminPage() {
   return (
-    <Suspense fallback={<HalamanSkeleton anak={<KartuTabelSkeleton jumlahBaris={8} />} />}>
+    <Suspense
+      fallback={
+        <HalamanSkeleton
+          judul="Admin"
+          subjudul="Karyawan, Pengambilalihan Klien, master iuran, dan master hasil follow-up."
+          anak={<KartuTabelSkeleton jumlahBaris={8} />}
+        />
+      }
+    >
       <IsiAdmin />
     </Suspense>
   );

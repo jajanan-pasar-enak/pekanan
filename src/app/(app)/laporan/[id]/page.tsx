@@ -4,10 +4,10 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { FormLaporan } from "@/components/form-laporan";
 import {
+  BarisTabelSkeleton,
   HalamanSkeleton,
   IsiKartuSkeleton,
   KartuSkeleton,
-  KartuTabelSkeleton,
 } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -172,17 +172,15 @@ export default async function LaporanPage({ params }: PageProps<"/laporan/[id]">
     <Suspense
       fallback={
         <HalamanSkeleton
+          judul="Laporan Pekan"
+          aksi={
+            <Button variant="outline" asChild>
+              <Link href="/dashboard">Kembali</Link>
+            </Button>
+          }
           anak={
             <>
-              <header className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex flex-col gap-1">
-                  <h1 className="text-2xl font-semibold tracking-tight">Laporan Pekan</h1>
-                </div>
-                <Button variant="outline" asChild>
-                  <Link href="/dashboard">Kembali</Link>
-                </Button>
-              </header>
-              <KartuSkeleton judul="Isi laporan" anak={<KartuTabelSkeleton jumlahBaris={6} />} />
+              <KartuSkeleton anak={<BarisTabelSkeleton jumlahBaris={6} />} />
               <KartuSkeleton judul="Riwayat Koreksi" anak={<IsiKartuSkeleton />} />
             </>
           }

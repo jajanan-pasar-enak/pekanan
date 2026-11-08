@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { HalamanSkeleton, KartuTabelSkeleton } from "@/components/skeleton";
+import { BarisTabelSkeleton, HalamanSkeleton, KartuSkeleton } from "@/components/skeleton";
 import { requireKaryawan } from "@/lib/auth/current";
 import { daftarRekapAnggota } from "@/lib/kepegawaian/queries";
 
@@ -90,7 +90,20 @@ async function IsiRekap() {
 
 export default function RekapPage() {
   return (
-    <Suspense fallback={<HalamanSkeleton anak={<KartuTabelSkeleton jumlahBaris={6} />} />}>
+    <Suspense
+      fallback={
+        <HalamanSkeleton
+          judul="Rekap Pekan"
+          subjudul="Laporan pekan dari Anggota Langsung Anda, beserta jumlah follow-up tiap anggota."
+          anak={
+            <KartuSkeleton
+              judul="Daftar Laporan Anggota"
+              anak={<BarisTabelSkeleton jumlahBaris={6} />}
+            />
+          }
+        />
+      }
+    >
       <IsiRekap />
     </Suspense>
   );

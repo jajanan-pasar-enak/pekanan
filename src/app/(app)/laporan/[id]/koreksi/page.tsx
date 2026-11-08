@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { FormKoreksi } from "@/components/form-koreksi";
-import { HalamanSkeleton, KartuSkeleton, KartuTabelSkeleton } from "@/components/skeleton";
+import { BarisTabelSkeleton, HalamanSkeleton, KartuSkeleton } from "@/components/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireKaryawan } from "@/lib/auth/current";
@@ -53,14 +53,13 @@ export default async function KoreksiPage({
     <Suspense
       fallback={
         <HalamanSkeleton
-          anak={
-            <>
-              <header>
-                <h1 className="text-2xl font-semibold tracking-tight">Koreksi Laporan</h1>
-              </header>
-              <KartuSkeleton judul="Isi koreksi" anak={<KartuTabelSkeleton />} />
-            </>
+          judul="Koreksi Laporan"
+          aksi={
+            <Button variant="outline" asChild>
+              <Link href={`/laporan/${id}`}>Batal</Link>
+            </Button>
           }
+          anak={<KartuSkeleton anak={<BarisTabelSkeleton />} />}
         />
       }
     >
