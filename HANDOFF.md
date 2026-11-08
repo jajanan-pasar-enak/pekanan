@@ -1,23 +1,62 @@
 # HANDOFF — pekanan
 
-> **Baca ini dulu.** Status terakhir (2026-11-08): **Commit 6 (deploy) sudah live** di **https://pekanan.vercel.app** (Vercel Hobby, `main` auto-deploy). Remote baru: **`https://github.com/jajanan-pasar-enak/pekanan.git`** (publik; remote `sini-sana` sudah ditinggalkan tetapi **masih ada riwayatnya di GitHub**). `main` sinkron di `0b49dba`. `pnpm test` **28/28**, `pnpm build` exit 0.
+> **Baca ini dulu.** Status terakhir (2026-11-08, sesi lanjutan): **live** di **https://pekanan.vercel.app** (Vercel Hobby, `main` auto-deploy). Remote: **`https://github.com/jajanan-pasar-enak/pekanan.git`** (publik; remote `sini-sana` sudah ditinggalkan tetapi **masih ada riwayatnya di GitHub**). `main` sinkron di **`7891865`**. `pnpm test` **28/28**, `pnpm build` exit 0. Sesi ini menambah Commit 7–9 (lihat §1b).
 
 > **Yang belum beres:**
-> 1. **Password admin `admin@pekanan.local` = `AdminBaru123!`** — masih dipakai di DB yang sama dengan produksi dan terekspos di riwayat git kedua repo. **Ganti sekarang** lewat UI produksi.
-> 2. **Data uji belum dibersihkan** — DB produksi = branch Neon yang sama dengan dev lokal, isinya 76 akun `uji-browser*`/`@seed.local`, 47 klien "Toko Uji Browser", 4 laporan, 24 koreksi, 39 iuran, 42 followup. Backup sudah dibuat (`neon branches` → `backup-sebelum-cleanup-20261108`, dan `/tmp/pekanan-backup/public-20261108-0834.sql`). Perintah hapus **butuh permintaan eksplisit dari pengguna** (lihat §9.3).
+> 1. ~~Ganti password admin~~ — **SELESAI oleh pengguna** pada 2026-11-08 ±10:44 WIB. `AdminBaru123!` **tidak berlaku lagi** (sign-in 401). Password baru hanya diketahui pengguna. **`seed-admin` tidak mengganti password** dan menolak jalan lagi selama sudah ada `user.role = 'admin'` — jangan mencoba "memulihkan" password admin lewat skrip.
+> 2. **Data uji belum dibersihkan** — DB produksi = branch Neon yang sama dengan dev lokal. Kondisi per akhir sesi: **77 user**, 77 karyawan, 47 klien, 5 laporan hidup, 42 followup, **300 sesi**. Dari 77 user: 1 `admin@pekanan.local`, 1 `admin@seed.local`, 8 akun seed lain, **68 akun `uji-browser*`/`probe-*`** sisa uji. Backup: branch Neon `backup-sebelum-cleanup-20261108` + `/tmp/pekanan-backup/public-20261108-0834.sql`. Perintah hapus **butuh permintaan eksplisit dari pengguna** (lihat §9.3).
 > 3. **`deepmerge` (Dependabot, low)** belum bisa dipatch — hanya lewat `shadcn` CLI, tidak masuk runtime.
+> 4. **Kebersihan riwayat git**: `HANDOFF.md` versi lama memuat `AdminBaru123!` di riwayat kedua repo. Karena password sudah diganti, nilainya basi; `git filter-repo` **tidak perlu** kecuali pengguna ingin membersihkan riwayat.
 
 ## 1. Ringkasan
 
 Aplikasi **Next.js 16.4.5 (App Router, Cache Components)** + **Neon Postgres** (Drizzle + `pg`) di `/home/xan/project/skrmb/pekanan`. Mencatat kinerja pekanan tim: Laporan Pekan (kehadiran, sebar media, one-on-one), Klien + Follow-up, dan Iuran bulanan.
 
 - Package manager: **pnpm 12.16.1** · Node **v24.22.1** lokal (environment Qoder menyebut v26; yang dipakai `pnpm exec` adalah v24)
-- Git: branch `main`, commit **`0b49dba fix(deps): pin minimatch dan esbuild di atas advisory Dependabot`** (terakhir di-push); sebelumnya `ade5699` (docs deploy runbook), `de13912` (docs), `8dc453d` (Commit 5 UI), `bd64c4a` (Commit 4).
+- Git: branch `main`, commit **`7891865 feat(ui): kolom follow-up di tabel Laporan Pekan`** (terakhir di-push); sebelumnya `aec853d`, `ef45675`, `eb5d1f4`, `b3c4b2b`, `45ff04f` (lihat §1b), lalu `1a799dc` (handoff deploy), `0b49dba` (deps), `ade5699`, `de13912`, `8dc453d` (Commit 5 UI), `bd64c4a` (Commit 4).
 - **Remote**: `origin` = `https://github.com/jajanan-pasar-enak/pekanan.git` (publik; org dibuat 2026-11-07, akun `mishbah` punya akses via SSH). Remote lama `sini-sana/pekanan` masih memuat riwayat lama — hapus/arsipkan bila perlu.
 - **Produksi**: https://pekanan.vercel.app (project Vercel Hobby, region seharusnya `sin1`, auto-deploy dari `main`). `/` → 200, `/api/me` → 401 (benar). Env Vercel: `DATABASE_URL_POOLED`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL=https://pekanan.vercel.app`, `ADMIN_EMAIL`.
 - **DB produksi = DB dev lokal**: satu branch Neon (`production`, project `still-firefly-08452520`, org `org-empty-credit-57766595`, `aws-ap-southeast-1`). 3 migrasi Drizzle diterapkan, 15 tabel `public`.
-- Admin `admin@pekanan.local`: password **`AdminBaru123!`**, `harus_ganti_password = false`, `aktif = true`. **Ini akun yang dipakai di produksi.** Smoke mencoba `SMOKE_ADMIN_PASSWORD` dulu, baru `SMOKE_ADMIN_PASSWORD_BARU`; jalankan dengan `ADMIN_PASSWORD='AdminBaru123!'` selama password belum diganti.
-- Akun lain di DB: `admin@seed.local` (admin kedua, sisa seed) + 76 akun uji. Tidak ada karyawan data real.
+- Admin `admin@pekanan.local` (`Admin Perhimpunan`, level Tetap, `aktif = true`, `harus_ganti_password = false`): **password sudah diganti pengguna 2026-11-08; tidak dicatat di repo.** Smoke: karena admin bukan pemilik password yang diketahui, jalankan dengan `ADMIN_PASSWORD='<password admin>'` — **jangan pakai `AdminBaru123!`** (401). Alternatif untuk smoke tanpa menyentuh admin: jalankan terhadap `admin@seed.local` / `SeedPekanan123!` (akun admin kedua, `pnpm seed.mts`), atau berharap smoke melewati fase yang butuh admin.
+- Akun lain di DB: `admin@seed.local` + 8 akun seed + 68 akun uji (`uji-browser*`, `probe-*`). Tidak ada karyawan data real.
+
+### Akun untuk mencoba aplikasi (dipakai & teruji sesi ini)
+
+Semua ber-password **`SeedPekanan123!`** (`SEED_PASSWORD`), login terverifikasi 200 di produksi:
+
+| Email | Peran | Bisa apa |
+|---|---|---|
+| `sup-1@seed.local` Sari | Supervisor + **atasan** Tono/Wulan | **Rekap**, koreksi laporan pekan lampau, klien, iuran |
+| `sup-2@seed.local` Tono | Supervisor (2 anggota) | isi/kirim laporan pekan, follow-up klien |
+| `sup-3@seed.local` Wulan | Supervisor (11 anggota) | idem |
+| `magang-1/2@seed.local`, `tetap-1/2@seed.local` | Anggota | dashboard, halaman akun, klien sendiri |
+| `admin@seed.local` | Admin | master iuran/hasil follow-up, kelola karyawan, alih klien |
+
+`admin@pekanan.local` memakai password baru pengguna.
+
+## 1b. Hasil sesi 2026-11-08 lanjutan (Commit 7–9) — jangan diulang
+
+Semua sudah live di produksi dan diverifikasi dengan Playwright terhadap `pnpm start` **dan** https://pekanan.vercel.app.
+
+- **Commit 7 `45ff04f` — layar Rekap Atasan.** `daftarRekapAnggota` di `src/lib/kepegawaian/queries.ts`; `/rekap` (daftar laporan Anggota Langsung: supervisor, pekan, status, terisi) dan `/rekap/[pekanId]` (5 kartu ringkasan + tabel rincian) memakai `getRekapPekan` yang sudah ada. Tautan **Rekap** di `nav-utama`.
+  - Kolom Supervisor ditambahkan karena Tono dan Wulan punya laporan pekan yang sama sehingga barisnya tampil identik.
+  - `pekanId` non-UUID dijaga regex sebelum query → UI 404 (bukan 500).
+- **Commit 8 `eb5d1f4` — `/akun`, ganti password kapan saja.** Sebelumnya form ganti password hanya terjangkau lewat `/ganti-password` yang me-redirect pengguna tanpa flag. Sekarang nama di header adalah tautan ke `/akun`.
+  - **Bug keamanan yang diperbaiki:** `POST /api/auth/change-password` mereset `harus_ganti_password` **sebelum** verifikasi. Satu percobaan dengan password lama **salah** sudah melepas kewajiban ganti password lalu membuka `/dashboard`. Kini `auth.api.verifyPassword` dipanggil lebih dulu. Ada komentar di route yang menjelaskan jebakan `nextCookies` (urutan reset-flag → `changePassword` **wajib**; jangan dibalik).
+  - Pesan `INVALID_PASSWORD` dari Better Auth diterjemahkan menjadi "Password saat ini salah." Kalau menambah endpoint auth lain, terjemahan tidak otomatis — `handle()` di `http.ts` masih meneruskan `error.body.message` mentah.
+- **Commit 9 `aec853d` + `7891865` — UI kecil.**
+  - Tautan akun di header diberi ikon `UserIcon` + border + `sr-only` "— buka halaman akun dan ganti password"; sebelumnya hanya teks dan tidak terbaca sebagai tautan.
+  - **Kolom `Follow-up` di tabel `/laporan/[id]`** (angka, read-only, kolom terakhir setelah Keterangan O2O), dihitung dari kejadian bertanggal di pekan — sama persis dengan Rekap. `BarisLaporan` di `queries.ts` mendapat field `followup`; `BarisForm` di `form-laporan.tsx` mewarisinya, jadi tidak ikut ter-PATCH (PATCH hanya mengirim `BarisNilai`).
+  - ~~Tabel laporan melebar (scroll horizontal di 1440 px karena `min-w-*`)~~ — **dirapatkan** (lihat §1c).
+
+**Uji browser sesi ini** (di `/tmp/pw`, tidak di repo): `rekap.mjs` (14 check), `akun.mjs` (12), `wajib.mjs` (4), `prod*.mjs` (cek produksi). Semua lulus.
+
+## 1c. Hasil sesi 2026-11-08 (lanjutan 2) — lebar tabel laporan
+
+- `min-w-40/44/48` dihapus dari `<TableHead>` tabel `form-laporan.tsx` (Anggota, Kehadiran, Keterangan kehadiran, One-on-one, Keterangan O2O) dan `form-koreksi.tsx` (kolom sama). `w-28` di Media online/offline tetap; `min-w-*` bawaan shadcn (`ui/input.tsx`, `ui/select.tsx`) tidak disentuh.
+  - Aman karena `TableHead`/`TableCell` di `src/components/ui/table.tsx` sudah `whitespace-nowrap`, jadi lebar minimum praktisnya dipegang header dan placeholder.
+- Verifikasi Playwright di `pnpm start`, viewport 1440 px: `/laporan/[id]` (sebagai `sup-2@seed.local`) dan `/laporan/[id]/koreksi` (sebagai `sup-1@seed.local`, karena Tono bukan atasan pemilik laporan) → `scrollWidth` wadah tabel = `clientWidth` (1072 px), **tanpa scroll horizontal**. `pnpm build` exit 0.
+
 - **Testing:** Commit 1 diverifikasi manual (psql rollback + `drizzle-kit pull`), **bukan dengan suite tersimpan**. Mulai Commit 2 dipakai TDD berbasis `node:test` (lihat §9).
 
 ### Hasil Commit 5 — UI (jangan diulang)
@@ -195,19 +234,28 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
 
 ## 9. Langkah berikutnya (mulai dari sini)
 
-1. ~~**Push**~~ — selesai. Remote `sini-sana/pekanan` → dipindah ke `jajanan-pasar-enak/pekanan` (SSH, akun `mishbah`). Verifikasi: `ssh -T git@github.com` → `Hi mishbah!`, `git ls-remote origin` OK.
-2. ~~**Commit 6 — Deploy**~~ — **selesai**: https://pekanan.vercel.app live, auto-deploy dari `main`. README berisi runbook lengkap. Sisa verifikasi manual di browser (butuh pengguna):
-   - Login `admin@pekanan.local` di produksi. Bila `INVALID_ORIGIN`, cek env Vercel `BETTER_AUTH_URL` harus persis `https://pekanan.vercel.app`.
-   - **Ganti password admin** (password lama publik di riwayat git).
-   - Tambah 1 karyawan → isi & kirim 1 Laporan Pekan → buka `/admin` (master nominal iuran + hasil follow-up).
-   - Konfirmasi region function = `sin1` (Project Settings → Functions).
-3. **Pembersihan data uji di DB produksi (BELUM; butuh permintaan eksplisit pengguna).** Isi DB sekarang 100% data uji: satu-satunya akun real adalah `admin@pekanan.local`. Konteks (bukan lagi hanya `uji-browser*`): 76 akun dihapus (`uji-browser*` + `@seed.local` termasuk `admin@seed.local`), 47 klien "Toko Uji Browser", 42 followup, 39 pembayaran iuran, 4 laporan (+ anggota + 24 koreksi), 423 sesi. Master `nominal_iuran` & `hasil_followup` **dipertahankan**.
-   - Backup sebelum hapus: branch Neon `backup-sebelum-cleanup-20261108` dan `/tmp/pekanan-backup/public-20261108-0834.sql`.
-   - Urutan FK dalam satu transaksi: `koreksi_laporan` → `laporan_anggota` → `laporan_pekan` → `followup` → `pembayaran_iuran` → `klien` → `karyawan` (null-kan `supervisor_id` dulu) → `session` → `account` → `user`, semua terbatas pada user selain `admin@pekanan.local`.
-   - Rencana perintah sudah disusun sesi ini tetapi **diblokir classifier auto-mode**; jalankan ulang setelah pengguna minta eksplisit. Klien memakai kolom `karyawan_id` (bukan `pemilik_id`).
-4. **Belum diuji manual (browser):** rekap Atasan (`GET /api/rekap/pekan/[id]`) belum punya layar; bootstrap setelah pergantian pekan (Draf baru + catch-up) baru diuji smoke.
-5. **Kebersihan repo/riwayat:** password `AdminBaru123!` ada di `HANDOFF.md` di riwayat `sini-sana/pekanan` dan `jajanan-pasar-enak/pekanan`. Opsi: ganti password saja (paling murah), atau `git filter-repo` + force-push (kirim ke dua repo). Putuskan dengan pengguna.
-6. Skrip uji browser ada di `/tmp/pw/uji.mjs` (+ Playwright-Core di `/tmp/pw`); **tidak di repo**. `pnpm start` lokal mungkin masih jalan di port 3000 — cek `ss -ltnp | grep :3000`.
+1. ~~Push, Commit 6 deploy, Commit 7–9 UI~~ — **selesai dan live**, lihat §1b.
+2. ~~Ganti password admin~~ — **selesai oleh pengguna** (password baru tidak dicatat di repo).
+3. **Pembersihan data uji di DB produksi (BELUM; butuh permintaan eksplisit pengguna).** Kondisi akhir sesi: **77 user** (1 `admin@pekanan.local` real + 1 `admin@seed.local` + 8 akun seed + **68 akun uji** `uji-browser*`/`probe-*`), 47 klien "Toko Uji Browser", 5 laporan hidup, **42 followup, 300 sesi**. Master `nominal_iuran` & `hasil_followup` **dipertahankan**.
+   - **Keputusan yang harus diambil pengguna lebih dulu:** apakah akun `@seed.local` (Sari/Tono/Wulan/anggota/admin seed) ikut dihapus atau **dipertahankan** sebagai data demo. Sesi ini justru memakainya untuk uji dan memberi pengguna daftar akun tersebut (§1).
+   - Backup: branch Neon `backup-sebelum-cleanup-20261108` dan `/tmp/pekanan-backup/public-20261108-0834.sql` (snapshot **sebelum** Commit 7–9, tetapi data domain tidak berubah).
+   - Urutan FK dalam satu transaksi: `koreksi_laporan` → `laporan_anggota` → `laporan_pekan` → `followup` → `pembayaran_iuran` → `klien` → `karyawan` (null-kan `supervisor_id` dulu) → `session` → `account` → `user`, terbatas pada user yang dipilih. Kolom klien = `karyawan_id` (bukan `pemilik_id`).
+   - Sebelum menghapus, **hitung ulang** jumlahnya (angka di atas berubah tiap sesi uji).
+4. **Kandidat pekerjaan berikutnya (belum ada permintaan eksplisit):**
+   - ~~Rapikan lebar tabel `/laporan/[id]`~~ — **selesai** (§1c).
+   - `scripts/test-db.mts` untuk trigger `retire_transferred_laporan` — satu-satunya item checklist yang belum punya skrip tersimpan.
+   - Smoke masih butuh password admin yang tidak diketahui; pertimbangkan menjalankannya terhadap `admin@seed.local`.
+5. **Belum diuji manual (browser):** bootstrap setelah pergantian pekan nyata (Draf baru + catch-up). Rute Rekap sekarang **sudah punya layar** (§1b) — poin lama sudah usang.
+6. **Kebersihan riwayat git:** `AdminBaru123!` masih ada di `HANDOFF.md` versi lama pada riwayat kedua repo, tetapi **sudah tidak berlaku**. `git filter-repo` tidak wajib.
+7. Skrip uji browser ada di `/tmp/pw` (+ Playwright-Core); **tidak di repo**. Sesi ini berakhir dengan **server lokal dimatikan** (port 3000 bebas).
+
+**Jebakan locator Playwright yang ditemukan sesi ini (jangan diulang):**
+- `body > header` **tidak selalu cocok** — header aplikasi berada di dalam `div` pembungkus, jadi `page.locator("header")` menemukan 1 elemen sedangkan `"body > header"` menemukan 0. Jangan percaya catatan lama yang menyuruh pakai `body > header`.
+- Toaster/Next menyisipkan `<p role="alert">` **kosong** di samping alert asli; `getByRole("alert").innerText()` bisa mengambil yang kosong. Pakai `allInnerTexts()` lalu filter yang tidak kosong.
+- Jangan asumsikan dua laporan dengan pekan sama milik satu orang: di data seed Tono dan Wulan berbagi pekan.
+- Login produksi kadang gagal sekali saat cold start Neon (`/` dengan form tetap tampil). Ulangi sampai `/dashboard`, jangan simpulkan fitur rusak.
+- `notFound()` di dalam boundary `<Suspense>` merender UI 404 tetapi **status HTTP tetap 200**; uji UI 404, bukan `response.status()`.
+- Respons 400 yang sengaja diuji (mis. password salah) memunculkan `console.error "Failed to load resource"` — jangan dihitung sebagai kegagalan.
 
 **Catatan smoke yang mahal ditemukan di Commit 4 (jangan diulang):**
 - Parser cookie harus memisah `Set-Cookie` per atribut; regex `max-age=0` cocok juga dengan `Max-Age=60480` dan membuang token baru setelah `change-password`.
@@ -221,7 +269,9 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
 - Koreksi menyimpan `sebelum`/`sesudah` hanya untuk baris yang **benar-benar berubah**; tanpa diff → 400.
 - `isSupervisorOf`/`isAtasanOf` dibatalkan sebagai helper terpisah: relasi cukup dibaca dari `karyawan.supervisor_id` yang sudah di-join di query (`queries.ts` predikat `bolehUbahLaporan`/`bolehKoreksiLaporan`).
 
-**Status akun admin:** `admin@pekanan.local`, password `AdminBaru123!` (`harus_ganti_password = false`, `aktif = true`) — **dipakai di produksi**, segera ganti. `pnpm seed:admin` idempoten dan **tidak** mengganti password yang ada. Tabel `session` berisi 423 baris (sisa smoke/uji) — ikut terhapus pada cleanup §9.3.
+**Status akun admin:** `admin@pekanan.local` (`harus_ganti_password = false`, `aktif = true`). Password **dibuat pengguna sendiri pada 2026-11-08** dan **tidak** dicatat di repo; `AdminBaru123!` sudah tidak berlaku. `pnpm seed:admin` idempoten, **tidak** mengganti password yang ada, dan **berhenti** bila sudah ada `user.role = 'admin'`. Tabel `session` berisi 300 baris (sisa smoke/uji) — ikut terhapus pada cleanup §9.3.
+
+**Akun seed demo** (semua password `SeedPekanan123!`, terverifikasi login 200 di produksi): `sup-1@seed.local` Sari (Supervisor, atasan Tono/Wulan), `sup-2@seed.local` Tono, `sup-3@seed.local` Wulan (Supervisor), `magang-1@seed.local`, `magang-2@seed.local`, `tetap-1@seed.local`, `tetap-2@seed.local` (anggota), `admin@seed.local` (admin). Cocok untuk mencoba `/laporan`, `/rekap`, `/klien`, `/iuran`, `/admin` tanpa menyentuh akun admin real.
 
 **Adapter & snake_case:** `drizzleAdapter(db, { provider: "pg", schema })` menerima objek schema apa adanya; `usePlural` (default `false`) cocok karena nama tabel tunggal (`user`, `session`, …). Nama kolom DB di-**override eksplisit** di `src/db/schema.ts` (`account_id`, `email_verified`, dst.), jadi **jangan** menambah `casing: "snake_case"` — default Drizzle (preserve) sudah benar. Export `schema` (`import * as schema`) harus memuat tabel domain juga agar adapter menemukan `user`.
 
@@ -257,5 +307,5 @@ set -a && . ./.env.local && set +a
 pnpm db:generate && pnpm db:migrate
 pnpm test && pnpm build
 pnpm start &            # pastikan port 3000 bebas dulu
-ADMIN_PASSWORD='AdminBaru123!' pnpm exec tsx scripts/smoke.mts
+ADMIN_PASSWORD='<password admin>' pnpm exec tsx scripts/smoke.mts   # atau akun @seed.local lain yang berrole admin
 ```
