@@ -189,6 +189,7 @@ export function FormLaporan({
               <TableHead className="w-28">Media offline</TableHead>
               <TableHead className="min-w-44">One-on-one</TableHead>
               <TableHead className="min-w-48">Keterangan O2O</TableHead>
+              <TableHead className="w-24 text-right">Follow-up</TableHead>
               {bolehUbah && <TableHead className="w-24">Status</TableHead>}
             </TableRow>
           </TableHeader>
@@ -275,6 +276,13 @@ export function FormLaporan({
                       readOnly={!bolehUbah}
                       rows={1}
                     />
+                  </TableCell>
+                  {/* Dihitung dari kejadian di halaman Klien, bukan diisi di sini. */}
+                  <TableCell
+                    className="text-right tabular-nums"
+                    title="Jumlah follow-up klien bertanggal pada pekan ini"
+                  >
+                    {b.followup}
                   </TableCell>
                   {bolehUbah && (
                     <TableCell className="text-xs text-muted-foreground">

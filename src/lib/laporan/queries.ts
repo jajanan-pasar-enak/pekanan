@@ -1,6 +1,13 @@
-import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { karyawan, koreksiLaporan, laporanAnggota, laporanPekan, pekan } from "@/db/schema";
+import {
+  followup,
+  karyawan,
+  koreksiLaporan,
+  laporanAnggota,
+  laporanPekan,
+  pekan,
+} from "@/db/schema";
 import { AppError } from "@/lib/http";
 import { pekanWIB, tanggalHariIni } from "@/lib/waktu";
 import { barisLengkap } from "./aturan";
@@ -14,6 +21,7 @@ export type BarisLaporan = {
   mediaOffline: number | null;
   oneOnOne: string | null;
   keteranganOneOnOne: string | null;
+  followup: number;
 };
 
 export type LaporanDetail = {
@@ -126,6 +134,12 @@ export async function getLaporan(id: string, viewerId: string): Promise<LaporanD
       mediaOffline: laporanAnggota.mediaOffline,
       oneOnOne: laporanAnggota.oneOnOne,
       keteranganOneOnOne: laporanAnggota.keteranganOneOnOne,
+      // Sama dengan rekap: kejadian bertanggal di pekan ini, bukan angka manual.
+      followup: sql<number>`(
+        SELECT count(*)::int FROM followup f
+        WHERE f.created_by = ${laporanAnggota.anggotaId}
+          AND f.tanggal BETWEEN ${laporan.pekanMulai} AND ${laporan.pekanSelesai}
+      )`,
     })
     .from(laporanAnggota)
     .innerJoin(karyawan, eq(karyawan.id, laporanAnggota.anggotaId))
