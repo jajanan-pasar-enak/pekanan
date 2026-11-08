@@ -60,13 +60,55 @@ function tengahPekan(): string {
 
 const akunSeed = [
   { email: "admin@seed.local", nama: "Admin Seed", level: "Tetap", supervisor: null, admin: true },
-  { email: "sup-1@seed.local", nama: "Sari Supervisor", level: "Tetap", supervisor: null, admin: false },
-  { email: "sup-2@seed.local", nama: "Tono Supervisor", level: "Tetap", supervisor: "sup-1@seed.local", admin: false },
-  { email: "sup-3@seed.local", nama: "Wulan Supervisor", level: "Tetap", supervisor: "sup-1@seed.local", admin: false },
-  { email: "magang-1@seed.local", nama: "Bima Magang", level: "Magang", supervisor: "sup-2@seed.local", admin: false },
-  { email: "magang-2@seed.local", nama: "Citra Magang", level: "Magang", supervisor: "sup-3@seed.local", admin: false },
-  { email: "tetap-1@seed.local", nama: "Dani Tetap", level: "Tetap", supervisor: "sup-2@seed.local", admin: false },
-  { email: "tetap-2@seed.local", nama: "Eka Tetap", level: "Tetap", supervisor: "sup-3@seed.local", admin: false },
+  {
+    email: "sup-1@seed.local",
+    nama: "Sari Supervisor",
+    level: "Tetap",
+    supervisor: null,
+    admin: false,
+  },
+  {
+    email: "sup-2@seed.local",
+    nama: "Tono Supervisor",
+    level: "Tetap",
+    supervisor: "sup-1@seed.local",
+    admin: false,
+  },
+  {
+    email: "sup-3@seed.local",
+    nama: "Wulan Supervisor",
+    level: "Tetap",
+    supervisor: "sup-1@seed.local",
+    admin: false,
+  },
+  {
+    email: "magang-1@seed.local",
+    nama: "Bima Magang",
+    level: "Magang",
+    supervisor: "sup-2@seed.local",
+    admin: false,
+  },
+  {
+    email: "magang-2@seed.local",
+    nama: "Citra Magang",
+    level: "Magang",
+    supervisor: "sup-3@seed.local",
+    admin: false,
+  },
+  {
+    email: "tetap-1@seed.local",
+    nama: "Dani Tetap",
+    level: "Tetap",
+    supervisor: "sup-2@seed.local",
+    admin: false,
+  },
+  {
+    email: "tetap-2@seed.local",
+    nama: "Eka Tetap",
+    level: "Tetap",
+    supervisor: "sup-3@seed.local",
+    admin: false,
+  },
 ] as const;
 
 const NOMINAL = [
@@ -81,9 +123,24 @@ const HASIL = [
 ] as const;
 
 const KLIEN = [
-  { kunci: "klien-toko-maju", nama: "Toko Maju", kontak: "081200000001", pemilik: "magang-1@seed.local" },
-  { kunci: "klien-kafe-senja", nama: "Kafe Senja", kontak: "081200000002", pemilik: "tetap-1@seed.local" },
-  { kunci: "klien-ud-sinar", nama: "UD Sinar Abadi", kontak: "081200000003", pemilik: "magang-2@seed.local" },
+  {
+    kunci: "klien-toko-maju",
+    nama: "Toko Maju",
+    kontak: "081200000001",
+    pemilik: "magang-1@seed.local",
+  },
+  {
+    kunci: "klien-kafe-senja",
+    nama: "Kafe Senja",
+    kontak: "081200000002",
+    pemilik: "tetap-1@seed.local",
+  },
+  {
+    kunci: "klien-ud-sinar",
+    nama: "UD Sinar Abadi",
+    kontak: "081200000003",
+    pemilik: "magang-2@seed.local",
+  },
 ] as const;
 
 function idAkun(email: string): string {
@@ -109,12 +166,16 @@ async function hostProduksi() {
 }
 
 if (!URL_DB) {
-  gagal("DATABASE_URL_UNPOOLED wajib diisi (pnpm --env-file=.env.local exec tsx scripts/seed.mts).");
+  gagal(
+    "DATABASE_URL_UNPOOLED wajib diisi (pnpm --env-file=.env.local exec tsx scripts/seed.mts).",
+  );
 }
 
 const produksi = await hostProduksi();
 if (produksi && URL_DB.includes(produksi) && process.env.FORCE !== "1") {
-  gagal(`host ini kemungkinan project produksi (${produksi}); jalankan dengan FORCE=1 bila memang disengaja.`);
+  gagal(
+    `host ini kemungkinan project produksi (${produksi}); jalankan dengan FORCE=1 bila memang disengaja.`,
+  );
 }
 
 const client = new Client({ connectionString: URL_DB });
@@ -124,15 +185,24 @@ let kode = 0;
 
 const emailSeed = akunSeed.map((a) => a.email);
 // Daftar email seed sebagai array SQL, diinterpolasi dengan aman oleh drizzle.
-const daftarEmail = sql`ARRAY[${sql.join(emailSeed.map((e) => sql`${e}`), sql`, `)}]::text[]`;
+const daftarEmail = sql`ARRAY[${sql.join(
+  emailSeed.map((e) => sql`${e}`),
+  sql`, `,
+)}]::text[]`;
 const idKaryawanSeed = sql`(SELECT k.id FROM karyawan k JOIN "user" u ON u.id = k.user_id WHERE u.email = ANY(${daftarEmail}))`;
 
 try {
   if (cleanup) {
     await db.transaction(async (tx) => {
       // Urutan mengikuti FK RESTRICT: followup_edit → followup → klien → iuran → karyawan → user.
-      const namaNominal = sql`ARRAY[${sql.join(NOMINAL.map((n) => sql`${n.nama}`), sql`, `)}]::text[]`;
-      const namaHasil = sql`ARRAY[${sql.join(HASIL.map((h) => sql`${h.nama}`), sql`, `)}]::text[]`;
+      const namaNominal = sql`ARRAY[${sql.join(
+        NOMINAL.map((n) => sql`${n.nama}`),
+        sql`, `,
+      )}]::text[]`;
+      const namaHasil = sql`ARRAY[${sql.join(
+        HASIL.map((h) => sql`${h.nama}`),
+        sql`, `,
+      )}]::text[]`;
       const idFollowupSeed = sql`(SELECT f.id FROM followup f JOIN klien k ON k.id = f.klien_id
         WHERE k.karyawan_id IN ${idKaryawanSeed})`;
       await tx.execute(sql`DELETE FROM followup_edit WHERE followup_id IN ${idFollowupSeed}`);
@@ -231,10 +301,34 @@ try {
 
       // Follow-up di pekan berjalan (hari ini dan kemarin), dibuat oleh pemilik klien.
       const contohFollowup = [
-        { kunci: "fu-1", klien: "klien-toko-maju", tanggal: tanggalWIB(0), hasil: "tertarik", deskripsi: "Minta proposal harga." },
-        { kunci: "fu-2", klien: "klien-toko-maju", tanggal: tanggalWIB(1), hasil: "belum-tertarik", deskripsi: "Masih membandingkan vendor." },
-        { kunci: "fu-3", klien: "klien-kafe-senja", tanggal: tanggalWIB(0), hasil: "tidak-respon", deskripsi: null },
-        { kunci: "fu-4", klien: "klien-ud-sinar", tanggal: tengahPekan(), hasil: "tertarik", deskripsi: "Siap tanda tangan minggu ini." },
+        {
+          kunci: "fu-1",
+          klien: "klien-toko-maju",
+          tanggal: tanggalWIB(0),
+          hasil: "tertarik",
+          deskripsi: "Minta proposal harga.",
+        },
+        {
+          kunci: "fu-2",
+          klien: "klien-toko-maju",
+          tanggal: tanggalWIB(1),
+          hasil: "belum-tertarik",
+          deskripsi: "Masih membandingkan vendor.",
+        },
+        {
+          kunci: "fu-3",
+          klien: "klien-kafe-senja",
+          tanggal: tanggalWIB(0),
+          hasil: "tidak-respon",
+          deskripsi: null,
+        },
+        {
+          kunci: "fu-4",
+          klien: "klien-ud-sinar",
+          tanggal: tengahPekan(),
+          hasil: "tertarik",
+          deskripsi: "Siap tanda tangan minggu ini.",
+        },
       ];
       for (const f of contohFollowup) {
         const pemilik = KLIEN.find((k) => k.kunci === f.klien)!.pemilik;

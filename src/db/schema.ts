@@ -159,10 +159,7 @@ export const pekan = pgTable(
   },
   (t) => [
     check("pekan_mulai_minggu_check", sql`extract(dow from ${t.mulai}) = 0`),
-    check(
-      "pekan_tujuh_hari_check",
-      sql`${t.selesai} = ${t.mulai} + 6`,
-    ),
+    check("pekan_tujuh_hari_check", sql`${t.selesai} = ${t.mulai} + 6`),
   ],
 );
 
@@ -189,10 +186,7 @@ export const laporanPekan = pgTable(
     uniqueIndex("laporan_pekan_hidup_unique")
       .on(t.supervisorId, t.pekanId)
       .where(sql`${t.deletedAt} IS NULL`),
-    check(
-      "laporan_pekan_status_check",
-      sql`${t.status} IN ('Draf', 'Terkirim', 'Dikoreksi')`,
-    ),
+    check("laporan_pekan_status_check", sql`${t.status} IN ('Draf', 'Terkirim', 'Dikoreksi')`),
   ],
 );
 
@@ -219,10 +213,7 @@ export const laporanAnggota = pgTable(
       .$onUpdate(() => new Date()),
   },
   (t) => [
-    unique("laporan_anggota_laporan_anggota_unique").on(
-      t.laporanId,
-      t.anggotaId,
-    ),
+    unique("laporan_anggota_laporan_anggota_unique").on(t.laporanId, t.anggotaId),
     check(
       "laporan_anggota_kehadiran_check",
       sql`${t.kehadiran} IS NULL OR ${t.kehadiran} IN ('Tepat Waktu', 'Terlambat < 15 Menit', 'Terlambat > 15 Menit', 'Sakit', 'Tanpa Keterangan')`,
@@ -259,10 +250,7 @@ export const koreksiLaporan = pgTable(
   },
   (t) => [
     index("koreksi_laporan_laporan_id_idx").on(t.laporanId),
-    check(
-      "koreksi_laporan_alasan_check",
-      sql`length(btrim(${t.alasan})) > 0`,
-    ),
+    check("koreksi_laporan_alasan_check", sql`length(btrim(${t.alasan})) > 0`),
   ],
 );
 
@@ -309,10 +297,7 @@ export const pembayaranIuran = pgTable(
       "pembayaran_iuran_bulan_lampau_check",
       sql`${t.bulan} <= date_trunc('month', ${hariIniWIB})::date`,
     ),
-    check(
-      "pembayaran_iuran_tanggal_bayar_check",
-      sql`${t.tanggalBayar} <= ${hariIniWIB}`,
-    ),
+    check("pembayaran_iuran_tanggal_bayar_check", sql`${t.tanggalBayar} <= ${hariIniWIB}`),
   ],
 );
 
@@ -374,10 +359,7 @@ export const followup = pgTable(
   (t) => [
     index("followup_klien_tanggal_idx").on(t.klienId, t.tanggal),
     index("followup_created_by_tanggal_idx").on(t.createdBy, t.tanggal),
-    check(
-      "followup_tanggal_lampau_check",
-      sql`${t.tanggal} <= ${hariIniWIB}`,
-    ),
+    check("followup_tanggal_lampau_check", sql`${t.tanggal} <= ${hariIniWIB}`),
   ],
 );
 

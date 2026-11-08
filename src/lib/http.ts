@@ -40,11 +40,7 @@ export function jsonOk<T>(data: T, status = 200): NextResponse {
   return NextResponse.json({ data }, { status });
 }
 
-export function jsonError(
-  code: ErrorCode,
-  message: string,
-  details?: unknown,
-): NextResponse {
+export function jsonError(code: ErrorCode, message: string, details?: unknown): NextResponse {
   return NextResponse.json(
     { error: { code, message, ...(details === undefined ? {} : { details }) } },
     { status: statusPerKode[code] },
@@ -71,8 +67,12 @@ export async function bacaJson(request: Request): Promise<unknown> {
 }
 
 function isUniqueViolation(error: unknown): boolean {
-  return typeof error === "object" && error !== null && "code" in error &&
-    (error as { code?: unknown }).code === "23505";
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "23505"
+  );
 }
 
 function isBetterAuthApiError(

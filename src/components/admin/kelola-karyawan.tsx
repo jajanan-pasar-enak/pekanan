@@ -138,8 +138,8 @@ function FormUbah({
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        Magang wajib punya supervisor Tetap. Anggota yang dipindah supervisor ikut pindah ke
-        Draf laporan supervisor baru. Klien tidak ikut pindah; gunakan Pengambilalihan Klien.
+        Magang wajib punya supervisor Tetap. Anggota yang dipindah supervisor ikut pindah ke Draf
+        laporan supervisor baru. Klien tidak ikut pindah; gunakan Pengambilalihan Klien.
       </p>
       <DialogFooter>
         <Button type="submit" disabled={busy}>
@@ -431,8 +431,8 @@ export function KelolaKaryawan({
           <DialogHeader>
             <DialogTitle>Nonaktifkan {nonaktif?.nama}?</DialogTitle>
             <DialogDescription>
-              Semua sesinya dicabut. Nonaktif ditolak bila masih punya Klien, atau masih
-              membimbing Anggota tanpa atasan di atasnya.
+              Semua sesinya dicabut. Nonaktif ditolak bila masih punya Klien, atau masih membimbing
+              Anggota tanpa atasan di atasnya.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

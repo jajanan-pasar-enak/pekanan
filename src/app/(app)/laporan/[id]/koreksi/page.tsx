@@ -45,9 +45,7 @@ async function IsiKoreksi({ id }: { id: string }) {
   );
 }
 
-export default async function KoreksiPage({
-  params,
-}: PageProps<"/laporan/[id]/koreksi">) {
+export default async function KoreksiPage({ params }: PageProps<"/laporan/[id]/koreksi">) {
   const { id } = await params;
   return (
     <Suspense

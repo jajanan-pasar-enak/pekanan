@@ -21,7 +21,10 @@ export async function catatPembayaranIuran(
       .where(and(eq(karyawan.id, karyawanId), eq(karyawan.supervisorId, viewerId)))
       .limit(1);
     if (!anggota) {
-      throw new AppError("FORBIDDEN", "Hanya supervisor langsung yang boleh mencatat untuk karyawan ini.");
+      throw new AppError(
+        "FORBIDDEN",
+        "Hanya supervisor langsung yang boleh mencatat untuk karyawan ini.",
+      );
     }
   }
 
@@ -43,9 +46,7 @@ export async function catatPembayaranIuran(
   const [sudah] = await db
     .select({ id: pembayaranIuran.id })
     .from(pembayaranIuran)
-    .where(
-      and(eq(pembayaranIuran.karyawanId, karyawanId), eq(pembayaranIuran.bulan, body.bulan)),
-    )
+    .where(and(eq(pembayaranIuran.karyawanId, karyawanId), eq(pembayaranIuran.bulan, body.bulan)))
     .limit(1);
   if (sudah) {
     throw new AppError("CONFLICT", "Iuran karyawan untuk bulan itu sudah lunas.", {
@@ -76,14 +77,11 @@ export async function catatPembayaranIuran(
 
 export async function tambahNominalIuran(input: unknown) {
   const body = nominalIuranSchema.parse(input);
-  const [baru] = await db
-    .insert(nominalIuran)
-    .values(body)
-    .returning({
-      id: nominalIuran.id,
-      nama: nominalIuran.nama,
-      nominal: nominalIuran.nominal,
-      aktif: nominalIuran.aktif,
-    });
+  const [baru] = await db.insert(nominalIuran).values(body).returning({
+    id: nominalIuran.id,
+    nama: nominalIuran.nama,
+    nominal: nominalIuran.nominal,
+    aktif: nominalIuran.aktif,
+  });
   return baru!;
 }

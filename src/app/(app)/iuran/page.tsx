@@ -10,13 +10,7 @@ import {
 } from "@/components/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -26,11 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { requireKaryawan } from "@/lib/auth/current";
-import {
-  daftarNominalIuran,
-  daftarPembayaran,
-  rekapIuranKaryawan,
-} from "@/lib/iuran/queries";
+import { daftarNominalIuran, daftarPembayaran, rekapIuranKaryawan } from "@/lib/iuran/queries";
 import { daftarAnggotaLangsung } from "@/lib/pekan/bootstrap";
 import { bulanBerjalan, tanggalHariIni } from "@/lib/waktu";
 
@@ -75,7 +65,11 @@ function duaBelasBulan(berjalan: string): string[] {
   return hasil;
 }
 
-async function IsiIuran({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+async function IsiIuran({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await connection();
   const { profil } = await requireKaryawan();
   const berjalan = bulanBerjalan();
@@ -136,7 +130,8 @@ async function IsiIuran({ searchParams }: { searchParams: Promise<Record<string,
           <CardHeader>
             <CardTitle>{`${r.nama}`}</CardTitle>
             <CardDescription>
-              {r.bulan.filter((b) => b.lunas).length}/{r.bulan.length} bulan lunas (12 bulan terakhir).
+              {r.bulan.filter((b) => b.lunas).length}/{r.bulan.length} bulan lunas (12 bulan
+              terakhir).
             </CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto">

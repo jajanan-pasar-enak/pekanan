@@ -1,10 +1,7 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { connection } from "next/server";
-import {
-  KelolaKaryawan,
-  type KaryawanAdmin,
-} from "@/components/admin/kelola-karyawan";
+import { KelolaKaryawan, type KaryawanAdmin } from "@/components/admin/kelola-karyawan";
 import { KelolaKlien } from "@/components/admin/kelola-klien";
 import { MasterHasilFollowup } from "@/components/admin/master-hasil-followup";
 import { MasterNominalIuran } from "@/components/admin/master-nominal-iuran";

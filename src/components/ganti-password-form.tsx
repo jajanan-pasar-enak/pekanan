@@ -39,11 +39,7 @@ export function GantiPasswordForm({ wajib }: { wajib: boolean }) {
 
   return (
     <form onSubmit={submit} className="flex w-full flex-col gap-4">
-      {wajib && (
-        <p className="text-sm">
-          Anda wajib mengganti password sebelum memakai aplikasi.
-        </p>
-      )}
+      {wajib && <p className="text-sm">Anda wajib mengganti password sebelum memakai aplikasi.</p>}
       <div className="flex flex-col gap-2">
         <Label htmlFor="currentPassword">Password saat ini</Label>
         <Input

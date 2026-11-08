@@ -27,7 +27,9 @@ export async function daftarKaryawan(): Promise<KaryawanRingkas[]> {
       email: user.email,
       level: karyawan.level,
       supervisorId: karyawan.supervisorId,
-      supervisorNama: sql<string | null>`(SELECT nama FROM karyawan s WHERE s.id = ${karyawan.supervisorId})`,
+      supervisorNama: sql<
+        string | null
+      >`(SELECT nama FROM karyawan s WHERE s.id = ${karyawan.supervisorId})`,
       aktif: karyawan.aktif,
       harusGantiPassword: karyawan.harusGantiPassword,
       peran: user.role,

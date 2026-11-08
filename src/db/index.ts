@@ -17,7 +17,9 @@ function opsiKoneksi(raw: string | undefined) {
   const host = r.hostname;
   const port = r.port ? `:${r.port}` : "";
   r.searchParams.set("sslmode", "verify-full");
-  return { connectionString: `${r.protocol}//${username}:${password}@${host}${port}${r.pathname}${r.search}` };
+  return {
+    connectionString: `${r.protocol}//${username}:${password}@${host}${port}${r.pathname}${r.search}`,
+  };
 }
 
 const pool =

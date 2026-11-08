@@ -50,7 +50,9 @@ export async function daftarKlienSaya(karyawanId: string): Promise<KlienRingkas[
       kontak: klien.kontak,
       pemilik: { id: karyawan.id, nama: karyawan.nama },
       jumlahFollowup: sql<number>`(SELECT count(*)::int FROM followup f WHERE f.klien_id = ${klien.id} AND f.deleted_at IS NULL)`,
-      followupTerakhir: sql<string | null>`(SELECT max(f.tanggal)::text FROM followup f WHERE f.klien_id = ${klien.id} AND f.deleted_at IS NULL)`,
+      followupTerakhir: sql<
+        string | null
+      >`(SELECT max(f.tanggal)::text FROM followup f WHERE f.klien_id = ${klien.id} AND f.deleted_at IS NULL)`,
     })
     .from(klien)
     .innerJoin(karyawan, eq(karyawan.id, klien.karyawanId))
@@ -75,8 +77,7 @@ export async function getKlien(id: string, viewerId: string): Promise<KlienDetai
     .where(eq(klien.id, id))
     .limit(1);
 
-  const bolehBaca =
-    row && (row.pemilikId === viewerId || row.pemilikSupervisorId === viewerId);
+  const bolehBaca = row && (row.pemilikId === viewerId || row.pemilikSupervisorId === viewerId);
   if (!row || !bolehBaca) throw new AppError("NOT_FOUND", "Klien tidak ditemukan.");
 
   const riwayat = await db

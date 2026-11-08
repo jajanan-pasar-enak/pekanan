@@ -1,15 +1,16 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { karyawan, koreksiLaporan as tabelKoreksi, laporanAnggota, laporanPekan, pekan } from "@/db/schema";
+import {
+  karyawan,
+  koreksiLaporan as tabelKoreksi,
+  laporanAnggota,
+  laporanPekan,
+  pekan,
+} from "@/db/schema";
 import { AppError } from "@/lib/http";
 import { pekanWIB } from "@/lib/waktu";
-import {
-  kolomKosong,
-  normalisasiPatch,
-  patchBarisSchema,
-  type BarisNilai,
-} from "./aturan";
+import { kolomKosong, normalisasiPatch, patchBarisSchema, type BarisNilai } from "./aturan";
 
 export const koreksiSchema = z.object({
   alasan: z.string().trim().min(1, "Alasan koreksi wajib diisi.").max(2000),
@@ -76,9 +77,7 @@ export async function patchBaris(
   const [diperbarui] = await db
     .update(laporanAnggota)
     .set(nilai)
-    .where(
-      and(eq(laporanAnggota.laporanId, laporanId), eq(laporanAnggota.anggotaId, anggotaId)),
-    )
+    .where(and(eq(laporanAnggota.laporanId, laporanId), eq(laporanAnggota.anggotaId, anggotaId)))
     .returning({ baris: kolomNilai });
   if (!diperbarui) {
     throw new AppError("NOT_FOUND", "Anggota tidak ada di laporan ini.");
@@ -138,11 +137,7 @@ export async function submitLaporan(laporanId: string, viewerId: string) {
 
 // Koreksi oleh Atasan Supervisor langsung untuk pekan yang sudah berakhir.
 // Satu transaksi: diff sebelum/sesudah + catatan koreksi + status Dikoreksi.
-export async function koreksiLaporan(
-  laporanId: string,
-  viewerId: string,
-  input: unknown,
-) {
+export async function koreksiLaporan(laporanId: string, viewerId: string, input: unknown) {
   const body = koreksiSchema.parse(input);
   const row = await ambilUntukUbah(laporanId);
   if (row.supervisorId === viewerId) {

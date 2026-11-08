@@ -37,10 +37,7 @@ test("patchBarisSchema menerima nilai sah dan menolak nilai di luar himpunan", (
     patchBarisSchema.safeParse({ kehadiran: "Terlambat < 15 Menit", mediaOnline: 0 }).success,
     true,
   );
-  assert.equal(
-    patchBarisSchema.safeParse({ kehadiran: "Terlambat" }).success,
-    false,
-  );
+  assert.equal(patchBarisSchema.safeParse({ kehadiran: "Terlambat" }).success, false);
   assert.equal(patchBarisSchema.safeParse({ oneOnOne: "Telepon" }).success, false);
   assert.equal(patchBarisSchema.safeParse({ mediaOnline: -1 }).success, false);
   assert.equal(patchBarisSchema.safeParse({ mediaOffline: 1.5 }).success, false);

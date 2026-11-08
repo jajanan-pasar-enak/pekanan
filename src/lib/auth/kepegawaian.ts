@@ -54,8 +54,5 @@ export async function perbaruiProfil(
 }
 
 export async function tandaiGantiPasswordSelesai(userId: string): Promise<void> {
-  await db
-    .update(karyawan)
-    .set({ harusGantiPassword: false })
-    .where(eq(karyawan.userId, userId));
+  await db.update(karyawan).set({ harusGantiPassword: false }).where(eq(karyawan.userId, userId));
 }

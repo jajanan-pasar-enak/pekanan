@@ -1,11 +1,7 @@
 // @ts-nocheck -- Node memuat TS tanpa transformasi tipe.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-  alasanAlihDitolak,
-  alasanNonaktifDitolak,
-  ubahKaryawanSchema,
-} from "./aturan";
+import { alasanAlihDitolak, alasanNonaktifDitolak, ubahKaryawanSchema } from "./aturan";
 
 test("ubahKaryawanSchema: minimal satu field perubahan", () => {
   assert.throws(() => ubahKaryawanSchema.parse({}));
@@ -27,7 +23,10 @@ test("alasanNonaktifDitolak: butuh tanpa anggota & tanpa klien", () => {
 test("alasanNonaktifDitolak: Anggota boleh bila Draf naik ke atasan atau digantikan", () => {
   assert.equal(alasanNonaktifDitolak({ anggota: 2, klien: 0, anggotaBerkasAtasan: true }), null);
   assert.equal(alasanNonaktifDitolak({ anggota: 2, klien: 0, denganSupervisorBaru: true }), null);
-  assert.match(alasanNonaktifDitolak({ anggota: 2, klien: 1, anggotaBerkasAtasan: true }) ?? "", /Klien/);
+  assert.match(
+    alasanNonaktifDitolak({ anggota: 2, klien: 1, anggotaBerkasAtasan: true }) ?? "",
+    /Klien/,
+  );
 });
 
 test("alasanAlihDitolak: target harus ada, aktif, bukan pemilik sekarang", () => {

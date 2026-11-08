@@ -4,13 +4,7 @@ import { connection } from "next/server";
 import { FormKlienBaru } from "@/components/form-klien-baru";
 import { BarisTabelSkeleton, KartuSkeleton } from "@/components/skeleton";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -51,12 +45,8 @@ async function DaftarKlien() {
               {klien.map((k) => (
                 <TableRow key={k.id}>
                   <TableCell className="font-medium">{`${k.nama}`}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {k.kontak ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {k.jumlahFollowup}
-                  </TableCell>
+                  <TableCell className="text-muted-foreground">{k.kontak ?? "—"}</TableCell>
+                  <TableCell className="text-right tabular-nums">{k.jumlahFollowup}</TableCell>
                   <TableCell>{k.followupTerakhir ?? "—"}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="sm" asChild>

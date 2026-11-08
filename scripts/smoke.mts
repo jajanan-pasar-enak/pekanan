@@ -38,7 +38,8 @@ function buatJar() {
       const i = pair!.indexOf("=");
       const name = pair!.slice(0, i).trim();
       const value = pair!.slice(i + 1).trim();
-      const dihapus = value === "" || /^max-age=0$/i.test(sisa.find((a) => /^max-age=/i.test(a)) ?? "");
+      const dihapus =
+        value === "" || /^max-age=0$/i.test(sisa.find((a) => /^max-age=/i.test(a)) ?? "");
       cookies = cookies.filter((c) => c.name !== name);
       if (!dihapus) cookies.push({ name, value });
     }
@@ -176,7 +177,12 @@ async function jalankanFase(): Promise<void> {
     if (awal.json?.data?.harusGantiPassword === true && !baruDiseed) {
       const r = await admin.call("/api/admin/karyawan", {
         method: "POST",
-        body: JSON.stringify({ nama: "X", email: `smoke-cek-${stempel}@seed.local`, password: passwordAwal, level: "Tetap" }),
+        body: JSON.stringify({
+          nama: "X",
+          email: `smoke-cek-${stempel}@seed.local`,
+          password: passwordAwal,
+          level: "Tetap",
+        }),
       });
       check(
         "admin wajib ganti password → 403 PASSWORD_CHANGE_REQUIRED",
@@ -192,9 +198,16 @@ async function jalankanFase(): Promise<void> {
     } else {
       const akhir = await admin.call("/api/auth/change-password", {
         method: "POST",
-        body: JSON.stringify({ currentPassword: passwordSesiAdmin, newPassword: adminPasswordBaru }),
+        body: JSON.stringify({
+          currentPassword: passwordSesiAdmin,
+          newPassword: adminPasswordBaru,
+        }),
       });
-      check("admin ganti password", akhir.status === 200, `status=${akhir.status} ${akhir.text.slice(0, 80)}`);
+      check(
+        "admin ganti password",
+        akhir.status === 200,
+        `status=${akhir.status} ${akhir.text.slice(0, 80)}`,
+      );
       // revokeOtherSessions mencabut sesi lama; masuk ulang dengan password baru.
       kandidatAdmin = [adminPasswordBaru];
       admin = await masukAdmin();
@@ -214,7 +227,11 @@ async function jalankanFase(): Promise<void> {
       method: "POST",
       body: JSON.stringify({ nama: "", email: "bukan-email", password: "x", level: "Tetap" }),
     });
-    check("body tidak valid → 400 VALIDATION", r.status === 400 && kode(r.json) === "VALIDATION", `status=${r.status} code=${kode(r.json)}`);
+    check(
+      "body tidak valid → 400 VALIDATION",
+      r.status === 400 && kode(r.json) === "VALIDATION",
+      `status=${r.status} code=${kode(r.json)}`,
+    );
   }
   {
     const r = await admin.call("/api/admin/karyawan", {
@@ -246,14 +263,21 @@ async function jalankanFase(): Promise<void> {
     });
     check(
       "admin buat karyawan",
-      r.status === 201 && r.json?.data?.email === emailPertama && r.json?.data?.harusGantiPassword === true,
+      r.status === 201 &&
+        r.json?.data?.email === emailPertama &&
+        r.json?.data?.harusGantiPassword === true,
       `status=${r.status} email=${r.json?.data?.email ?? "-"}`,
     );
   }
   {
     const r = await admin.call("/api/admin/karyawan", {
       method: "POST",
-      body: JSON.stringify({ nama: "Duplikat", email: emailPertama, password: passwordAwal, level: "Tetap" }),
+      body: JSON.stringify({
+        nama: "Duplikat",
+        email: emailPertama,
+        password: passwordAwal,
+        level: "Tetap",
+      }),
     });
     check("email duplikat ditolak", r.status === 400, `status=${r.status} code=${kode(r.json)}`);
   }
@@ -281,7 +305,12 @@ async function jalankanFase(): Promise<void> {
   {
     const r = await anggota.call("/api/admin/karyawan", {
       method: "POST",
-      body: JSON.stringify({ nama: "X", email: emailKedua, password: passwordAwal, level: "Tetap" }),
+      body: JSON.stringify({
+        nama: "X",
+        email: emailKedua,
+        password: passwordAwal,
+        level: "Tetap",
+      }),
     });
     check(
       "endpoint lain → 403 PASSWORD_CHANGE_REQUIRED",
@@ -294,7 +323,11 @@ async function jalankanFase(): Promise<void> {
       method: "POST",
       body: JSON.stringify({ currentPassword: "salah-banget", newPassword: passwordBaru }),
     });
-    check("ganti password dengan password lama salah ditolak", r.status >= 400, `status=${r.status}`);
+    check(
+      "ganti password dengan password lama salah ditolak",
+      r.status >= 400,
+      `status=${r.status}`,
+    );
   }
   {
     const r = await anggota.call("/api/auth/change-password", {
@@ -314,7 +347,12 @@ async function jalankanFase(): Promise<void> {
   {
     const r = await anggota.call("/api/admin/karyawan", {
       method: "POST",
-      body: JSON.stringify({ nama: "X", email: emailKedua, password: passwordAwal, level: "Tetap" }),
+      body: JSON.stringify({
+        nama: "X",
+        email: emailKedua,
+        password: passwordAwal,
+        level: "Tetap",
+      }),
     });
     check(
       "karyawan non-admin → 403 FORBIDDEN",
@@ -382,7 +420,8 @@ async function faseLaporan() {
       idSup = idPer.get(emailSupervisor) ?? "";
       idAnak = idPer.get(emailPertama) ?? "";
       const idAtasan = idPer.get(emailAtasan) ?? "";
-      if (!idSup || !idAnak || !idAtasan) throw new Error("idsmoke: profil karyawan tidak ditemukan");
+      if (!idSup || !idAnak || !idAtasan)
+        throw new Error("idsmoke: profil karyawan tidak ditemukan");
       await client.query(
         `UPDATE karyawan SET harus_ganti_password = false
          WHERE user_id IN (SELECT id FROM "user" WHERE email = ANY($1::text[]))`,
@@ -424,7 +463,11 @@ async function faseLaporan() {
       const jumlahDraf = (r.json?.data?.laporan ?? []).filter(
         (l: any) => l.pekanBerjalan && l.status === "Draf",
       ).length;
-      check("bootstrap idempoten", r.status === 200 && jumlahDraf === 1, `status=${r.status} draf=${jumlahDraf}`);
+      check(
+        "bootstrap idempoten",
+        r.status === 200 && jumlahDraf === 1,
+        `status=${r.status} draf=${jumlahDraf}`,
+      );
     }
 
     const baca = await sup.call(`/api/laporan/${laporanId}`);
@@ -646,7 +689,8 @@ async function faseLaporan() {
       const k = r.json?.data?.koreksi?.[0];
       check(
         "koreksi tersimpan: nilai sesudah + diff + alasan",
-        r.json?.data?.baris?.[0]?.mediaOnline === 6 && k?.alasan === "Salah hitung sebar media online",
+        r.json?.data?.baris?.[0]?.mediaOnline === 6 &&
+          k?.alasan === "Salah hitung sebar media online",
         `media=${r.json?.data?.baris?.[0]?.mediaOnline ?? "-"} alasan=${k?.alasan ?? "-"}`,
       );
     }
@@ -664,7 +708,10 @@ async function faseLaporan() {
     {
       const r = await sup.call(`/api/laporan/${laporanLampau}/koreksi`, {
         method: "POST",
-        body: JSON.stringify({ alasan: "Koreksi diri sendiri", baris: [{ anggotaId: idAnak, mediaOnline: 1 }] }),
+        body: JSON.stringify({
+          alasan: "Koreksi diri sendiri",
+          baris: [{ anggotaId: idAnak, mediaOnline: 1 }],
+        }),
       });
       check(
         "pemilik tidak boleh mengoreksi sendiri → 403",
@@ -714,7 +761,9 @@ async function faseLaporan() {
       const r = await masaDepan.call("/api/pekan/bootstrap", { method: "POST" });
       check(
         "supervisor tanpa anggota: hanya pekan berjalan yang disiapkan",
-        r.status === 200 && r.json?.data?.laporan?.length === 0 && r.json?.data?.anggotaLangsung === 0,
+        r.status === 200 &&
+          r.json?.data?.laporan?.length === 0 &&
+          r.json?.data?.anggotaLangsung === 0,
         `status=${r.status} laporan=${r.json?.data?.laporan?.length ?? "-"}`,
       );
     }
@@ -847,7 +896,11 @@ async function faseKlienIuran() {
   {
     const r = await sup.call(`/api/klien/${klienId}/followup`, {
       method: "POST",
-      body: JSON.stringify({ tanggal: tanggalWIB(0), hasilFollowupId: hasilId, deskripsi: "Tertarik" }),
+      body: JSON.stringify({
+        tanggal: tanggalWIB(0),
+        hasilFollowupId: hasilId,
+        deskripsi: "Tertarik",
+      }),
     });
     check("catat follow-up", r.status === 201, `status=${r.status} code=${kode(r.json)}`);
   }
@@ -857,7 +910,11 @@ async function faseKlienIuran() {
     const r3 = await lain.call(`/api/klien/${klienId}/followup`);
     check(
       "riwayat: pemilik & atasan langsung boleh, orang lain 404",
-      r.status === 200 && r.json?.data?.length === 1 && r2.status === 200 && r2.json?.data?.length === 1 && r3.status === 404,
+      r.status === 200 &&
+        r.json?.data?.length === 1 &&
+        r2.status === 200 &&
+        r2.json?.data?.length === 1 &&
+        r3.status === 404,
       `status=${r.status}/${r2.status}/${r3.status}`,
     );
   }
@@ -900,7 +957,11 @@ async function faseKlienIuran() {
       rekap.status === 200 && baris.length === 1 && baris[0]?.followup === 0,
       `status=${rekap.status} n=${baris.length} followup=${baris[0]?.followup ?? "-"}`,
     );
-    check("rekap: atasan langsung boleh, orang lain 404", r2.status === 200 && r3.status === 404, `status=${r2.status}/${r3.status}`);
+    check(
+      "rekap: atasan langsung boleh, orang lain 404",
+      r2.status === 200 && r3.status === 404,
+      `status=${r2.status}/${r3.status}`,
+    );
   }
   const bulanIni = `${tanggalWIB(0).slice(0, 7)}-01`;
   {
@@ -952,7 +1013,8 @@ async function faseKlienIuran() {
     const data = r.json?.data ?? [];
     check(
       "GET iuran: saw pembayaran Anggota Langsung",
-      r.status === 200 && data.some((p: any) => p.karyawan?.id === idAnak && p.olehSupervisor === true),
+      r.status === 200 &&
+        data.some((p: any) => p.karyawan?.id === idAnak && p.olehSupervisor === true),
       `status=${r.status} n=${data.length}`,
     );
     const r2 = await lain.call(`/api/pembayaran-iuran?karyawanId=${idAnak}`);
@@ -1025,7 +1087,10 @@ async function faseAdminKepegawaian() {
   for (const email of [emailZ, emailY, emailX]) await jadi(email);
   const kembaliKeZ = () => jadi(emailZ);
   const patch = (email: string, body: unknown) =>
-    admin.call(`/api/admin/karyawan/${idr[email]}`, { method: "PATCH", body: JSON.stringify(body) });
+    admin.call(`/api/admin/karyawan/${idr[email]}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
   // Token sesi Better Auth berotasi saat dipakai. Membaca sesi dengan jar lain
   // setelah PATCH dapat menimpa token di DB sebelum jar admin membaca respons
   // PATCH (get-session tampak valid, PATCH 401). Jadi sediakan jalur PATCH yang
@@ -1036,7 +1101,8 @@ async function faseAdminKepegawaian() {
       method: "PATCH",
       body: JSON.stringify({ nama: "Smoke Bawah" }),
     });
-    if (r.status !== 200) throw new Error(`PATCH ${email} gagal: ${r.status} ${r.text.slice(0, 120)}`);
+    if (r.status !== 200)
+      throw new Error(`PATCH ${email} gagal: ${r.status} ${r.text.slice(0, 120)}`);
   }
 
   {
@@ -1047,15 +1113,27 @@ async function faseAdminKepegawaian() {
       method: "PATCH",
       body: JSON.stringify({ nama: "Dibajak" }),
     });
-    check("non-admin akses admin → 403", r.status === 403 && r2.status === 403, `status=${r.status}/${r2.status}`);
+    check(
+      "non-admin akses admin → 403",
+      r.status === 403 && r2.status === 403,
+      `status=${r.status}/${r2.status}`,
+    );
   }
   {
     const r = await patch(emailZ, { supervisorId: idr[emailY]! });
-    check("pindah supervisor: Z di bawah Y", r.status === 200 && r.json?.data?.supervisorId === idr[emailY], `status=${r.status} code=${kode(r.json)}`);
+    check(
+      "pindah supervisor: Z di bawah Y",
+      r.status === 200 && r.json?.data?.supervisorId === idr[emailY],
+      `status=${r.status} code=${kode(r.json)}`,
+    );
   }
   {
     const r = await patch(emailY, { supervisorId: idr[emailX]! });
-    check("pindah supervisor: Y di bawah X", r.status === 200, `status=${r.status} code=${kode(r.json)}`);
+    check(
+      "pindah supervisor: Y di bawah X",
+      r.status === 200,
+      `status=${r.status} code=${kode(r.json)}`,
+    );
   }
   {
     const r = await patch(emailX, { supervisorId: idr[emailZ]! });
@@ -1067,7 +1145,11 @@ async function faseAdminKepegawaian() {
   }
   {
     const r = await patch(emailY, { level: "Magang" });
-    check("demote Tetap→Magang yang membimbing Magang → 400", r.status === 400 && kode(r.json) === "VALIDATION", `status=${r.status} code=${kode(r.json)}`);
+    check(
+      "demote Tetap→Magang yang membimbing Magang → 400",
+      r.status === 400 && kode(r.json) === "VALIDATION",
+      `status=${r.status} code=${kode(r.json)}`,
+    );
   }
   {
     // Y tidak boleh dinonaktifkan sebelum Z selesai diuji: kegagalan lebih awal
@@ -1082,7 +1164,11 @@ async function faseAdminKepegawaian() {
     await jadi(emailX);
     // Kembalikan rantai: siklus ditolak sebelum menulis, Y tetap puncak.
     const balik = await patch(emailY, { supervisorId: idr[emailX]! });
-    check("Y kembali di bawah X", balik.status === 200, `status=${balik.status} code=${kode(balik.json)}`);
+    check(
+      "Y kembali di bawah X",
+      balik.status === 200,
+      `status=${balik.status} code=${kode(balik.json)}`,
+    );
   }
 
   // Draf pekan berjalan Y berisi baris Z (setelah pindah supervisor).
@@ -1117,7 +1203,11 @@ async function faseAdminKepegawaian() {
   }
   {
     const r = await patch(emailY, { aktif: false });
-    check("nonaktif supervisor yang punya anggota → 400", r.status === 400, `status=${r.status} body=${r.text.slice(0, 120)}`);
+    check(
+      "nonaktif supervisor yang punya anggota → 400",
+      r.status === 400,
+      `status=${r.status} body=${r.text.slice(0, 120)}`,
+    );
   }
   {
     await jadi(emailY);
@@ -1165,11 +1255,19 @@ async function faseAdminKepegawaian() {
   {
     await kembaliKeZ();
     const r = await bersama.call("/api/me");
-    check("sesi karyawan nonaktif tidak berlaku", r.status === 401, `status=${r.status} code=${kode(r.json)}`);
+    check(
+      "sesi karyawan nonaktif tidak berlaku",
+      r.status === 401,
+      `status=${r.status} code=${kode(r.json)}`,
+    );
   }
   {
     const r = await bersama.call(`/api/pembayaran-iuran`);
-    check("tidak bisa mencatat iuran setelah nonaktif → 401", r.status === 401, `status=${r.status}`);
+    check(
+      "tidak bisa mencatat iuran setelah nonaktif → 401",
+      r.status === 401,
+      `status=${r.status}`,
+    );
   }
   {
     const r = await patch(emailY, { aktif: false });
@@ -1257,6 +1355,8 @@ try {
     // Data @seed.local tidak disentuh smoke; seed.mts --cleanup untuk menghapusnya.
     console.log("smoke: data @seed.local tidak disentuh (pk. seed.mts --cleanup).");
   } else {
-    console.log(`smoke: DATABASE_URL_UNPOOLED tidak ada; bersihkan manual (${emailPertama}, ${emailKedua}).`);
+    console.log(
+      `smoke: DATABASE_URL_UNPOOLED tidak ada; bersihkan manual (${emailPertama}, ${emailKedua}).`,
+    );
   }
 }

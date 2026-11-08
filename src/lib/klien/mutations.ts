@@ -112,10 +112,7 @@ type BarisFollowup = {
   pemilik: { id: string; supervisorId: string | null };
 };
 
-async function followupUntukKelola(
-  followupId: string,
-  viewerId: string,
-): Promise<BarisFollowup> {
+async function followupUntukKelola(followupId: string, viewerId: string): Promise<BarisFollowup> {
   const [row] = await db
     .select({
       id: followup.id,
@@ -138,11 +135,7 @@ async function followupUntukKelola(
 
 // Edit riwayat: nilai lama + alasan disimpan per perubahan; tanpa diff = 400
 // (server menolak perubahan kosong tanpa merusak riwayat).
-export async function ubahFollowup(
-  followupId: string,
-  viewerId: string,
-  input: unknown,
-) {
+export async function ubahFollowup(followupId: string, viewerId: string, input: unknown) {
   const body = ubahFollowupSchema.parse(input);
   if (!tanggalFollowupSah(body.tanggal, tanggalHariIni())) {
     throw new AppError("VALIDATION", "Tanggal follow-up tidak boleh di masa depan.");
@@ -190,11 +183,7 @@ export async function ubahFollowup(
 
 // Hapus = soft-delete: baris tetap ada karena followup_edit merujuknya dengan
 // RESTRICT, dan riwayat penghapusan dibaca dari followup_edit ("dihapus").
-export async function hapusFollowup(
-  followupId: string,
-  viewerId: string,
-  input: unknown,
-) {
+export async function hapusFollowup(followupId: string, viewerId: string, input: unknown) {
   const body = hapusFollowupSchema.parse(input);
   const row = await followupUntukKelola(followupId, viewerId);
 
@@ -224,14 +213,11 @@ export async function hapusFollowup(
 // Master Hasil Follow-up dikelola Admin (tabel master, bukan enum).
 export async function tambahHasilFollowup(input: unknown) {
   const body = hasilFollowupSchema.parse(input);
-  const [baru] = await db
-    .insert(hasilFollowup)
-    .values(body)
-    .returning({
-      id: hasilFollowup.id,
-      nama: hasilFollowup.nama,
-      urutan: hasilFollowup.urutan,
-      aktif: hasilFollowup.aktif,
-    });
+  const [baru] = await db.insert(hasilFollowup).values(body).returning({
+    id: hasilFollowup.id,
+    nama: hasilFollowup.nama,
+    urutan: hasilFollowup.urutan,
+    aktif: hasilFollowup.aktif,
+  });
   return baru!;
 }

@@ -76,9 +76,7 @@ export async function daftarKlienAnggotaLangsung(
   return anggota.map((a) => ({
     id: a.id,
     nama: a.nama,
-    klien: daftarKlien
-      .filter((k) => k.pemilikId === a.id)
-      .map((k) => ({ id: k.id, nama: k.nama })),
+    klien: daftarKlien.filter((k) => k.pemilikId === a.id).map((k) => ({ id: k.id, nama: k.nama })),
   }));
 }
 
@@ -205,14 +203,10 @@ export async function daftarFollowupPekan(
       pencatat: { id: b.pemilikId, nama: b.pencatatNama },
       // created_by selalu pemilik, jadi pencatat yang berbeda = atasan.
       olehSupervisor:
-        b.pencatatId === b.pemilikId
-          ? null
-          : { id: b.pencatatId, nama: b.pencatatNama },
+        b.pencatatId === b.pemilikId ? null : { id: b.pencatatId, nama: b.pencatatNama },
       bolehUbah: bolehKelolaFollowup(viewerId, pemilik),
       edit: riwayat
-        .filter(
-          (r) => r.followupId === b.id && !("dihapus" in (r.sesudah as object)),
-        )
+        .filter((r) => r.followupId === b.id && !("dihapus" in (r.sesudah as object)))
         .map((r) => ({
           id: r.id,
           editor: { id: r.editorId, nama: r.editorNama },

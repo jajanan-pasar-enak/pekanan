@@ -11,13 +11,7 @@ import {
 } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireKaryawan } from "@/lib/auth/current";
 import { AppError } from "@/lib/http";
 import { daftarFollowupPekan } from "@/lib/klien/followup";
@@ -32,11 +26,7 @@ function teksNilai(v: unknown): string {
   return String(v);
 }
 
-function ringkasDiff(
-  sebelum: unknown,
-  sesudah: unknown,
-  namaAnggota: Map<string, string>,
-) {
+function ringkasDiff(sebelum: unknown, sesudah: unknown, namaAnggota: Map<string, string>) {
   const a = (sebelum ?? {}) as Record<string, BarisKoreksi>;
   const b = (sesudah ?? {}) as Record<string, BarisKoreksi>;
   return Object.keys(b).map((anggotaId) => ({
@@ -106,9 +96,7 @@ async function IsiLaporan({ id }: { id: string }) {
       <Card>
         <CardContent>
           {laporan.baris.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Laporan tidak punya baris anggota.
-            </p>
+            <p className="text-sm text-muted-foreground">Laporan tidak punya baris anggota.</p>
           ) : (
             <FormLaporan
               key={`${laporan.status}:${laporan.bolehUbah}`}

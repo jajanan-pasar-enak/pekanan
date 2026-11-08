@@ -5,13 +5,7 @@ import { GantiPasswordForm } from "@/components/ganti-password-form";
 import { JudulSkeleton } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireKaryawan } from "@/lib/auth/current";
 
 async function HeaderAkun() {

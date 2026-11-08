@@ -9,13 +9,7 @@ import {
   Skeleton,
 } from "@/components/skeleton";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -150,7 +144,10 @@ export default async function RekapPekanPage({ params }: PageProps<"/rekap/[peka
                   <Skeleton key={i} className="h-24 rounded-xl" />
                 ))}
               </div>
-              <KartuSkeleton judul="Rincian Anggota" anak={<BarisTabelSkeleton jumlahBaris={5} />} />
+              <KartuSkeleton
+                judul="Rincian Anggota"
+                anak={<BarisTabelSkeleton jumlahBaris={5} />}
+              />
             </>
           }
         />

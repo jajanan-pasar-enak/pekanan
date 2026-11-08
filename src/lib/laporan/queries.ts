@@ -73,9 +73,7 @@ export function bolehUbahLaporan(
   pemilikId: string,
 ): boolean {
   return (
-    viewerId === pemilikId &&
-    laporan.status === "Draf" &&
-    pekanSedangBerjalan(laporan.pekanMulai)
+    viewerId === pemilikId && laporan.status === "Draf" && pekanSedangBerjalan(laporan.pekanMulai)
   );
 }
 
@@ -206,7 +204,12 @@ export async function daftarLaporanSaya(supervisorId: string): Promise<LaporanRi
         },
       })
       .from(laporanAnggota)
-      .where(inArray(laporanAnggota.laporanId, rows.map((r) => r.id)));
+      .where(
+        inArray(
+          laporanAnggota.laporanId,
+          rows.map((r) => r.id),
+        ),
+      );
     for (const b of barisSemua) {
       const stat = isi.get(b.laporanId) ?? { diisi: 0, total: 0 };
       stat.total += 1;

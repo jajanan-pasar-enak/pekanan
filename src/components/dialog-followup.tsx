@@ -24,11 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { kirimApi } from "@/lib/api-client";
-import type {
-  FollowupDihapus,
-  FollowupPekan,
-  KonteksFollowupPekan,
-} from "@/lib/klien/followup";
+import type { FollowupDihapus, FollowupPekan, KonteksFollowupPekan } from "@/lib/klien/followup";
 
 type OpsiHasil = { id: string; nama: string };
 
@@ -120,8 +116,8 @@ function KonfirmasiHapus({
           {awal.deskripsi ? ` · ${awal.deskripsi}` : ""}
         </p>
         <p className="mt-2 text-muted-foreground">
-          Follow-up hilang dari hitungan pekan, tetapi tanggal, hasil, deskripsi, dan alasan
-          tetap tersimpan di riwayat penghapusan laporan ini.
+          Follow-up hilang dari hitungan pekan, tetapi tanggal, hasil, deskripsi, dan alasan tetap
+          tersimpan di riwayat penghapusan laporan ini.
         </p>
       </div>
       <div className="flex flex-col gap-2">
@@ -171,10 +167,7 @@ function FormFollowup({
   const [deskripsi, setDeskripsi] = useState(awal.deskripsi);
   const [alasan, setAlasan] = useState("");
   const bisaKirim =
-    tanggal !== "" &&
-    hasilFollowupId !== "" &&
-    (!perluAlasan || alasan.trim() !== "") &&
-    !busy;
+    tanggal !== "" && hasilFollowupId !== "" && (!perluAlasan || alasan.trim() !== "") && !busy;
 
   return (
     <form
@@ -309,11 +302,7 @@ export function DialogFollowup({
     if (!sasaran || sasaran.jenis !== "hapus") return;
     setBusy(true);
     try {
-      const hasil = await kirimApi(
-        "DELETE",
-        `/api/followup/${sasaran.followupId}`,
-        { alasan },
-      );
+      const hasil = await kirimApi("DELETE", `/api/followup/${sasaran.followupId}`, { alasan });
       if (!hasil.ok) {
         toast.error(hasil.message);
         return;
@@ -555,4 +544,3 @@ export function DialogFollowup({
     </>
   );
 }
-

@@ -53,8 +53,7 @@ export function CatatIuran({
   const [busy, setBusy] = useState(false);
 
   const pemasalahan =
-    pesanAwal ??
-    (karyawanId === "" ? "Pilih karyawan." : bulan === "" ? "Pilih bulan." : null);
+    pesanAwal ?? (karyawanId === "" ? "Pilih karyawan." : bulan === "" ? "Pilih bulan." : null);
   const bisaKirim = pemasalahan === null && nominalIuranId !== "" && !busy;
 
   async function submit(event: React.FormEvent) {
@@ -94,57 +93,57 @@ export function CatatIuran({
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="iuranKaryawan">Untuk</Label>
-        <Select value={karyawanId} onValueChange={setKaryawanId}>
-          <SelectTrigger id="iuranKaryawan" className="w-full">
-            <SelectValue placeholder="Pilih karyawan" />
-          </SelectTrigger>
-          <SelectContent>
-            {karyawan.map((k) => (
-              <SelectItem key={k.id} value={k.id}>
-                {k.nama}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="iuranBulan">Bulan</Label>
-        <Input
-          id="iuranBulan"
-          type="month"
-          value={bulan.slice(0, 7)}
-          max={bulanBerjalan.slice(0, 7)}
-          onChange={(e) => setBulan(e.target.value ? `${e.target.value}-01` : "")}
-          required
-        />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="iuranNominal">Nominal</Label>
-        <Select value={nominalIuranId} onValueChange={setNominalIuranId}>
-          <SelectTrigger id="iuranNominal" className="w-full">
-            <SelectValue placeholder="Pilih nominal" />
-          </SelectTrigger>
-          <SelectContent>
-            {nominal.map((n) => (
-              <SelectItem key={n.id} value={n.id}>
-                {n.nama} — {rupiah.format(n.nominal)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="iuranTanggal">Tanggal bayar</Label>
-        <Input
-          id="iuranTanggal"
-          type="date"
-          value={tanggalBayar}
-          max={hariIni}
-          onChange={(e) => setTanggalBayar(e.target.value)}
-        />
-      </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="iuranKaryawan">Untuk</Label>
+          <Select value={karyawanId} onValueChange={setKaryawanId}>
+            <SelectTrigger id="iuranKaryawan" className="w-full">
+              <SelectValue placeholder="Pilih karyawan" />
+            </SelectTrigger>
+            <SelectContent>
+              {karyawan.map((k) => (
+                <SelectItem key={k.id} value={k.id}>
+                  {k.nama}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="iuranBulan">Bulan</Label>
+          <Input
+            id="iuranBulan"
+            type="month"
+            value={bulan.slice(0, 7)}
+            max={bulanBerjalan.slice(0, 7)}
+            onChange={(e) => setBulan(e.target.value ? `${e.target.value}-01` : "")}
+            required
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="iuranNominal">Nominal</Label>
+          <Select value={nominalIuranId} onValueChange={setNominalIuranId}>
+            <SelectTrigger id="iuranNominal" className="w-full">
+              <SelectValue placeholder="Pilih nominal" />
+            </SelectTrigger>
+            <SelectContent>
+              {nominal.map((n) => (
+                <SelectItem key={n.id} value={n.id}>
+                  {n.nama} — {rupiah.format(n.nominal)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="iuranTanggal">Tanggal bayar</Label>
+          <Input
+            id="iuranTanggal"
+            type="date"
+            value={tanggalBayar}
+            max={hariIni}
+            onChange={(e) => setTanggalBayar(e.target.value)}
+          />
+        </div>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-3">
         {pemasalahan && <p className="text-sm text-destructive">{pemasalahan}</p>}

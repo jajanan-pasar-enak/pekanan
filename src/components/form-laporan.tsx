@@ -55,10 +55,7 @@ function angkaDari(teks: string): number | null {
 
 function lengkap(b: BarisForm): boolean {
   return (
-    b.kehadiran !== null &&
-    b.mediaOnline !== null &&
-    b.mediaOffline !== null &&
-    b.oneOnOne !== null
+    b.kehadiran !== null && b.mediaOnline !== null && b.mediaOffline !== null && b.oneOnOne !== null
   );
 }
 
@@ -86,7 +83,9 @@ export function FormLaporan({
   const [tersimpanVersi, setTersimpanVersi] = useState(0);
   // Snapshot terakhir yang tersimpan untuk menghindari PATCH
   // berulang tanpa perubahan dan snapshot sebelum pengeditan.
-  const tersimpan = useRef(new Map(barisAwal.map((b) => [b.anggotaId, potonganBaris(keBarisForm(b))])));
+  const tersimpan = useRef(
+    new Map(barisAwal.map((b) => [b.anggotaId, potonganBaris(keBarisForm(b))])),
+  );
   const jeda = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   const semuaLengkap = useMemo(() => baris.every(lengkap), [baris]);
@@ -98,15 +97,12 @@ export function FormLaporan({
     (!semuaLengkap ||
       baris.some(
         (b) =>
-          JSON.stringify(potonganBaris(b)) !==
-          JSON.stringify(tersimpan.current.get(b.anggotaId)),
+          JSON.stringify(potonganBaris(b)) !== JSON.stringify(tersimpan.current.get(b.anggotaId)),
       ));
   const jumlahLengkap = baris.filter(lengkap).length;
 
   function ubah(anggotaId: string, patch: Partial<BarisForm>) {
-    const berikutnya = baris.map((b) =>
-      b.anggotaId === anggotaId ? { ...b, ...patch } : b,
-    );
+    const berikutnya = baris.map((b) => (b.anggotaId === anggotaId ? { ...b, ...patch } : b));
     setBaris(berikutnya);
     setStatus((s) => ({ ...s, [anggotaId]: "bersih" }));
 
@@ -277,9 +273,7 @@ export function FormLaporan({
                     <Textarea
                       aria-label={`Keterangan one-on-one ${b.nama}`}
                       value={b.keteranganOneOnOne ?? ""}
-                      onChange={(e) =>
-                        ubah(b.anggotaId, { keteranganOneOnOne: e.target.value })
-                      }
+                      onChange={(e) => ubah(b.anggotaId, { keteranganOneOnOne: e.target.value })}
                       onBlur={() => void simpanSekarang(b.anggotaId)}
                       readOnly={!bolehUbah}
                       rows={1}

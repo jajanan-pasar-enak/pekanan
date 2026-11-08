@@ -1,7 +1,6 @@
 import { z } from "zod";
 
-const kosongJadiNull = (v: unknown) =>
-  typeof v === "string" && v.trim() === "" ? null : v;
+const kosongJadiNull = (v: unknown) => (typeof v === "string" && v.trim() === "" ? null : v);
 
 // Tanggal follow-up tidak boleh di masa depan (hari ini WIB masih sah; CHECK DB juga).
 export function tanggalFollowupSah(tanggal: string, hariIni: string): boolean {

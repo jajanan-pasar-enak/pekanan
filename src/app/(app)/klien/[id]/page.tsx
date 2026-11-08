@@ -6,13 +6,7 @@ import { FormFollowup } from "@/components/form-followup";
 import { BarisTabelSkeleton, HalamanSkeleton, KartuSkeleton } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -60,15 +54,11 @@ async function IsiKlien({ id }: { id: string }) {
           <CardHeader>
             <CardTitle>Catat follow-up</CardTitle>
             <CardDescription>
-            Satu catatan = satu kejadian bertanggal. Dicatat atas nama {klien.pemilik.nama}.
-          </CardDescription>
+              Satu catatan = satu kejadian bertanggal. Dicatat atas nama {klien.pemilik.nama}.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <FormFollowup
-              klienId={klien.id}
-              hariIni={tanggalHariIni()}
-              opsiHasil={opsiHasil}
-            />
+            <FormFollowup klienId={klien.id} hariIni={tanggalHariIni()} opsiHasil={opsiHasil} />
           </CardContent>
         </Card>
       )}

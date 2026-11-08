@@ -212,9 +212,7 @@ export function FormKoreksi({
                     <Textarea
                       aria-label={`Keterangan one-on-one ${b.nama}`}
                       value={b.keteranganOneOnOne ?? ""}
-                      onChange={(e) =>
-                        ubah(b.anggotaId, { keteranganOneOnOne: e.target.value })
-                      }
+                      onChange={(e) => ubah(b.anggotaId, { keteranganOneOnOne: e.target.value })}
                       rows={1}
                     />
                   </TableCell>

@@ -45,10 +45,7 @@ export async function periksaSupervisor(
 
 // Target (supervisor baru) tidak boleh menjadi turunan dari karyawan yang
 // diubah, dan baris karyawan tidak boleh dibimbing dirinya sendiri.
-export function sqlSupervisorMembentukSiklus(
-  karyawanId: string,
-  supervisorId: string,
-): SQL {
+export function sqlSupervisorMembentukSiklus(karyawanId: string, supervisorId: string): SQL {
   return sql`EXISTS (
     WITH RECURSIVE rantai AS (
       SELECT id, supervisor_id, 1 AS kedalaman FROM karyawan WHERE id = ${supervisorId}::uuid
