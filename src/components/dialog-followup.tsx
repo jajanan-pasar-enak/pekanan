@@ -265,7 +265,6 @@ export function DialogFollowup({
   const [busy, setBusy] = useState(false);
   // Salinan lokal agar perubahan langsung terlihat; server tetap sumber angkanya.
   const [konteks, setKonteks] = useState(konteksAwal);
-  const [memuat, setMemuat] = useState(false);
 
   // Data server baru (router.refresh) menimpa salinan lokal; disesuaikan saat
   // render, bukan di effect, agar tidak ada render berantai.
@@ -280,13 +279,10 @@ export function DialogFollowup({
     konteksAwal.anggota.find((a) => a.nama === namaAnggota);
 
   async function segarkan() {
-    setMemuat(true);
     try {
       setKonteks(await ambilKonteks(laporanId));
     } catch {
       toast.error("Gagal memuat follow-up terbaru.");
-    } finally {
-      setMemuat(false);
     }
   }
 

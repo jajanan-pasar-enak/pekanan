@@ -1,6 +1,6 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { karyawan, laporanAnggota, laporanPekan, pekan, user } from "@/db/schema";
+import { karyawan, laporanPekan, pekan, user } from "@/db/schema";
 import { auth } from "@/lib/auth/server";
 import {
   kunciSupervisi,

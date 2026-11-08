@@ -30,8 +30,9 @@ export function GantiPasswordForm({ wajib }: { wajib: boolean }) {
         setError(hasil.message);
         return;
       }
-      // Sesi lain sudah dicabut; cookie ini sudah diganti server.
-      window.location.href = "/dashboard";
+      // Sesi lain sudah dicabut; cookie ini sudah diganti server. Muat penuh
+      // agar cache router sesi lama ikut terbuang.
+      window.location.replace("/dashboard");
     } finally {
       setBusy(false);
     }

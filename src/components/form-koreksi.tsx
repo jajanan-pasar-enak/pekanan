@@ -124,7 +124,7 @@ export function FormKoreksi({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {baris.map((b, i) => {
+            {baris.map((b) => {
               const diubah = berubah.includes(b);
               return (
                 <TableRow key={b.anggotaId} className={diubah ? "bg-amber-500/5" : undefined}>

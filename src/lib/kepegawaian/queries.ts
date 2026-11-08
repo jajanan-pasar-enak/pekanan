@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { followup, karyawan, klien, laporanAnggota, laporanPekan, pekan, user } from "@/db/schema";
+import { karyawan, laporanAnggota, laporanPekan, pekan, user } from "@/db/schema";
 import { AppError } from "@/lib/http";
 
 export type KaryawanRingkas = {

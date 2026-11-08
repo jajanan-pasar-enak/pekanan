@@ -6,7 +6,9 @@ import { authClient } from "@/lib/auth/client";
 export function KeluarButton() {
   async function keluar() {
     await authClient.signOut();
-    window.location.href = "/";
+    // Muat penuh agar cache router sesi lama ikut terbuang; replace supaya
+    // tombol Back tidak kembali ke halaman yang butuh sesi.
+    window.location.replace("/");
   }
 
   return (

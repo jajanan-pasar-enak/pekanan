@@ -1,13 +1,6 @@
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import {
-  followup,
-  karyawan,
-  koreksiLaporan,
-  laporanAnggota,
-  laporanPekan,
-  pekan,
-} from "@/db/schema";
+import { karyawan, koreksiLaporan, laporanAnggota, laporanPekan, pekan } from "@/db/schema";
 import { AppError } from "@/lib/http";
 import { pekanWIB, tanggalHariIni } from "@/lib/waktu";
 import { barisLengkap } from "./aturan";
