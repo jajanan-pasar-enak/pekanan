@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { GantiPasswordForm } from "@/components/ganti-password-form";
 import { KeluarButton } from "@/components/keluar-button";
+import { Skeleton } from "@/components/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireKaryawan } from "@/lib/auth/current";
 
@@ -31,7 +32,17 @@ async function IsiHalaman() {
 
 export default function GantiPasswordPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense
+      fallback={
+        <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-6 py-16">
+          <div className="flex flex-col gap-2" aria-hidden>
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+          <Skeleton className="h-64 w-full rounded-xl" aria-hidden />
+        </main>
+      }
+    >
       <IsiHalaman />
     </Suspense>
   );

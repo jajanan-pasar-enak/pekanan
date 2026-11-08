@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { FormKlienBaru } from "@/components/form-klien-baru";
+import { HalamanSkeleton, KartuSkeleton, KartuTabelSkeleton } from "@/components/skeleton";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -93,7 +94,18 @@ async function IsiKlien() {
 
 export default function KlienPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense
+      fallback={
+        <HalamanSkeleton
+          anak={
+            <>
+              <KartuSkeleton judul="Tambah klien" />
+              <KartuSkeleton judul="Daftar klien" anak={<KartuTabelSkeleton />} />
+            </>
+          }
+        />
+      }
+    >
       <IsiKlien />
     </Suspense>
   );

@@ -8,6 +8,7 @@ import {
 import { KelolaKlien } from "@/components/admin/kelola-klien";
 import { MasterHasilFollowup } from "@/components/admin/master-hasil-followup";
 import { MasterNominalIuran } from "@/components/admin/master-nominal-iuran";
+import { HalamanSkeleton, KartuTabelSkeleton } from "@/components/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { requireKaryawan } from "@/lib/auth/current";
 import { daftarHasilFollowup } from "@/lib/klien/queries";
@@ -83,7 +84,7 @@ async function IsiAdmin() {
 
 export default function AdminPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<HalamanSkeleton anak={<KartuTabelSkeleton jumlahBaris={8} />} />}>
       <IsiAdmin />
     </Suspense>
   );

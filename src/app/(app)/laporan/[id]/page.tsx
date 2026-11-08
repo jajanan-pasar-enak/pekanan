@@ -3,6 +3,12 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { FormLaporan } from "@/components/form-laporan";
+import {
+  HalamanSkeleton,
+  IsiKartuSkeleton,
+  KartuSkeleton,
+  KartuTabelSkeleton,
+} from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -163,7 +169,18 @@ async function IsiLaporan({ id }: { id: string }) {
 export default async function LaporanPage({ params }: PageProps<"/laporan/[id]">) {
   const { id } = await params;
   return (
-    <Suspense fallback={null}>
+    <Suspense
+      fallback={
+        <HalamanSkeleton
+          anak={
+            <>
+              <KartuSkeleton judul="Isi laporan" anak={<KartuTabelSkeleton jumlahBaris={6} />} />
+              <KartuSkeleton judul="Riwayat Koreksi" anak={<IsiKartuSkeleton />} />
+            </>
+          }
+        />
+      }
+    >
       <IsiLaporan id={id} />
     </Suspense>
   );

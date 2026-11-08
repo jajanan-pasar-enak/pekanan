@@ -2,7 +2,21 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { AuthPanel } from "@/components/auth-panel";
+import { Skeleton } from "@/components/skeleton";
 import { bacaSesiSekarang } from "@/lib/auth/current";
+
+function PanelMasukSkeleton() {
+  return (
+    <div className="flex flex-col gap-4 rounded-xl border p-6" aria-busy="true">
+      <span className="sr-only">Memeriksa sesi…</span>
+      <Skeleton className="h-4 w-12" aria-hidden />
+      <Skeleton className="h-8 w-full" aria-hidden />
+      <Skeleton className="h-4 w-16" aria-hidden />
+      <Skeleton className="h-8 w-full" aria-hidden />
+      <Skeleton className="h-8 w-full" aria-hidden />
+    </div>
+  );
+}
 
 async function SudahMasuk() {
   await connection();
@@ -19,7 +33,7 @@ export default function Home() {
           Masuk untuk mencatat kinerja pekanan tim.
         </p>
       </header>
-      <Suspense fallback={null}>
+      <Suspense fallback={<PanelMasukSkeleton />}>
         <SudahMasuk />
       </Suspense>
     </main>

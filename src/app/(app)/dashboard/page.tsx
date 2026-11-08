@@ -12,6 +12,12 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
+  HalamanSkeleton,
+  KartuAnggotaSkeleton,
+  KartuSkeleton,
+  KartuTabelSkeleton,
+} from "@/components/skeleton";
+import {
   Table,
   TableBody,
   TableCell,
@@ -134,9 +140,32 @@ async function IsiDashboard() {
   );
 }
 
+function DashboardSkeleton() {
+  return (
+    <HalamanSkeleton
+      anak={
+        <div className="flex flex-col gap-6">
+          <div className="grid gap-6 lg:grid-cols-5">
+            <KartuSkeleton
+              judul="Laporan Pekan Saya"
+              className="lg:col-span-3"
+              anak={<KartuTabelSkeleton jumlahBaris={2} />}
+            />
+            <KartuSkeleton
+              judul="Anggota Langsung"
+              className="lg:col-span-2"
+              anak={<KartuAnggotaSkeleton jumlahBaris={5} />}
+            />
+          </div>
+        </div>
+      }
+    />
+  );
+}
+
 export default function DashboardPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<DashboardSkeleton />}>
       <IsiDashboard />
     </Suspense>
   );

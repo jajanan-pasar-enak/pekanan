@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { FormFollowup } from "@/components/form-followup";
+import { HalamanSkeleton, KartuSkeleton, KartuTabelSkeleton } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -126,7 +127,18 @@ async function IsiKlien({ id }: { id: string }) {
 export default async function KlienDetailPage({ params }: PageProps<"/klien/[id]">) {
   const { id } = await params;
   return (
-    <Suspense fallback={null}>
+    <Suspense
+      fallback={
+        <HalamanSkeleton
+          anak={
+            <>
+              <KartuSkeleton judul="Catat follow-up" />
+              <KartuSkeleton judul="Riwayat follow-up" anak={<KartuTabelSkeleton />} />
+            </>
+          }
+        />
+      }
+    >
       <IsiKlien id={id} />
     </Suspense>
   );

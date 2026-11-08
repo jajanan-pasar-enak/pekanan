@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { FormKoreksi } from "@/components/form-koreksi";
+import { HalamanSkeleton, KartuSkeleton, KartuTabelSkeleton } from "@/components/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireKaryawan } from "@/lib/auth/current";
@@ -49,7 +50,13 @@ export default async function KoreksiPage({
 }: PageProps<"/laporan/[id]/koreksi">) {
   const { id } = await params;
   return (
-    <Suspense fallback={null}>
+    <Suspense
+      fallback={
+        <HalamanSkeleton
+          anak={<KartuSkeleton judul="Isi koreksi" anak={<KartuTabelSkeleton />} />}
+        />
+      }
+    >
       <IsiKoreksi id={id} />
     </Suspense>
   );

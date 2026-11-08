@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { KeluarButton } from "@/components/keluar-button";
 import { NavUtama } from "@/components/nav-utama";
+import { Skeleton } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Toaster } from "@/components/ui/sonner";
 import { requireKaryawan } from "@/lib/auth/current";
@@ -43,9 +44,33 @@ async function AppShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Tampil saat muat penuh sebelum sesi/profil siap. Navbar tidak memuat nama
+// pengguna karena profil belum tentu tersedia.
+function KerangkaAplikasi() {
+  return (
+    <div className="flex min-h-full flex-1 flex-col">
+      <header className="sticky top-0 z-10 border-b bg-background/90 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-2.5">
+          <div className="flex items-center gap-2" aria-hidden>
+            <Skeleton className="mr-3 h-4 w-16" />
+            <Skeleton className="h-7 w-20" />
+            <Skeleton className="h-7 w-14" />
+            <Skeleton className="h-7 w-14" />
+            <Skeleton className="h-7 w-14" />
+          </div>
+          <Skeleton className="h-7 w-40" aria-hidden />
+        </div>
+      </header>
+    </div>
+  );
+}
+
+// children sengaja di luar Suspense shell: saat pindah rute, Suspense di
+// layout tidak menampilkan fallback-nya, jadi skeleton per halaman yang
+// berperan (paralel, tidak berurutan dengan sesi).
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<KerangkaAplikasi />}>
       <AppShell>{children}</AppShell>
     </Suspense>
   );

@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { CatatIuran } from "@/components/catat-iuran";
+import { HalamanSkeleton, KartuSkeleton, KartuTabelSkeleton } from "@/components/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -221,7 +222,18 @@ async function IsiIuran({ searchParams }: { searchParams: Promise<Record<string,
 export default async function IuranPage({ searchParams }: PageProps<"/iuran">) {
   const parameter = await searchParams;
   return (
-    <Suspense fallback={null}>
+    <Suspense
+      fallback={
+        <HalamanSkeleton
+          anak={
+            <>
+              <KartuSkeleton judul="Catat pembayaran" />
+              <KartuSkeleton judul="Iuran bulanan" anak={<KartuTabelSkeleton />} />
+            </>
+          }
+        />
+      }
+    >
       <IsiIuran searchParams={Promise.resolve(parameter)} />
     </Suspense>
   );

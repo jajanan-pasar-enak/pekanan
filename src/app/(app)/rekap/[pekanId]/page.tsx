@@ -2,6 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { connection } from "next/server";
+import {
+  HalamanSkeleton,
+  KartuTabelSkeleton,
+  Skeleton,
+} from "@/components/skeleton";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -128,7 +133,22 @@ async function IsiRekapPekan({ pekanId }: { pekanId: string }) {
 export default async function RekapPekanPage({ params }: PageProps<"/rekap/[pekanId]">) {
   const { pekanId } = await params;
   return (
-    <Suspense fallback={null}>
+    <Suspense
+      fallback={
+        <HalamanSkeleton
+          anak={
+            <>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" aria-hidden>
+                {Array.from({ length: 5 }, (_, i) => (
+                  <Skeleton key={i} className="h-24 rounded-xl" />
+                ))}
+              </div>
+              <KartuTabelSkeleton jumlahBaris={5} />
+            </>
+          }
+        />
+      }
+    >
       <IsiRekapPekan pekanId={pekanId} />
     </Suspense>
   );

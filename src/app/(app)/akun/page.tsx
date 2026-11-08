@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { GantiPasswordForm } from "@/components/ganti-password-form";
+import { HalamanSkeleton, KartuSkeleton } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,7 +52,7 @@ async function IsiAkun() {
 
 export default function AkunPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<HalamanSkeleton anak={<KartuSkeleton judul="Ganti Password" />} />}>
       <IsiAkun />
     </Suspense>
   );

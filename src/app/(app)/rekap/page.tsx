@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { HalamanSkeleton, KartuTabelSkeleton } from "@/components/skeleton";
 import { requireKaryawan } from "@/lib/auth/current";
 import { daftarRekapAnggota } from "@/lib/kepegawaian/queries";
 
@@ -89,7 +90,7 @@ async function IsiRekap() {
 
 export default function RekapPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<HalamanSkeleton anak={<KartuTabelSkeleton jumlahBaris={6} />} />}>
       <IsiRekap />
     </Suspense>
   );
