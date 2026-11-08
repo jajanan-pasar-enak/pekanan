@@ -1,10 +1,10 @@
 # HANDOFF — pekanan
 
-> **Baca ini dulu.** Status terakhir (2026-11-08, sesi lanjutan 4 — hapus follow-up dari dialog): **live** di **https://pekanan.vercel.app** (Vercel Hobby, `main` auto-deploy). Remote: **`https://github.com/jajanan-pasar-enak/pekanan.git`** (publik; remote `sini-sana` sudah ditinggalkan tetapi **masih ada riwayatnya di GitHub**). `main` sinkron di **`aa8f1f9`** (sudah di-push, Vercel auto-deploy). **5 migrasi** Drizzle diterapkan (`0000`–`0004`). `pnpm test` **32/32**, `pnpm build` exit 0. Commit sesi ini: `79bd6f0` (fitur hapus), `aa8f1f9` (docs) — lihat §1e.
+> **Baca ini dulu.** Status terakhir (2026-11-09, sesi 5 — skeleton, SSL log Vercel, prettier + bersih-bersih lint): **live** di **https://pekanan.vercel.app** (Vercel Hobby, `main` auto-deploy). Remote: **`https://github.com/jajanan-pasar-enak/pekanan.git`** (publik; remote `sini-sana` sudah ditinggalkan tetapi **masih ada riwayatnya di GitHub**). `main` sinkron di **`8512042`** (sudah di-push, Vercel auto-deploy). **5 migrasi** Drizzle diterapkan (`0000`–`0004`; sesi ini **tidak** mengubah skema). Gerbang: `pnpm test` **32/32**, `pnpm lint` **bersih (0 problem)**, `pnpm format:check` lulus, `pnpm build` exit 0; `next start` lokal `/` 200 dan `/api/me` 401. 8 commit sesi ini: `66b8b0b`, `d1e3758`, `a6e95e3`, `82e6e44`, `dee932a`, `da7ca98`, `78639ad`, `8512042` — lihat §1f/§1g.
 
 > **Yang belum beres:**
 > 1. ~~Ganti password admin~~ — **SELESAI oleh pengguna** pada 2026-11-08 ±10:44 WIB. `AdminBaru123!` **tidak berlaku lagi** (sign-in 401). Password baru hanya diketahui pengguna. **`seed-admin` tidak mengganti password** dan menolak jalan lagi selama sudah ada `user.role = 'admin'` — jangan mencoba "memulihkan" password admin lewat skrip.
-> 2. **Data uji belum dibersihkan** — DB produksi = branch Neon yang sama dengan dev lokal. Kondisi per akhir sesi ini (dihitung dengan psql): **77 user**, 77 karyawan, 47 klien, 7 laporan (5 Draf, 1 Terkirim, 1 Dikoreksi), **45 followup hidup + 5 soft-deleted**, **11 `followup_edit`**, **341 sesi**. Dari 77 user: 1 `admin@pekanan.local`, 9 akun `@seed.local` lain, **68 akun `uji-browser*`/`probe-*`** sisa uji. Backup: branch Neon `backup-sebelum-cleanup-20261108` + `/tmp/pekanan-backup/public-20261108-0834.sql` (keduanya **sebelum** `followup_edit`, `pencatat_supervisor_id`, dan `followup.deleted_at` ditambahkan — restore dari backup ini berarti juga membuang fitur follow-up dan hapus). Perintah hapus **butuh permintaan eksplisit dari pengguna** (lihat §9.3).
+> 2. **Data uji belum dibersihkan** — DB produksi = branch Neon yang sama dengan dev lokal. Dihitung ulang 2026-11-09 dengan `psql`: **77 user**, 77 karyawan, 47 klien, 7 laporan (5 Draf, 1 Terkirim, 1 Dikoreksi), **45 followup hidup + 5 soft-deleted**, **11 `followup_edit`**, 24 `koreksi_laporan`, 39 `pembayaran_iuran`, **343 sesi**. Dari 77 user: 1 `admin@pekanan.local`, **9 akun seed** + **68 akun uji** (`uji-browser*`/`probe-*`) — `like 'probe-%'` juga kena `admin@pekanan.local`, jadi filter per email, bukan `probe-%`. Backup: branch Neon `backup-sebelum-cleanup-20261108` + `/tmp/pekanan-backup/public-20261108-0834.sql` (keduanya **sebelum** `followup_edit`, `pencatat_supervisor_id`, dan `followup.deleted_at` ditambahkan — restore dari backup ini berarti juga membuang fitur follow-up dan hapus). Perintah hapus **butuh permintaan eksplisit dari pengguna** (lihat §9.3).
 > 3. **`deepmerge` (Dependabot, low)** belum bisa dipatch — hanya lewat `shadcn` CLI, tidak masuk runtime.
 > 4. **Kebersihan riwayat git**: `HANDOFF.md` versi lama memuat `AdminBaru123!` di riwayat kedua repo. Karena password sudah diganti, nilainya basi; `git filter-repo` **tidak perlu** kecuali pengguna ingin membersihkan riwayat.
 
@@ -13,7 +13,7 @@
 Aplikasi **Next.js 16.4.5 (App Router, Cache Components)** + **Neon Postgres** (Drizzle + `pg`) di `/home/xan/project/skrmb/pekanan`. Mencatat kinerja pekanan tim: Laporan Pekan (kehadiran, sebar media, one-on-one), Klien + Follow-up, dan Iuran bulanan.
 
 - Package manager: **pnpm 12.16.1** · Node **v24.22.1** lokal (environment Qoder menyebut v26; yang dipakai `pnpm exec` adalah v24)
-- Git: branch `main`, commit **`aa8f1f9 docs: catat fitur hapus follow-up dan migrasi 0004`** (terakhir di-push); sebelumnya `79bd6f0` (fitur hapus follow-up), `f80166b` (handoff), `3386ccd` (docs follow-up), `cb7b7c1` (fitur follow-up), `a419ff6` + `0b2a7db` (lebar tabel), `7891865` (kolom follow-up), `aec853d`, `ef45675`, `eb5d1f4`, `b3c4b2b`, `45ff04f` (lihat §1b), lalu `1a799dc` (handoff deploy), `0b49dba` (deps), `ade5699`, `de13912`, `8dc453d` (Commit 5 UI), `bd64c4a` (Commit 4).
+- Git: branch `main`, commit **`8512042 fix(lint): bersihkan 8 warning eslint`** (terakhir di-push, sesi 5); sebelumnya `78639ad` (17 error lint), `da7ca98` (prettier), `dee932a` (skeleton revisi), `82e6e44` + `a6e95e3` (SSL), `d1e3758` (skeleton: hanya isi dinamis), `66b8b0b` (skeleton awal) — lihat §1f/§1g; lalu `7526c5c` (handoff sesi 4), `79bd6f0` (fitur hapus follow-up), `f80166b` (handoff), `3386ccd` (docs follow-up), `cb7b7c1` (fitur follow-up), `a419ff6` + `0b2a7db` (lebar tabel), `7891865` (kolom follow-up), `aec853d`, `ef45675`, `eb5d1f4`, `b3c4b2b`, `45ff04f` (lihat §1b), lalu `1a799dc` (handoff deploy), `0b49dba` (deps), `ade5699`, `de13912`, `8dc453d` (Commit 5 UI), `bd64c4a` (Commit 4).
 - **Remote**: `origin` = `https://github.com/jajanan-pasar-enak/pekanan.git` (publik; org dibuat 2026-11-07, akun `mishbah` punya akses via SSH). Remote lama `sini-sana/pekanan` masih memuat riwayat lama — hapus/arsipkan bila perlu.
 - **Produksi**: https://pekanan.vercel.app (project Vercel Hobby, region seharusnya `sin1`, auto-deploy dari `main`). `/` → 200, `/api/me` → 401 (benar). Env Vercel: `DATABASE_URL_POOLED`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL=https://pekanan.vercel.app`, `ADMIN_EMAIL`.
 - **DB produksi = DB dev lokal**: satu branch Neon (`production`, project `still-firefly-08452520`, org `org-empty-credit-57766595`, `aws-ap-southeast-1`). **5 migrasi Drizzle** diterapkan (`0000`–`0004`, termasuk `0003_melodic_james_howlett.sql` untuk follow-up dan `0004_unusual_white_tiger.sql` untuk `followup.deleted_at`), 15 tabel `public` (termasuk `followup_edit`).
@@ -50,6 +50,34 @@ Semua sudah live di produksi dan diverifikasi dengan Playwright terhadap `pnpm s
   - ~~Tabel laporan melebar (scroll horizontal di 1440 px karena `min-w-*`)~~ — **dirapatkan** (lihat §1c).
 
 **Uji browser sesi ini** (di `/tmp/pw`, tidak di repo): `rekap.mjs` (14 check), `akun.mjs` (12), `wajib.mjs` (4), `prod*.mjs` (cek produksi). Semua lulus.
+
+## 1f. Hasil sesi 2026-11-09 — skeleton saat memuat
+
+Semua sudah di-push ke `main`. Sebelumnya **semua** `Suspense fallback={null}` (13 berkas), jadi saat data belum siap layar hanya menampilkan navbar.
+
+- **`src/components/skeleton.tsx` (baru).** `Skeleton`, `HalamanSkeleton` (`judul`/`subjudul`/`aksi`/`anak`/`jumlahBaris`), `JudulSkeleton`, `KartuSkeleton` (judul opsional), `KartuTabelSkeleton`, `BarisTabelSkeleton` (isi tabel tanpa bingkai, untuk di dalam `KartuSkeleton`), `KartuAnggotaSkeleton`, `IsiKartuSkeleton`. `TautanSkeleton` dibuat lalu **dihapus** karena tidak dipakai.
+- **Aturan yang diputuskan pengguna (pertahankan):** judul, subjudul, tombol statis (Kembali, dst.) dan **form yang tidak butuh data** tampil **apa adanya** di fallback; hanya bagian yang menunggu fetch (tabel/daftar/riwayat/angka ringkasan) yang jadi skeleton. Jangan kembalikan header ke skeleton.
+- **Fallback per halaman:** dashboard, klien, `klien/[id]` (tanpa kartu form catat follow-up — form itu butuh data pemilik), rekap, `rekap/[pekanId]` (header + 5 kartu ringkasan), iuran (header + tabel; kartu "Catat pembayaran" butuh anggota+nominal → skeleton), admin, akun, `laporan/[id]`, `laporan/[id]/koreksi`, login `PanelMasukSkeleton`, ganti-password.
+- **`(app)/layout.tsx`:** fallback = kerangka navbar saja (`KerangkaAplikasi`, tanpa `<main>`). **`children` sengaja di luar `Suspense` shell** — fallback layout tidak tampil saat pindah rute, dan isi `main` yang tidak memuat `children` akan terhapus saat hidrasi/streaming muat penuh. Jangan bungkus `children` lagi.
+- **Aksesibilitas:** `aria-busy` + `aria-live` + teks `sr-only` "Memuat data…" di `HalamanSkeleton`; elemen skeleton `aria-hidden`.
+- **Tidak di-skeleton:** `router.refresh()` setelah mutasi (sengaja; kalau tidak, tabel berkedip setiap simpan).
+- **Uji** (Playwright Chrome headless di `/tmp/pw`, dokumen ditunda 3,5–4 dtk; server dijalankan dari salinan `/tmp/pt` karena `BETTER_AUTH_URL` mengunci port **3000**): skeleton muncul 100–400 ms setelah klik nav; muat penuh menampilkan skeleton di area isi; refresh tetap menampilkan data lama tanpa kedip. Halaman `/klien`, `/iuran`, `/rekap`, `/akun` render normal setelah revisi (divalidasi ulang lewat `next start`, `h1` benar, 0 skeleton tertinggal).
+
+## 1g. Hasil sesi 2026-11-09 — SSL log Vercel, prettier, lint
+
+- **Peringatan Vercel `SECURITY WARNING: sslmode ... aliases for verify-full`** berasal dari `pg-connection-string@2.14.1` yang membaca `sslmode=require` (URL Neon). Bukan dari `pg` langsung. **Perbaikan `src/db/index.ts`:** `opsiKoneksi()` mem-parsing URL dengan `new URL`, meng-encode ulang username/password (`#`/`?` di password tidak merusak parser), lalu memaksa `sslmode=verify-full` lewat `searchParams.set` (sisa hash/parameter lain dipertahankan: `channel_binding`, `options`). Hasil: peringatan hilang, perilaku tidak berubah (2.x memang memperlakukan `require` sebagai `verify-full`), dan aman saat naik ke `pg-connection-string` v3 (libpq `require` = tanpa verifikasi host).
+  - **Jangan** mengganti ke `sslmode=require&uselibpqcompat=true` (mematikan verifikasi host, peringatan tetap muncul) dan **jangan menghapus** `sslmode` (Neon menolak: "connection is insecure").
+  - Diverifikasi: koneksi pooled **dan** unpooled ke Neon OK dengan `verify-full`.
+  - **Catatan aneh:** `pg_stat_ssl` melaporkan `ssl: false` di endpoint pooled maupun unpooled dari mesin ini. Tidak memengaruhi koneksi/peringatan; kalau ingin memastikan trafik terenkripsi, cek pengaturan SSL di project Neon. Belum ditindaklanjuti.
+  - Jebakan uji: koneksi pertama dari mesin ini bisa `timeout expired` (±10 dtk) lalu sukses pada percobaan berikutnya — pakai `connectionTimeoutMillis` 15–20 dtk dan ulangi sebelum menyimpulkan rusak.
+- **Prettier (`da7ca98`):** `prettier@3.9.10` dev-dep, `.prettierrc.json` = `{ "printWidth": 100 }`, `.prettierignore` = `drizzle/`, `pnpm-lock.yaml`, `*.md`. Skrip `pnpm format` / `pnpm format:check`. `da7ca98` juga memformat ulang `scripts/seed.mts` & `scripts/smoke.mts` (perubahan hanya kosmetik), tapi **berkas lain berubah besar** — saat membaca `git blame` sebelum `da7ca98`, format lama tidak sama.
+- **Lint bersih (`78639ad` + `8512042`):** `pnpm lint` kini **exit 0** (gerbang commit sekarang mencakup lint). Perubahan perilaku kecil yang harus diingat:
+  - `@ts-nocheck` di semua `*.test.ts` **dihapus**; `tsc` tetap lolos. Satu tes `handle()` di `http.test.ts` kini mengembalikan `Response`.
+  - `form-laporan.tsx`: snapshot `tersimpan` dibaca dari **state** saat render (ref tetap untuk `simpan()` async) — karena aturan `react-hooks/refs`.
+  - `dialog-followup.tsx`: konteks disinkronkan dari prop **saat render**, bukan `setState` di effect. State `memuat` dihapus (tidak pernah ditampilkan).
+  - `keluar-button.tsx` & `ganti-password-form.tsx`: navigasi pakai **`window.location.replace`** (muat penuh agar cache router sesi lama terbuang; Back tidak kembali ke halaman ber-sesi). Login di `auth-panel.tsx` **masih** `location.reload()` — jebakan lama §7.2 masih berlaku.
+  - Import schema yang tidak terpakai dihapus dari `laporan/queries.ts`, `kepegawaian/queries.ts` & `mutations.ts`; parameter `i` di `form-koreksi.tsx` dibuang.
+  - `scripts/smoke.mts` memakai satu alias `Json` (bukan `any`).
 
 ## 1d. Hasil sesi 2026-11-08 (lanjutan 3) — follow-up dari layar Laporan Pekan
 
@@ -239,7 +267,7 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
 3. Build memakai Turbopack; dev tanpa Turbopack.
 4. `pnpm-workspace.yaml` berisi `allowBuilds: esbuild: true` — jangan dihapus, atau `pnpm add` gagal `ERR_PNPM_IGNORED_BUILDS`. File yang sama juga memuat `overrides:` untuk minimatch/esbuild (pnpm 12 mengabaikan `pnpm.overrides` di `package.json`).
 5. `AGENTS.md` sudah dihapus; `next dev` membuatnya lagi dengan blok bawaan — jangan di-commit ulang.
-6. Warning SSL `sslmode=verify-full` dari `pg-connection-string` — harmless.
+6. ~~Warning SSL dari `pg-connection-string`~~ — **selesai** (§1g). URL dipaksa `sslmode=verify-full` di `src/db/index.ts`; jangan menghapus normalisasi itu (Neon menolak URL tanpa SSL, dan `require` akan berubah semantik di v3).
 7. Node di luar bundler Next tidak me-resolve `@neon/auth/next/server` → skrip uji lewat HTTP/Drizzle langsung. (`@neon/*` sudah dihapus.)
 8. Vercel Hobby non-komersial (dikonfirmasi tetap Hobby) — **sudah dipakai live** (`pekanan.vercel.app`).
 9. Route handler dan page **wajib** `await connection()` sebelum `headers()`; halaman yang butuh request data harus dibungkus `<Suspense>`. Saat build, Next tetap men-prerender `/api/me` dan mencetak "connection() rejects ... HANGING_PROMISE_REJECTION" — itu **banner yang diharapkan**, build tetap exit 0 dan runtime 200/401 benar.
@@ -267,7 +295,7 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
 
 1. ~~Push, Commit 6 deploy, Commit 7–9 UI~~ — **selesai dan live**, lihat §1b.
 2. ~~Ganti password admin~~ — **selesai oleh pengguna** (password baru tidak dicatat di repo).
-3. **Pembersihan data uji di DB produksi (BELUM; butuh permintaan eksplisit pengguna).** Kondisi akhir sesi (2026-11-08, dihitung dengan psql): **77 user** (1 `admin@pekanan.local` real + 9 akun `@seed.local` + **68 akun uji** `uji-browser*`/`probe-*`), 77 karyawan, 47 klien, 7 laporan (5 Draf, 1 Terkirim, 1 Dikoreksi), **45 followup hidup + 5 soft-deleted, 11 `followup_edit`, 341 sesi**. Master `nominal_iuran` & `hasil_followup` **dipertahankan**.
+3. **Pembersihan data uji di DB produksi (BELUM; butuh permintaan eksplisit pengguna).** Angka terbaru **2026-11-09** ada di blok "Yang belum beres" atas: 77 user (68 akun uji), 77 karyawan, 47 klien, 7 laporan (5 Draf/1 Terkirim/1 Dikoreksi), 45 followup hidup + 5 soft-deleted, 11 `followup_edit`, 24 `koreksi_laporan`, 39 `pembayaran_iuran`, **343 sesi**. Sesi 5 tidak menambah data uji (uji hanya baca + login `sup-1`). Master `nominal_iuran` & `hasil_followup` **dipertahankan**. **Filter akun uji per email (`uji-browser%`), jangan `probe-%`** — `admin@pekanan.local` ikut cocok.
    - **Catatan cleanup baru:** `followup.deleted_at` tidak mengubah urutan FK (`followup_edit` tetap harus dihapus sebelum `followup`). Skrip `seed --cleanup` dan `smoke` **sudah diperbaiki** untuk urutan itu — pakai/ikuti polanya, jangan tulis ulang `DELETE FROM followup` tanpa menghapus `followup_edit` lebih dulu.
    - **Keputusan yang harus diambil pengguna lebih dulu:** apakah akun `@seed.local` (Sari/Tono/Wulan/anggota/admin seed) ikut dihapus atau **dipertahankan** sebagai data demo. Sesi ini justru memakainya untuk uji dan memberi pengguna daftar akun tersebut (§1).
    - Backup: branch Neon `backup-sebelum-cleanup-20261108` dan `/tmp/pekanan-backup/public-20261108-0834.sql` — **keduanya dibuat sebelum migrasi `0003`/`0004`**, jadi tidak memuat `followup_edit`/`pencatat_supervisor_id`/`followup.deleted_at`. **Ambil backup baru** (`pg_dump` skema `public`, atau branch Neon baru) sebelum cleanup.
@@ -277,12 +305,15 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
    - ~~Rapikan lebar tabel `/laporan/[id]`~~ — **selesai** (§1c).
    - ~~Follow-up bisa diklik, daftar klien, tambah + edit oleh atasan~~ — **selesai & live** (§1d).
    - ~~Hapus follow-up dari dialog (soft-delete + alasan)~~ — **selesai & live** (§1e).
+   - ~~Skeleton saat memuat + judul/tombol statis tidak di-skeleton~~ — **selesai & live** (§1f).
+   - ~~Peringatan SSL `sslmode` di log Vercel~~ — **selesai** (§1g); cek log Vercel setelah deploy `a6e95e3` untuk konfirmasi peringatan tidak muncul lagi.
    - Tampilkan entri "dihapus" di riwayat `/klien/[id]` (sekarang hanya di dialog laporan).
    - `scripts/test-db.mts` untuk trigger `retire_transferred_laporan` — satu-satunya item checklist yang belum punya skrip tersimpan.
    - Smoke masih butuh password admin yang tidak diketahui; pertimbangkan menjalankannya terhadap `admin@seed.local`.
 5. **Belum diuji manual (browser):** bootstrap setelah pergantian pekan nyata (Draf baru + catch-up). Rute Rekap sekarang **sudah punya layar** (§1b) — poin lama sudah usang.
 6. **Kebersihan riwayat git:** `AdminBaru123!` masih ada di `HANDOFF.md` versi lama pada riwayat kedua repo, tetapi **sudah tidak berlaku**. `git filter-repo` tidak wajib.
-7. Skrip uji browser ada di `/tmp/pw` (+ Playwright-Core, Chrome `/usr/bin/google-chrome-stable`); **tidak di repo**: `uji.mjs`, `rekap.mjs`, `akun.mjs`, `wajib.mjs`, `tabel.mjs`, `followup.mjs`, `hapus-followup.mjs`, `cek-klien.mjs`, `prod*.mjs`, `prod-followup.mjs`. Sesi ini berakhir dengan **server lokal dimatikan** (port 3000 bebas). `BASE` script di-hardcode ke `http://localhost:3000` — untuk uji produksi salin script dan ganti BASE.
+7. Skrip uji browser ada di `/tmp/pw` (+ Playwright-Core, Chrome `/usr/bin/google-chrome-stable`); **tidak di repo**: `uji.mjs`, `rekap.mjs`, `akun.mjs`, `wajib.mjs`, `tabel.mjs`, `followup.mjs`, `hapus-followup.mjs`, `cek-klien.mjs`, `prod*.mjs`, `prod-followup.mjs`, plus skrip sesi 5: `auth.mjs` (login + simpan cookie ke `storage.json`), `firstload.mjs`, `nav3.mjs`, `detail.mjs`, `shape2.mjs`. Sesi ini berakhir dengan **server lokal dimatikan** (port 3000 bebas).
+- **Jebakan skrip sesi 5:** `localhost:3000` dikunci `BETTER_AUTH_URL`; server di port lain → login 403 `INVALID_ORIGIN`. Untuk uji dengan sumber yang diedit, jalankan salinan bersih (`rsync` src ke `/tmp/pt` + `pnpm install`, cukup pakai `node_modules` milik sendiri) di port 3000. Men-symlink `node_modules` proyek ke salinan **merusak Turbopack** ("Could not find the Next.js package"). Cookie Better Auth disuntik ke konteks Playwright dengan `domain: 'localhost', path: '/'` (bukan `url`). Menunda request `document` 4 dtk = simulasi lambat; skeleton terjadi di navigasi klien, bukan muat penuh pertama. `BASE` script di-hardcode ke `http://localhost:3000` — untuk uji produksi salin script dan ganti BASE.
 
 **Jebakan locator Playwright yang ditemukan sesi ini (jangan diulang):**
 - `body > header` **tidak selalu cocok** — header aplikasi berada di dalam `div` pembungkus, jadi `page.locator("header")` menemukan 1 elemen sedangkan `"body > header"` menemukan 0. Jangan percaya catatan lama yang menyuruh pakai `body > header`.
@@ -315,9 +346,9 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
 - Tanpa framework baru: `node:test` + `assert` lewat `tsx`. Sudah diuji di Node 24: `pnpm exec tsx --test "src/**/*.test.ts"` menerima glob. `package.json`: `"test": "tsx --test --test-concurrency=1 \"src/**/*.test.ts\""` — **selalu serial**.
 - Unit (murni, tanpa DB): `src/lib/waktu.test.ts` (batas Minggu 00:00 Sabtu 23:59:59 WIB, pergantian bulan), helper otorisasi (`isSupervisorOf`, `isAtasanOf`, cek siklus supervisor), `http.ts` (format `{ error: { code } }`, status per kode).
 - DB (trigger & CHECK): `scripts/test-db.mts` — pola psql Commit 1 dipindah ke Drizzle langsung, setiap kasus dalam transaksi yang di-`ROLLBACK`, exit non-nol bila ada yang lolos. Butuh `DATABASE_URL_UNPOOLED`; jangan pernah commit data uji.
-- Urutan kerja per fitur: uji gagal → implementasi → uji hijau → `pnpm build` → commit.
+- Urutan kerja per fitur: uji gagal → implementasi → uji hijau → `pnpm lint` → `pnpm format:check` (atau `pnpm format`) → `pnpm build` → commit.
 - **Jalankan test secara serial** (`pnpm test` sudah `--test-concurrency=1`; skrip DB/HTTP satu per satu, tidak paralel).
-- Commit 2: `src/lib/http.test.ts` (6 uji). Commit 3: `src/lib/waktu.test.ts` (7), `src/lib/laporan/aturan.test.ts` (4). Commit 4: `klien/aturan.test.ts`, `iuran/aturan.test.ts`, `kepegawaian/aturan.test.ts` → total 28. Sesi lanjutan 3: 3 uji baru di `klien/aturan.test.ts` (`ubahFollowupSchema`, `diffFollowup`, `bolehKelolaFollowup`) → total **31**.
+- Commit 2: `src/lib/http.test.ts` (6 uji). Commit 3: `src/lib/waktu.test.ts` (7), `src/lib/laporan/aturan.test.ts` (4). Commit 4: `klien/aturan.test.ts`, `iuran/aturan.test.ts`, `kepegawaian/aturan.test.ts` → total 28. Sesi lanjutan 3: 3 uji baru di `klien/aturan.test.ts` (`ubahFollowupSchema`, `diffFollowup`, `bolehKelolaFollowup`) → total **31**. Sesi lanjutan 4: `hapusFollowupSchema` → total **32** (tetap 32 setelah `78639ad`/`da7ca98`; tidak ada uji baru di sesi 5).
 - Commit 5 (UI) tidak butuh uji unit baru; verifikasi lewat build + uji manual browser (sudah: Playwright terhadap `pnpm start`, semua fase OK).
 
 ### Catatan operasional baru
@@ -333,7 +364,7 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
 - `check(name, sql)` multi-argumen: drizzle-kit **hanya** mengeluarkan argumen pertama → pisah jadi beberapa `check()`.
 - **Selalu baca isi migrasi hasil `pnpm db:generate` sebelum `pnpm db:migrate`.** Dengan snapshot lama, drizzle 0.31 bisa menerbitkan `ALTER INDEX ... DETACH PARTITION` untuk index yang memang belum ada di DB (mis. `followup_klien_tanggal_idx`) — itu akan gagal saat migrate. Sesi ini aman (migrasi `0004` hanya `ADD COLUMN`), tetapi cek `grep DETACH drizzle/0004_snapshot.json` sebelum menambah migrasi berikutnya.
 - `.next/dev/types` yang basi bisa memicu error TypeScript saat build (`Cannot find module .../route.js`); `rm -rf .next` lalu build.
-- `pnpm lint` masih merah: `@typescript-eslint/ban-ts-comment` untuk `// @ts-nocheck` di setiap `*.test.ts` (pola yang disengaja: `node:test` dimuat `tsx`, tipe Node tidak di-resolve) dan `no-explicit-any` di `scripts/smoke.mts`. Bukan gerbang commit; `pnpm build` lulus tanpa lint.
+- ~~`pnpm lint` masih merah~~ — **bersih sejak `8512042`** (§1g); `@ts-nocheck` di file tes sudah dihapus tanpa membuat `tsc` gagal. Gerbang sebelum commit sekarang: `pnpm test` → `pnpm lint` → `pnpm format:check` → `pnpm build`. `prettier` tersedia lewat `pnpm format` (`*.md` di-ignore, jadi HANDOFF tidak diformat).
 
 Perintah dasar:
 ```bash
@@ -341,7 +372,7 @@ cd /home/xan/project/skrmb/pekanan
 git status --short
 set -a && . ./.env.local && set +a
 pnpm db:generate && pnpm db:migrate
-pnpm test && pnpm build
+pnpm test && pnpm lint && pnpm format:check && pnpm build
 pnpm start &            # pastikan port 3000 bebas dulu
 ADMIN_PASSWORD='<password admin>' pnpm exec tsx scripts/smoke.mts   # atau akun @seed.local lain yang berrole admin
 ```
