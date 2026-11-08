@@ -51,6 +51,18 @@ Semua sudah live di produksi dan diverifikasi dengan Playwright terhadap `pnpm s
 
 **Uji browser sesi ini** (di `/tmp/pw`, tidak di repo): `rekap.mjs` (14 check), `akun.mjs` (12), `wajib.mjs` (4), `prod*.mjs` (cek produksi). Semua lulus.
 
+## 1d. Hasil sesi 2026-11-08 (lanjutan 3) — follow-up dari layar Laporan Pekan
+
+- **Skema (migrasi `drizzle/0003_melodic_james_howlett.sql`, sudah diterapkan):** `followup.pencatat_supervisor_id` (nullable, FK `karyawan`) dan tabel `followup_edit` (`followup_id`, `editor_id`, `alasan`, `sebelum`/`sesudah` jsonb, `created_at`). Aditif; kolom lama tidak berubah.
+- **Aturan (diputuskan pengguna):** pencatat/editor = pemilik klien **atau Atasan Supervisor langsung** pemilik. Edit wajib alasan; tanpa diff → 400. Admin tetap tidak boleh (sama seperti riwayat follow-up).
+- **`created_by` selalu pemilik klien**, sehingga hitungan Follow-up per pekan (dan di Rekap/laporan) tidak berubah saat atasan yang mencatat; atasan tercatat di `pencatat_supervisor_id` + `followup_edit`.
+- **UI:** angka Follow-up di `/laporan/[id]` tetap read-only, di sampingnya tombol ikon (`ListIcon`, `aria-label="Lihat follow-up <nama> pekan ini (n)"`) yang membuka `DialogFollowup` (`src/components/dialog-followup.tsx`). Dialog menampilkan kejadian pekan itu, klien anggota, riwayat edit, tombol **Ubah** per kejadian, dan tombol **+ <nama klien>** untuk mencatat. Data dialog diambil ulang setelah tiap mutasi (`GET /api/laporan/[id]/followup`) — tanpa ini daftar tidak ter-update sampai dialog ditutup.
+- **Halaman `/klien/[id]`:** kolom "Dicatat oleh" menampilkan `<atasan> (atas nama <pemilik>)`; deskripsi memuat riwayat edit (`diubah <editor>: <alasan>`). Tombol catat kini juga tampil untuk atasan.
+- Rute baru: `GET /api/laporan/[id]/followup`, `PATCH /api/followup/[id]`. `POST /api/klien/[id]/followup` kini menerima atasan.
+- Logika di `src/lib/klien/followup.ts` (query + tipe `KonteksFollowupPekan`) dan `src/lib/klien/{aturan,mutations,queries}.ts`. Uji unit baru di `klien/aturan.test.ts` (`ubahFollowupSchema`, `diffFollowup`, `bolehKelolaFollowup`) → `pnpm test` **31/31**.
+- Uji browser `/tmp/pw/followup.mjs` terhadap `pnpm start`: dialog, tambah, simpan terkunci tanpa alasan, riwayat edit, angka tabel naik (4→5), kontrol atasan, PATCH tak dikenal → 404. Lulus.
+- **Catatan data:** `sup-1@seed.local` (Sari) kini anggota laporan **salah satu supervisor** (baris akun `uji-browser*`), dan klien "Toko Uji Browser" milik Tono Supervisor. Ini sisa pengalihan klien pada uji lalu; angka follow-up Tono bertambah oleh uji sesi ini.
+
 ## 1c. Hasil sesi 2026-11-08 (lanjutan 2) — lebar tabel laporan
 
 - `min-w-40/44/48` dihapus dari `<TableHead>` tabel `form-laporan.tsx` (Anggota, Kehadiran, Keterangan kehadiran, One-on-one, Keterangan O2O) dan `form-koreksi.tsx` (kolom sama). `w-28` di Media online/offline tetap; `min-w-*` bawaan shadcn (`ui/input.tsx`, `ui/select.tsx`) tidak disentuh.

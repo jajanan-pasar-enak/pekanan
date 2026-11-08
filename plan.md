@@ -197,7 +197,9 @@ Matriks otorisasi (semua endpoint wajib `requireKaryawan()` = aktif + password s
 | `GET/POST /api/klien` | klien milik saya; `POST` pemilik = saya |
 | `POST /api/klien/[id]/alih` | **Admin**: body `{keKaryawanId}`; target harus `aktif`; wajib dipanggil sebelum nonaktif (guard di §4 admin) |
 | `GET /api/klien/[id]/followup` | pemilik klien atau Atasan Supervisor langsung pemilik klien |
-| `POST /api/klien/[id]/followup` | pemilik klien; `tanggal` ≤ hari ini WIB; `hasil_followup_id` aktif |
+| `POST /api/klien/[id]/followup` | pemilik klien **atau Atasan Supervisor langsung pemilik**; `tanggal` ≤ hari ini WIB; `hasil_followup_id` aktif; `created_by` = pemilik, atasan tercatat di `pencatat_supervisor_id` |
+| `GET /api/laporan/[id]/followup` | hak baca laporan (pemilik / Atasan Supervisor langsung); daftar follow-up pekan itu + klien Anggota Langsung; `bolehTambah` bila viewer boleh kelola |
+| `PATCH /api/followup/[id]` | pemilik klien **atau Atasan Supervisor langsung pemilik**; `alasan` wajib; tanpa diff → 400; simpan `followup_edit` |
 | `GET/POST /api/pembayaran-iuran` | `GET`: saya atau supervisor langsung saya; `POST`: saya sendiri atau supervisor langsung saya atas nama saya; `bulan` ≤ bulan berjalan; duplikat `(karyawan, bulan)` → 409 |
 | `GET/POST /api/nominal-iuran`, `/api/hasil-followup` | `GET` user login; `POST` Admin |
 | `GET/POST /api/admin/karyawan`, `PATCH /api/admin/karyawan/[id]` | Admin |

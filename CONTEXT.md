@@ -111,8 +111,12 @@ Perpindahan kepemilikan Klien ke Karyawan lain ketika pemiliknya resign, berhent
 _Avoid_: transfer klien, takeover
 
 **Follow-up**:
-Satu kejadian kontak dengan Klien, dicatat per kejadian: Klien, tanggal (tidak boleh di masa depan), satu Hasil Follow-up, dan deskripsi perkembangan yang opsional. Jumlah Follow-up seorang Anggota pada suatu Pekan adalah hitungan kejadian bertanggal di Pekan itu, bukan angka manual.
+Satu kejadian kontak dengan Klien, dicatat per kejadian: Klien, tanggal (tidak boleh di masa depan), satu Hasil Follow-up, dan deskripsi perkembangan yang opsional. Jumlah Follow-up seorang Anggota pada suatu Pekan adalah hitungan kejadian bertanggal di Pekan itu, bukan angka manual. Boleh dicatat atau diubah oleh pemilik Klien maupun Atasan Supervisor langsungnya; kejadian selalu tercatat atas nama pemilik Klien (dia yang dihitung), sedangkan atasan yang mencatat/mengubah tercatat di riwayat perubahan.
 _Avoid_: aktivitas, telpon, jumlah follow-up (angka manual)
+
+**Edit Follow-up**:
+Perubahan sebuah Follow-up setelah dicatat, oleh pemilik Klien atau Atasan Supervisor langsungnya, dengan **alasan wajib**. Nilai sebelum dan sesudah serta pengeditnya disimpan; perubahan tanpa perbedaan nilai ditolak.
+_Avoid_: revisi, ubah diam-diam
 
 **Hasil Follow-up**:
 Master status perkembangan sebuah Follow-up, dipilih dari pilihan seperti `Tertarik`, `Belum Tertarik`, `Tidak Respon`. Disimpan sebagai tabel master (bisa ditambah admin), bukan enum di kode.
