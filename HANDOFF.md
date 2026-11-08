@@ -1,18 +1,23 @@
 # HANDOFF — pekanan
 
-> **Baca ini dulu.** Status terakhir: **Commit 5 (UI) selesai** dan sudah di-push. Remote: `https://github.com/sini-sana/pekanan.git` (publik), `main` sinkron dengan `origin/main`. **Commit 6 (deploy) sedang berjalan**: `README.md` sudah memuat runbook Vercel Hobby + Neon Free dan `NEON_*` lama sudah dihapus dari `.env.local`; sisa langkah Commit 6 butuh akun Vercel/Neon produksi. `pnpm build` exit 0, `pnpm test` **28/28**.
+> **Baca ini dulu.** Status terakhir (2026-11-08): **Commit 6 (deploy) sudah live** di **https://pekanan.vercel.app** (Vercel Hobby, `main` auto-deploy). Remote baru: **`https://github.com/jajanan-pasar-enak/pekanan.git`** (publik; remote `sini-sana` sudah ditinggalkan tetapi **masih ada riwayatnya di GitHub**). `main` sinkron di `0b49dba`. `pnpm test` **28/28**, `pnpm build` exit 0.
 
-> **Catatan keamanan:** repo publik dan riwayat memuat email admin lokal + password uji (`AdminBaru123!`) di dokumen ini, serta di commit `de13912` ke belakang. Ganti password admin lokal; scrub riwayat bila perlu.
+> **Yang belum beres:**
+> 1. **Password admin `admin@pekanan.local` = `AdminBaru123!`** — masih dipakai di DB yang sama dengan produksi dan terekspos di riwayat git kedua repo. **Ganti sekarang** lewat UI produksi.
+> 2. **Data uji belum dibersihkan** — DB produksi = branch Neon yang sama dengan dev lokal, isinya 76 akun `uji-browser*`/`@seed.local`, 47 klien "Toko Uji Browser", 4 laporan, 24 koreksi, 39 iuran, 42 followup. Backup sudah dibuat (`neon branches` → `backup-sebelum-cleanup-20261108`, dan `/tmp/pekanan-backup/public-20261108-0834.sql`). Perintah hapus **butuh permintaan eksplisit dari pengguna** (lihat §9.3).
+> 3. **`deepmerge` (Dependabot, low)** belum bisa dipatch — hanya lewat `shadcn` CLI, tidak masuk runtime.
 
 ## 1. Ringkasan
 
 Aplikasi **Next.js 16.4.5 (App Router, Cache Components)** + **Neon Postgres** (Drizzle + `pg`) di `/home/xan/project/skrmb/pekanan`. Mencatat kinerja pekanan tim: Laporan Pekan (kehadiran, sebar media, one-on-one), Klien + Follow-up, dan Iuran bulanan.
 
 - Package manager: **pnpm 12.16.1** · Node **v24.22.1** lokal (environment Qoder menyebut v26; yang dipakai `pnpm exec` adalah v24)
-- Git: branch `main`, commit **`de13912 docs: handoff ke Commit 5 selesai, push dan deploy belum`** (terakhir di-push); sebelumnya `8dc453d` (Commit 5 UI), `d4e5a76` (docs), `bd64c4a` (Commit 4).
-- **Remote**: `origin` = `https://github.com/sini-sana/pekanan.git` (publik, sudah di-push). Riwayat memuat email admin lokal & password uji (`AdminBaru123!`) di `HANDOFF.md` — sudah terekspos di GitHub; ganti password lokal dan/atau scrub riwayat via `git filter-repo` bila repo harus tetap publik.
-- Admin lokal `admin@pekanan.local`: password kini **`AdminBaru123!`** (= `SMOKE_ADMIN_PASSWORD_BARU`), `harus_ganti_password = false`, akun `aktif = true`. Smoke mencoba `SMOKE_ADMIN_PASSWORD` dulu, baru `SMOKE_ADMIN_PASSWORD_BARU`, jadi jalankan dengan `ADMIN_PASSWORD='AdminBaru123!'`. (Catatan: probe lama sempat menonaktifkan admin — sudah diaktifkan kembali lewat psql; bila smoke fase admin "SKIP (admin bukan ADMIN_EMAIL)", periksa `karyawan.aktif` untuk admin.)
-- **Data seed lokal `@seed.local` tidak ada di DB** saat Commit 4 diverifikasi (sudah dibersihkan). Smoke tidak butuh seed; `scripts/seed.mts` membuat data contoh bila diinginkan.
+- Git: branch `main`, commit **`0b49dba fix(deps): pin minimatch dan esbuild di atas advisory Dependabot`** (terakhir di-push); sebelumnya `ade5699` (docs deploy runbook), `de13912` (docs), `8dc453d` (Commit 5 UI), `bd64c4a` (Commit 4).
+- **Remote**: `origin` = `https://github.com/jajanan-pasar-enak/pekanan.git` (publik; org dibuat 2026-11-07, akun `mishbah` punya akses via SSH). Remote lama `sini-sana/pekanan` masih memuat riwayat lama — hapus/arsipkan bila perlu.
+- **Produksi**: https://pekanan.vercel.app (project Vercel Hobby, region seharusnya `sin1`, auto-deploy dari `main`). `/` → 200, `/api/me` → 401 (benar). Env Vercel: `DATABASE_URL_POOLED`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL=https://pekanan.vercel.app`, `ADMIN_EMAIL`.
+- **DB produksi = DB dev lokal**: satu branch Neon (`production`, project `still-firefly-08452520`, org `org-empty-credit-57766595`, `aws-ap-southeast-1`). 3 migrasi Drizzle diterapkan, 15 tabel `public`.
+- Admin `admin@pekanan.local`: password **`AdminBaru123!`**, `harus_ganti_password = false`, `aktif = true`. **Ini akun yang dipakai di produksi.** Smoke mencoba `SMOKE_ADMIN_PASSWORD` dulu, baru `SMOKE_ADMIN_PASSWORD_BARU`; jalankan dengan `ADMIN_PASSWORD='AdminBaru123!'` selama password belum diganti.
+- Akun lain di DB: `admin@seed.local` (admin kedua, sisa seed) + 76 akun uji. Tidak ada karyawan data real.
 - **Testing:** Commit 1 diverifikasi manual (psql rollback + `drizzle-kit pull`), **bukan dengan suite tersimpan**. Mulai Commit 2 dipakai TDD berbasis `node:test` (lihat §9).
 
 ### Hasil Commit 5 — UI (jangan diulang)
@@ -83,7 +88,7 @@ Aplikasi **Next.js 16.4.5 (App Router, Cache Components)** + **Neon Postgres** (
 | `HANDOFF.md` | (file ini) status, jebakan, langkah berikutnya |
 | `CONTEXT.md` | **Glosarium domain (sumber kebenaran aturan bisnis)** |
 | `plan.md` | Rencana implementasi yang disetujui + **§Arsitektur Kode** + **§9 urutan commit** |
-| `todo.md` | Checklist per commit (Commit 1–5 sudah dicentang; Commit 6 belum) |
+| `todo.md` | Checklist per commit (Commit 1–5 sudah dicentang; Commit 6 sebagian) |
 | `docs/adr/0001-sesi-auth-dilayani-better-auth-lokal.md` | Better Auth lokal, bukan proxy Neon Auth |
 | `docs/adr/0002-keunikan-laporan-per-pekan-dijaga-trigger.md` | Unique parsial + trigger; **direvisi** (tanpa auto-kirim Draf, tanpa `move_karyawan()`) |
 | `docs/adr/0003-admin-pertama-dibuat-skrip-lokal.md` | Admin pertama via `scripts/seed-admin.mts`, **tanpa route bootstrap HTTP** |
@@ -137,14 +142,18 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
 ```
 
 `.env.local` **sudah bersih**: `NEON_AUTH_BASE_URL`, `NEON_AUTH_JWKS_URL`, `NEON_AUTH_COOKIE_SECRET`, `NEON_FUNCTION_HELLO_BASE_URL`, `NEON_BRANCH` dihapus di Commit 6 (backup di `/tmp/env.local.bak.*`). `.env.example` memang tidak pernah memuatnya.
+`.env.local` **menunjuk DB produksi** (`BETTER_AUTH_URL` masih `http://localhost:3000`) — smoke lokal mengubah data di DB yang sama dengan https://pekanan.vercel.app. Jangan jalankan smoke/seed tanpa sadar akan hal ini.
 
 ### Jebakan env
-- `neon deploy` / `neon env pull` menimpa `.env.local` dan menulis `DATABASE_URL` (tanpa `_POOLED`); hapus baris itu setelahnya.
+- `neon env pull` menimpa `.env.local` dan menulis `DATABASE_URL` (tanpa `_POOLED`); hapus baris itu setelahnya.
 - `.neon` berisi org/project/branch (gitignored). `psql` butuh `set -a && . ./.env.local && set +a` dulu.
+- pnpm 12 **mengabaikan `pnpm.overrides` di `package.json`** — override harus di `pnpm-workspace.yaml` (kunci `overrides:`), kalau tidak muncul warning dan tidak berefek.
 
 ## 6. Fakta environment terverifikasi
 
-- DB: Neon Postgres 18.6. Skema: `public`, `drizzle` (`__drizzle_migrations`), `neon_auth`.
+- DB: Neon Postgres 18.6, project `still-firefly-08452520` (org `org-empty-credit-57766595`), branch aktif `production`, region `aws-ap-southeast-1`. Skema: `public`, `drizzle` (`__drizzle_migrations`), `neon_auth`.
+- Branch backup: `backup-sebelum-cleanup-20261108` (`br-…`, dibuat 2026-11-08 sebelum percobaan cleanup). Hapus bila sudah tidak perlu (biaya storage Neon Free).
+- Vercel: project `pekanan` → https://pekanan.vercel.app, deploy dari `main`. Vercel GitHub App harus mengakses org `jajanan-pasar-enak` (tombol Deploy sempat nonaktif sebelum app diberi akses).
 - `neondb_owner` anggota role `neon_auth`; FK `public` → `neon_auth."user"(id)` bisa, tetapi tidak dipakai.
 - 2 akun uji di `neon_auth.user` (`aku@kamu.com`, `apa@iya.com`) tanpa password diketahui; tidak dipakai.
 - `better-auth@1.7.17`: `adapters/drizzle` dan `plugins/admin` tersedia; `disableSignUp`/`autoSignIn` di `@better-auth/core` `types/init-options.d.mts`; `databaseHooks.*.before` tersedia.
@@ -158,11 +167,11 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
 1. **Cache Components**: `export const dynamic = "force-dynamic"` **dilarang**. Gunakan `await connection()` di dalam `<Suspense>`.
 2. Setelah login, aplikasi memakai `window.location.reload()` (pola lama) — aman.
 3. Build memakai Turbopack; dev tanpa Turbopack.
-4. `pnpm-workspace.yaml` berisi `allowBuilds: esbuild: true` — jangan dihapus, atau `pnpm add` gagal `ERR_PNPM_IGNORED_BUILDS`.
+4. `pnpm-workspace.yaml` berisi `allowBuilds: esbuild: true` — jangan dihapus, atau `pnpm add` gagal `ERR_PNPM_IGNORED_BUILDS`. File yang sama juga memuat `overrides:` untuk minimatch/esbuild (pnpm 12 mengabaikan `pnpm.overrides` di `package.json`).
 5. `AGENTS.md` sudah dihapus; `next dev` membuatnya lagi dengan blok bawaan — jangan di-commit ulang.
 6. Warning SSL `sslmode=verify-full` dari `pg-connection-string` — harmless.
 7. Node di luar bundler Next tidak me-resolve `@neon/auth/next/server` → skrip uji lewat HTTP/Drizzle langsung. (`@neon/*` sudah dihapus.)
-8. Vercel Hobby non-komersial (dikonfirmasi tetap Hobby).
+8. Vercel Hobby non-komersial (dikonfirmasi tetap Hobby) — **sudah dipakai live** (`pekanan.vercel.app`).
 9. Route handler dan page **wajib** `await connection()` sebelum `headers()`; halaman yang butuh request data harus dibungkus `<Suspense>`. Saat build, Next tetap men-prerender `/api/me` dan mencetak "connection() rejects ... HANGING_PROMISE_REJECTION" — itu **banner yang diharapkan**, build tetap exit 0 dan runtime 200/401 benar.
 10. Route `api/auth/[...catch-all]` milik Better Auth menangkap semua sub-path; penanganan "wajib ganti password" **tidak** dikerjakan di route catch-all, melainkan di helper `requireKaryawan()` yang dipanggil setiap route API aplikasi (lihat §7b).
 
@@ -186,15 +195,19 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
 
 ## 9. Langkah berikutnya (mulai dari sini)
 
-1. ~~**Push**~~ — selesai: `origin` = `https://github.com/sini-sana/pekanan.git`, `main` sinkron.
-2. **Commit 6 — Deploy Vercel Hobby + Neon Free** (`todo.md` bagian "Commit 6"). Sudah dikerjakan: `.env.local` dibersihkan dari `NEON_*`, `README.md` memuat runbook deploy lengkap (Neon → migrasi → seed admin → import Vercel → verifikasi). Sisa butuh akun:
-   - Vercel: project Hobby non-komersial, region `sin1`, runtime Node.js, **tanpa** `vercel.json`/cron. Env: `DATABASE_URL_POOLED`, `BETTER_AUTH_SECRET` (baru untuk produksi), `BETTER_AUTH_URL` (domain produksi), `ADMIN_EMAIL`. Jangan set `DATABASE_URL_UNPOOLED`/`ADMIN_PASSWORD`/`SMOKE_*`.
-   - Migrasi **manual dari lokal** dengan `DATABASE_URL_UNPOOLED` sebelum deploy (`pnpm db:migrate`); tidak ada migrasi saat build.
-   - `pnpm seed:admin` ke DB produksi (no-op bila admin sudah ada — **tidak** mereset password admin yang ada), lalu login dan ganti password admin produksi.
-   - Setelah deploy: `BETTER_AUTH_URL` harus persis origin produksi (kalau tidak, `INVALID_ORIGIN`).
-3. **Pembersihan data uji (butuh persetujuan pengguna, belum dikerjakan):** akun `uji-browser*`/`uji-browser<N>@pekanan.local` (puluhan), klien "Toko Uji Browser" (milik Sari, sebagian sudah dialihkan ke Tono), baris koreksi + perubahan baris pada laporan Tono `bb887a4d-09d4-4a19-a312-a56283d4f6c3`, pembayaran iuran uji (Des 2025–Nov 2026 beberapa karyawan), fixture laporan pekan lampau Tono. Urutan FK: `koreksi_laporan` → `laporan_pekan`/`laporan_anggota` → `followup` → `pembayaran_iuran` → `klien` → `karyawan` → `session`/`account` → `user`.
-4. **Uji manual belum dilakukan:** rekap Atasan (`GET /api/rekap/pekan/[id]`) hanya diuji lewat smoke API, belum ada layar; bootstrap setelah pergantian pekan (Draf baru + catch-up) diuji smoke, belum manual browser.
-5. Skrip uji browser ada di `/tmp/pw/uji.mjs` (+ `node_modules` Playwright-Core di `/tmp/pw`); **tidak di repo** dan bisa hilang saat `/tmp` dibersihkan. `pnpm start` saat ini berjalan di port 3000 (pid dari build terakhir) — restart bila memakai build baru.
+1. ~~**Push**~~ — selesai. Remote `sini-sana/pekanan` → dipindah ke `jajanan-pasar-enak/pekanan` (SSH, akun `mishbah`). Verifikasi: `ssh -T git@github.com` → `Hi mishbah!`, `git ls-remote origin` OK.
+2. ~~**Commit 6 — Deploy**~~ — **selesai**: https://pekanan.vercel.app live, auto-deploy dari `main`. README berisi runbook lengkap. Sisa verifikasi manual di browser (butuh pengguna):
+   - Login `admin@pekanan.local` di produksi. Bila `INVALID_ORIGIN`, cek env Vercel `BETTER_AUTH_URL` harus persis `https://pekanan.vercel.app`.
+   - **Ganti password admin** (password lama publik di riwayat git).
+   - Tambah 1 karyawan → isi & kirim 1 Laporan Pekan → buka `/admin` (master nominal iuran + hasil follow-up).
+   - Konfirmasi region function = `sin1` (Project Settings → Functions).
+3. **Pembersihan data uji di DB produksi (BELUM; butuh permintaan eksplisit pengguna).** Isi DB sekarang 100% data uji: satu-satunya akun real adalah `admin@pekanan.local`. Konteks (bukan lagi hanya `uji-browser*`): 76 akun dihapus (`uji-browser*` + `@seed.local` termasuk `admin@seed.local`), 47 klien "Toko Uji Browser", 42 followup, 39 pembayaran iuran, 4 laporan (+ anggota + 24 koreksi), 423 sesi. Master `nominal_iuran` & `hasil_followup` **dipertahankan**.
+   - Backup sebelum hapus: branch Neon `backup-sebelum-cleanup-20261108` dan `/tmp/pekanan-backup/public-20261108-0834.sql`.
+   - Urutan FK dalam satu transaksi: `koreksi_laporan` → `laporan_anggota` → `laporan_pekan` → `followup` → `pembayaran_iuran` → `klien` → `karyawan` (null-kan `supervisor_id` dulu) → `session` → `account` → `user`, semua terbatas pada user selain `admin@pekanan.local`.
+   - Rencana perintah sudah disusun sesi ini tetapi **diblokir classifier auto-mode**; jalankan ulang setelah pengguna minta eksplisit. Klien memakai kolom `karyawan_id` (bukan `pemilik_id`).
+4. **Belum diuji manual (browser):** rekap Atasan (`GET /api/rekap/pekan/[id]`) belum punya layar; bootstrap setelah pergantian pekan (Draf baru + catch-up) baru diuji smoke.
+5. **Kebersihan repo/riwayat:** password `AdminBaru123!` ada di `HANDOFF.md` di riwayat `sini-sana/pekanan` dan `jajanan-pasar-enak/pekanan`. Opsi: ganti password saja (paling murah), atau `git filter-repo` + force-push (kirim ke dua repo). Putuskan dengan pengguna.
+6. Skrip uji browser ada di `/tmp/pw/uji.mjs` (+ Playwright-Core di `/tmp/pw`); **tidak di repo**. `pnpm start` lokal mungkin masih jalan di port 3000 — cek `ss -ltnp | grep :3000`.
 
 **Catatan smoke yang mahal ditemukan di Commit 4 (jangan diulang):**
 - Parser cookie harus memisah `Set-Cookie` per atribut; regex `max-age=0` cocok juga dengan `Max-Age=60480` dan membuang token baru setelah `change-password`.
@@ -208,7 +221,7 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
 - Koreksi menyimpan `sebelum`/`sesudah` hanya untuk baris yang **benar-benar berubah**; tanpa diff → 400.
 - `isSupervisorOf`/`isAtasanOf` dibatalkan sebagai helper terpisah: relasi cukup dibaca dari `karyawan.supervisor_id` yang sudah di-join di query (`queries.ts` predikat `bolehUbahLaporan`/`bolehKoreksiLaporan`).
 
-**Status akun admin lokal saat ini:** `admin@pekanan.local`, password `AdminBaru123!` (`harus_ganti_password = false`, `aktif = true`; diubah smoke Commit 4). `pnpm seed:admin` tidak mengubahnya (idempoten). Ganti lewat `/api/auth/change-password` atau UI bila perlu. Tabel `session` berisi ~60 sesi lama smoke — aman dibiarkan, atau bersihkan dengan `DELETE FROM session` bila perlu.
+**Status akun admin:** `admin@pekanan.local`, password `AdminBaru123!` (`harus_ganti_password = false`, `aktif = true`) — **dipakai di produksi**, segera ganti. `pnpm seed:admin` idempoten dan **tidak** mengganti password yang ada. Tabel `session` berisi 423 baris (sisa smoke/uji) — ikut terhapus pada cleanup §9.3.
 
 **Adapter & snake_case:** `drizzleAdapter(db, { provider: "pg", schema })` menerima objek schema apa adanya; `usePlural` (default `false`) cocok karena nama tabel tunggal (`user`, `session`, …). Nama kolom DB di-**override eksplisit** di `src/db/schema.ts` (`account_id`, `email_verified`, dst.), jadi **jangan** menambah `casing: "snake_case"` — default Drizzle (preserve) sudah benar. Export `schema` (`import * as schema`) harus memuat tabel domain juga agar adapter menemukan `user`.
 

@@ -85,8 +85,9 @@ Urutan commit mengikuti `plan.md` §9; setiap commit wajib lulus `pnpm build`.
 ## Commit 6 — Deploy Vercel Hobby + Neon Free
 
 - [x] `.env.local`: hapus `NEON_AUTH_*`, `NEON_FUNCTION_HELLO_BASE_URL`, cookie secret Neon
-- [ ] Vercel: region `sin1`, runtime Node.js, tanpa cron/`vercel.json`
-- [ ] Env Vercel: `DATABASE_URL_POOLED`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `ADMIN_EMAIL`
-- [ ] Migrasi manual dari lokal dengan `DATABASE_URL_UNPOOLED` sebelum deploy; tidak ada migrasi di build
-- [ ] `pnpm seed:admin` ke DB produksi, lalu login & ganti password
-- [ ] Perbarui `README.md` dan `HANDOFF.md` (kuota Free, kebijakan non-komersial) — `README.md` sudah diperbarui
+- [x] Vercel: region `sin1`, runtime Node.js, tanpa cron/`vercel.json` (live: https://pekanan.vercel.app; cek region di dashboard)
+- [x] Env Vercel: `DATABASE_URL_POOLED`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `ADMIN_EMAIL`
+- [x] Migrasi manual dari lokal dengan `DATABASE_URL_UNPOOLED` sebelum deploy; tidak ada migrasi di build
+- [ ] Login produksi & **ganti password admin** (password lama publik di riwayat git)
+- [x] Perbarui `README.md` dan `HANDOFF.md` (kuota Free, kebijakan non-komersial)
+- [ ] Bersihkan data uji di DB produksi (butuh permintaan eksplisit pengguna; backup sudah ada)
