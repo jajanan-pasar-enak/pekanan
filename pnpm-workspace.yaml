@@ -2,3 +2,8 @@ allowBuilds:
   esbuild: true
   sharp: false
   unrs-resolver: false
+
+# Dev-only transitive deps pinned past Dependabot advisories.
+overrides:
+  minimatch@<11.0.1: 11.0.1
+  esbuild@<0.25.0: 0.25.12
