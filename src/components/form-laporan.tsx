@@ -182,13 +182,13 @@ export function FormLaporan({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-40">Anggota</TableHead>
-              <TableHead className="min-w-44">Kehadiran</TableHead>
-              <TableHead className="min-w-48">Keterangan kehadiran</TableHead>
+              <TableHead>Anggota</TableHead>
+              <TableHead>Kehadiran</TableHead>
+              <TableHead>Keterangan kehadiran</TableHead>
               <TableHead className="w-28">Media online</TableHead>
               <TableHead className="w-28">Media offline</TableHead>
-              <TableHead className="min-w-44">One-on-one</TableHead>
-              <TableHead className="min-w-48">Keterangan O2O</TableHead>
+              <TableHead>One-on-one</TableHead>
+              <TableHead>Keterangan O2O</TableHead>
               <TableHead className="w-24 text-right">Follow-up</TableHead>
               {bolehUbah && <TableHead className="w-24">Status</TableHead>}
             </TableRow>
