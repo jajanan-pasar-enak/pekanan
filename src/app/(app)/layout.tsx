@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { UserIcon } from "lucide-react";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { connection } from "next/server";
@@ -23,9 +24,11 @@ async function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3 text-sm">
             <Link
               href="/akun"
-              className="text-muted-foreground transition-colors hover:text-foreground"
+              className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
-              {profil.nama}
+              <UserIcon className="size-4" aria-hidden />
+              <span>{profil.nama}</span>
+              <span className="sr-only">— buka halaman akun dan ganti password</span>
             </Link>
             {sesi.user.role === "admin" && <Badge variant="secondary">Admin</Badge>}
             <KeluarButton />
