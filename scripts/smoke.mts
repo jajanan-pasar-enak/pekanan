@@ -57,7 +57,7 @@ function buatJar() {
     });
     absorb(res);
     const text = await res.text();
-    let json: any = null;
+    let json: Json = null;
     try {
       json = text ? JSON.parse(text) : null;
     } catch {
@@ -68,12 +68,17 @@ function buatJar() {
   return { call };
 }
 
+// Respons API dibaca bebas lalu diverifikasi lewat check(); bentuknya
+// berbeda per endpoint, jadi sengaja tidak diketik.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Json = any;
+
 function check(label: string, ok: boolean, detail: string) {
   console.log(`${ok ? "PASS" : "FAIL"}  ${label}  ${detail}`);
   if (!ok) process.exitCode = 1;
 }
 
-function kode(json: any): string {
+function kode(json: Json): string {
   return json?.error?.code ?? "-";
 }
 
@@ -450,7 +455,7 @@ async function faseLaporan() {
     let idPekan = "";
     {
       const r = await sup.call("/api/pekan/bootstrap", { method: "POST" });
-      const berjalan = r.json?.data?.laporan?.find((l: any) => l.pekanBerjalan);
+      const berjalan = r.json?.data?.laporan?.find((l: Json) => l.pekanBerjalan);
       laporanId = berjalan?.id ?? "";
       check(
         "bootstrap membuat Draf pekan berjalan",
@@ -461,7 +466,7 @@ async function faseLaporan() {
     {
       const r = await sup.call("/api/pekan/bootstrap", { method: "POST" });
       const jumlahDraf = (r.json?.data?.laporan ?? []).filter(
-        (l: any) => l.pekanBerjalan && l.status === "Draf",
+        (l: Json) => l.pekanBerjalan && l.status === "Draf",
       ).length;
       check(
         "bootstrap idempoten",
@@ -732,7 +737,7 @@ async function faseLaporan() {
       );
       await client.end();
       const r = await sup.call("/api/pekan/bootstrap", { method: "POST" });
-      const berjalan = r.json?.data?.laporan?.find((l: any) => l.pekanBerjalan);
+      const berjalan = r.json?.data?.laporan?.find((l: Json) => l.pekanBerjalan);
       check(
         "catch-up pekan berjalan membuat Draf baru",
         r.status === 200 && berjalan?.status === "Draf" && berjalan?.id !== laporanId,
@@ -847,8 +852,8 @@ async function faseKlienIuran() {
       r.status === 200 && (r.json?.data ?? []).length > 0 && r2.status === 200,
       `status=${r.status}/${r2.status}`,
     );
-    hasilId ||= (r.json?.data ?? []).find((h: any) => h.aktif)?.id ?? "";
-    nominalId ||= (r2.json?.data ?? []).find((n: any) => n.aktif)?.id ?? "";
+    hasilId ||= (r.json?.data ?? []).find((h: Json) => h.aktif)?.id ?? "";
+    nominalId ||= (r2.json?.data ?? []).find((n: Json) => n.aktif)?.id ?? "";
     check(
       "master untuk uji tersedia (hasil & nominal)",
       hasilId !== "" && nominalId !== "",
@@ -1014,7 +1019,7 @@ async function faseKlienIuran() {
     check(
       "GET iuran: saw pembayaran Anggota Langsung",
       r.status === 200 &&
-        data.some((p: any) => p.karyawan?.id === idAnak && p.olehSupervisor === true),
+        data.some((p: Json) => p.karyawan?.id === idAnak && p.olehSupervisor === true),
       `status=${r.status} n=${data.length}`,
     );
     const r2 = await lain.call(`/api/pembayaran-iuran?karyawanId=${idAnak}`);
@@ -1175,7 +1180,7 @@ async function faseAdminKepegawaian() {
   {
     await jadi(emailY);
     const r = await bersama.call("/api/pekan/bootstrap", { method: "POST" });
-    const berjalan = r.json?.data?.laporan?.find((l: any) => l.pekanBerjalan);
+    const berjalan = r.json?.data?.laporan?.find((l: Json) => l.pekanBerjalan);
     check(
       "Draf Y memuat baris Z setelah pindah supervisor",
       r.status === 200 && berjalan?.total === 1,

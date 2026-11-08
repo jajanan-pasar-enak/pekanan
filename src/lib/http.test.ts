@@ -1,4 +1,3 @@
-// @ts-nocheck -- Node memuat TS tanpa transformasi tiper; .tsx milik Next diabaikan.
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { APIError } from "better-auth";
@@ -39,9 +38,7 @@ test("handle: AppError → { error: { code, message } }", async () => {
 
 test("handle: ZodError → VALIDATION 400 dengan detail", async () => {
   const skema = z.object({ nama: z.string().min(1) });
-  const res = await handle(async () => {
-    skema.parse({ nama: "" });
-  });
+  const res = await handle(async () => jsonOk(skema.parse({ nama: "" })));
   assert.equal(res.status, 400);
   const body = await res.json();
   assert.equal(body.error.code, "VALIDATION");

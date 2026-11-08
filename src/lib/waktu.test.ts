@@ -1,4 +1,3 @@
-// @ts-nocheck -- Node memuat TS tanpa transformasi tiper; .tsx milik Next diabaikan.
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { awalPekan, bulanBerjalan, pekanWIB, tambahHari, tanggalHariIni } from "./waktu";

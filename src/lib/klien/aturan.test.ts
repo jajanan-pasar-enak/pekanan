@@ -1,4 +1,3 @@
-// @ts-nocheck -- Node memuat TS tanpa transformasi tipe.
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {

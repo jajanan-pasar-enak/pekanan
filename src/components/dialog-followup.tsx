@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ListIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
@@ -267,7 +267,13 @@ export function DialogFollowup({
   const [konteks, setKonteks] = useState(konteksAwal);
   const [memuat, setMemuat] = useState(false);
 
-  useEffect(() => setKonteks(konteksAwal), [konteksAwal]);
+  // Data server baru (router.refresh) menimpa salinan lokal; disesuaikan saat
+  // render, bukan di effect, agar tidak ada render berantai.
+  const [konteksSebelum, setKonteksSebelum] = useState(konteksAwal);
+  if (konteksAwal !== konteksSebelum) {
+    setKonteksSebelum(konteksAwal);
+    setKonteks(konteksAwal);
+  }
 
   const anggota =
     konteks.anggota.find((a) => a.nama === namaAnggota) ??

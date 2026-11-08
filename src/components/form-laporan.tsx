@@ -80,12 +80,13 @@ export function FormLaporan({
   const [baris, setBaris] = useState<BarisForm[]>(() => barisAwal.map(keBarisForm));
   const [status, setStatus] = useState<Record<string, StatusSimpan>>({});
   const [mengirim, setMengirim] = useState(false);
-  const [tersimpanVersi, setTersimpanVersi] = useState(0);
   // Snapshot terakhir yang tersimpan untuk menghindari PATCH
-  // berulang tanpa perubahan dan snapshot sebelum pengeditan.
-  const tersimpan = useRef(
-    new Map(barisAwal.map((b) => [b.anggotaId, potonganBaris(keBarisForm(b))])),
+  // berulang tanpa perubahan dan snapshot sebelum pengeditan. State untuk
+  // render, ref untuk simpan() yang async agar selalu membaca nilai terbaru.
+  const [snapshot, setSnapshot] = useState(
+    () => new Map(barisAwal.map((b) => [b.anggotaId, potonganBaris(keBarisForm(b))])),
   );
+  const tersimpan = useRef(snapshot);
   const jeda = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   const semuaLengkap = useMemo(() => baris.every(lengkap), [baris]);
@@ -96,8 +97,7 @@ export function FormLaporan({
     statusLaporan === "Draf" &&
     (!semuaLengkap ||
       baris.some(
-        (b) =>
-          JSON.stringify(potonganBaris(b)) !== JSON.stringify(tersimpan.current.get(b.anggotaId)),
+        (b) => JSON.stringify(potonganBaris(b)) !== JSON.stringify(snapshot.get(b.anggotaId)),
       ));
   const jumlahLengkap = baris.filter(lengkap).length;
 
@@ -140,8 +140,8 @@ export function FormLaporan({
       toast.error(hasil.message);
       return;
     }
-    tersimpan.current.set(anggotaId, sekarang);
-    setTersimpanVersi((v) => v + 1);
+    tersimpan.current = new Map(tersimpan.current).set(anggotaId, sekarang);
+    setSnapshot(tersimpan.current);
     setStatus((s) => ({ ...s, [anggotaId]: "tersimpan" }));
   }
 
