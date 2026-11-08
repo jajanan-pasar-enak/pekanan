@@ -72,15 +72,23 @@ Urutan commit mengikuti `plan.md` §9; setiap commit wajib lulus `pnpm build`.
 
 ## Verifikasi akhir
 
-- [ ] `scripts/smoke.mts`: seed-admin, login, sign-up publik ditolak, paksa ganti password
-- [ ] `scripts/smoke.mts`: alur laporan → submit kosong ditolak → kirim → koreksi
-- [ ] `scripts/smoke.mts`: follow-up & rekap, iuran (bulan depan 400, duplikat 409)
-- [ ] `scripts/smoke.mts`: nonaktif dengan klien 400; alih klien non-admin 403; alih lalu nonaktif 200
-- [ ] `scripts/smoke.mts`: IDOR (laporan, rekap, follow-up milik orang lain); format error `{ error: { code } }`
-- [ ] Uji trigger transfer supervisor via SQL dalam transaksi rollback
-- [ ] `scripts/seed.mts --cleanup` hanya menghapus baris `@seed.local`
-- [ ] `pnpm build` lulus; smoke terhadap `pnpm start` (bukan `pnpm dev`)
-- [ ] Uji bootstrap: buka dashboard setelah pekan berganti membuat Draf baru + catch-up pekan terlewat
+- [x] `scripts/smoke.mts`: seed-admin, login, sign-up publik ditolak, paksa ganti password
+- [x] `scripts/smoke.mts`: alur laporan → submit kosong ditolak → kirim → koreksi
+- [x] `scripts/smoke.mts`: follow-up & rekap, iuran (bulan depan 400, duplikat 409)
+- [x] `scripts/smoke.mts`: nonaktif dengan klien 400; alih klien non-admin 403; alih lalu nonaktif 200
+- [x] `scripts/smoke.mts`: IDOR (laporan, rekap, follow-up milik orang lain); format error `{ error: { code } }`
+- [ ] Uji trigger transfer supervisor via SQL dalam transaksi rollback — **diverifikasi sekali via psql di Commit 1; belum ada skrip tersimpan** (`scripts/test-db.mts` tidak pernah ditulis)
+- [x] `scripts/seed.mts --cleanup` hanya menghapus baris `@seed.local` (dibatasi `id KaryawanSeed` + array nama master seed)
+- [x] `pnpm build` lulus; smoke terhadap `pnpm start` (bukan `pnpm dev`)
+- [x] Uji bootstrap: buka dashboard setelah pekan berganti membuat Draf baru + catch-up pekan terlewat (lewat smoke; belum dicoba manual di browser pada pergantian pekan nyata)
+
+## Commit 7 — Layar Rekap Atasan
+
+- [x] `daftarRekapAnggota` di `src/lib/kepegawaian/queries.ts` (laporan Anggota Langsung, lintas pekan)
+- [x] `/rekap` — daftar laporan anggota (supervisor, pekan, status, terisi)
+- [x] `/rekap/[pekanId]` — ringkasan + rincian anggota via `getRekapPekan`; pekan asing / non-UUID → 404
+- [x] Tautan "Rekap" di `nav-utama`
+- [x] Uji browser 14/14 (`/tmp/pw/rekap.mjs`) + `pnpm test` 28/28 + `pnpm build` lulus
 
 ## Commit 6 — Deploy Vercel Hobby + Neon Free
 

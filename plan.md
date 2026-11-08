@@ -243,10 +243,12 @@ Hapus `src/components/todo-list.tsx`, `src/app/api/todos/`, `src/app/api/ping-fu
 - follow-up: tanggal besok ditolak; rekap menghitung jumlah kejadian, bukan angka manual.
 - iuran: bulan depan ditolak; duplikat 409; supervisor langsung boleh mencatat untuk anggota; supervisor tidak langsung 403.
 - nonaktif dengan klien/anggota 400; alih klien oleh non-admin 403; alih klien lalu nonaktif 200.
-- trigger: `UPDATE laporan_pekan SET supervisor_id` ke target yang sudah punya baris hidup → baris lama ber-`deleted_at`, target utuh (dalam transaksi + rollback).
+- trigger: `UPDATE laporan_pekan SET supervisor_id` ke target yang sudah punya baris hidup → baris lama ber-`deleted_at`, target utuh (dalam transaksi + rollback). **Status: diverifikasi sekali via psql di Commit 1; belum ada skrip uji tersimpan.**
 - IDOR: akses laporan/rekap/follow-up orang lain → 403/404.
 - format error: `{ error: { code } }` konsisten untuk 400/403/404/409.
 - `scripts/seed.mts --cleanup` menghapus hanya baris `@seed.local` (uji di DB uji).
+
+Status implementasi smoke: **selesai** — `scripts/smoke.mts` memuat 88 check; seluruh skenario di atas (kecuali trigger yang belum punya skrip) lolos terhadap `pnpm start`.
 
 `pnpm build` lulus. Smoke dijalankan terhadap `pnpm start` (bukan `pnpm dev`) agar perilaku menyerupai build produksi. Uji manual browser semua halaman (golden path + edge: submit kosong, laporan lampau read-only, ganti password paksa, Draf baru setelah pekan berganti).
 
