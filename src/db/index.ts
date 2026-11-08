@@ -7,8 +7,8 @@ const globalForDb = globalThis as unknown as { pekananPool?: Pool };
 // pg-connection-string 2.x memetakan 'require'/'prefer'/'verify-ca' ke
 // 'verify-full' (dengan peringatan SECURITY WARNING); v3 memakai semantik
 // libpq tanpa verifikasi nama host. 'verify-full' dipertahankan eksplisit agar
-// hasil sama di kedua versi. Username/password di-encode supaya '#' atau
-// karakter query lain di dalamnya tidak merusak parser.
+// hasil sama di kedua versi. Username/password di-encode ulang supaya '#' atau
+// karakter query lain di dalamnya tidak merusak parser; sisa URL dibiarkan.
 function opsiKoneksi(raw: string | undefined) {
   if (!raw) return { connectionString: raw };
   const r = new URL(raw);
