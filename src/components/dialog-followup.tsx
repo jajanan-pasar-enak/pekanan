@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ListIcon, PencilIcon, PlusIcon } from "lucide-react";
+import { ListIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,11 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { kirimApi } from "@/lib/api-client";
-import type { FollowupPekan, KonteksFollowupPekan } from "@/lib/klien/followup";
+import type {
+  FollowupDihapus,
+  FollowupPekan,
+  KonteksFollowupPekan,
+} from "@/lib/klien/followup";
 
 type OpsiHasil = { id: string; nama: string };
 
@@ -34,6 +38,13 @@ type Sasaran =
   | { jenis: "tambah"; anggotaId: string; anggotaNama: string; klienId: string }
   | {
       jenis: "ubah";
+      anggotaId: string;
+      anggotaNama: string;
+      followupId: string;
+      awal: FollowupPekan;
+    }
+  | {
+      jenis: "hapus";
       anggotaId: string;
       anggotaNama: string;
       followupId: string;
@@ -58,6 +69,82 @@ function ringkasPerubahan(f: FollowupPekan, opsi: OpsiHasil[]): string[] {
   }
   if ((a.deskripsi ?? null) !== (b.deskripsi ?? null)) bagian.push("deskripsi diubah");
   return bagian;
+}
+
+function RiwayatDihapus({ daftar }: { daftar: FollowupDihapus[] }) {
+  return (
+    <ul className="flex flex-col gap-2">
+      {daftar.map((d) => (
+        <li key={d.id} className="flex flex-col gap-1 text-sm">
+          <p className="text-muted-foreground line-through">
+            {d.klien.nama} · {d.tanggal} · {d.hasil.nama}
+          </p>
+          {(d.deskripsi || d.alasan) && (
+            <p className="text-xs text-muted-foreground">
+              {d.deskripsi && <>“{d.deskripsi}” · </>}
+              dihapus {d.oleh.nama}: {d.alasan}
+            </p>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function KonfirmasiHapus({
+  awal,
+  busy,
+  onHapus,
+  onBatal,
+}: {
+  awal: FollowupPekan;
+  busy: boolean;
+  onHapus: (alasan: string) => void;
+  onBatal: () => void;
+}) {
+  const [alasan, setAlasan] = useState("");
+  const bisaHapus = alasan.trim() !== "" && !busy;
+
+  return (
+    <form
+      className="flex flex-col gap-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (bisaHapus) onHapus(alasan.trim());
+      }}
+    >
+      <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm">
+        <p className="font-medium">Hapus follow-up ini?</p>
+        <p className="mt-1 text-muted-foreground">
+          {awal.klien.nama} · {awal.tanggal} · {awal.hasil.nama}
+          {awal.deskripsi ? ` · ${awal.deskripsi}` : ""}
+        </p>
+        <p className="mt-2 text-muted-foreground">
+          Follow-up hilang dari hitungan pekan, tetapi tanggal, hasil, deskripsi, dan alasan
+          tetap tersimpan di riwayat penghapusan laporan ini.
+        </p>
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="fuAlasanHapus">Alasan penghapusan</Label>
+        <Textarea
+          id="fuAlasanHapus"
+          value={alasan}
+          onChange={(e) => setAlasan(e.target.value)}
+          rows={2}
+          placeholder="Contoh: salah klien; kejadian ini milik klien lain."
+          required
+        />
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="outline" onClick={onBatal} disabled={busy}>
+          Batal
+        </Button>
+        <Button type="submit" variant="destructive" disabled={!bisaHapus}>
+          {busy ? "Menghapus…" : "Hapus follow-up"}
+        </Button>
+      </div>
+    </form>
+  );
 }
 
 function FormFollowup({
@@ -218,10 +305,32 @@ export function DialogFollowup({
     }
   }
 
+  async function hapus(alasan: string) {
+    if (!sasaran || sasaran.jenis !== "hapus") return;
+    setBusy(true);
+    try {
+      const hasil = await kirimApi(
+        "DELETE",
+        `/api/followup/${sasaran.followupId}`,
+        { alasan },
+      );
+      if (!hasil.ok) {
+        toast.error(hasil.message);
+        return;
+      }
+      toast.success("Follow-up dihapus.");
+      setSasaran(null);
+      await segarkan();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function simpan(nilai: FormNilai, alasan: string) {
     if (!sasaran) return;
     setBusy(true);
     try {
+      if (sasaran.jenis === "hapus") return;
       const hasil =
         sasaran.jenis === "tambah"
           ? await kirimApi("POST", `/api/klien/${sasaran.klienId}/followup`, nilai)
@@ -240,6 +349,8 @@ export function DialogFollowup({
       setBusy(false);
     }
   }
+
+  const dihapusPekan = konteks.dihapus.filter((d) => d.anggotaId === anggota?.id);
 
   if (!anggota) return null;
 
@@ -265,7 +376,23 @@ export function DialogFollowup({
             </DialogDescription>
           </DialogHeader>
 
-          {sasaran ? (
+          {sasaran?.jenis === "hapus" ? (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-medium">Hapus follow-up</h3>
+                <Button variant="ghost" size="sm" onClick={() => setSasaran(null)}>
+                  Kembali ke daftar
+                </Button>
+              </div>
+              <KonfirmasiHapus
+                key={sasaran.followupId}
+                awal={sasaran.awal}
+                busy={busy}
+                onHapus={hapus}
+                onBatal={() => setSasaran(null)}
+              />
+            </div>
+          ) : sasaran ? (
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-sm font-medium">
@@ -318,21 +445,38 @@ export function DialogFollowup({
                           </p>
                         </div>
                         {f.bolehUbah && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              setSasaran({
-                                jenis: "ubah",
-                                anggotaId: anggota.id,
-                                anggotaNama: anggota.nama,
-                                followupId: f.id,
-                                awal: f,
-                              })
-                            }
-                          >
-                            <PencilIcon /> Ubah
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setSasaran({
+                                  jenis: "ubah",
+                                  anggotaId: anggota.id,
+                                  anggotaNama: anggota.nama,
+                                  followupId: f.id,
+                                  awal: f,
+                                })
+                              }
+                            >
+                              <PencilIcon /> Ubah
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() =>
+                                setSasaran({
+                                  jenis: "hapus",
+                                  anggotaId: anggota.id,
+                                  anggotaNama: anggota.nama,
+                                  followupId: f.id,
+                                  awal: f,
+                                })
+                              }
+                            >
+                              <Trash2Icon /> Hapus
+                            </Button>
+                          </div>
                         )}
                       </div>
                       {f.deskripsi && <p className="mt-2 text-sm">{f.deskripsi}</p>}
@@ -357,6 +501,18 @@ export function DialogFollowup({
                     </li>
                   ))}
                 </ul>
+              )}
+
+              {dihapusPekan.length > 0 && (
+                <section className="flex flex-col gap-2 rounded-lg border border-dashed p-3">
+                  <p className="text-sm font-medium">
+                    Dihapus pada pekan ini ({dihapusPekan.length})
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Tidak dihitung di angka laporan, tetapi jejaknya tetap tersimpan.
+                  </p>
+                  <RiwayatDihapus daftar={dihapusPekan} />
+                </section>
               )}
 
               {konteks.bolehTambah &&

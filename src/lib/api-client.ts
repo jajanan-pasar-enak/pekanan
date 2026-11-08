@@ -3,7 +3,7 @@ export type HasilApi<T> = { ok: true; data: T } | { ok: false; message: string; 
 type Amplop<T> = { data?: T; error?: { code?: string; message?: string } };
 
 export async function kirimApi<T>(
-  method: "POST" | "PATCH",
+  method: "POST" | "PATCH" | "DELETE",
   url: string,
   body?: unknown,
 ): Promise<HasilApi<T>> {

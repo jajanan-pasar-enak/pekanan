@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { followup, followupEdit, hasilFollowup, karyawan, klien } from "@/db/schema";
 import { AppError } from "@/lib/http";
@@ -8,6 +8,7 @@ import {
   bolehKelolaFollowup,
   diffFollowup,
   followupSchema,
+  hapusFollowupSchema,
   hasilFollowupSchema,
   klienSchema,
   tanggalFollowupSah,
@@ -102,18 +103,19 @@ export async function catatFollowup(klienId: string, viewerId: string, input: un
   return baru!;
 }
 
-// Edit riwayat: nilai lama + alasan disimpan per perubahan; tanpa diff = 400
-// (server menolak perubahan kosong tanpa merusak riwayat).
-export async function ubahFollowup(
+type BarisFollowup = {
+  id: string;
+  klienId: string;
+  tanggal: string;
+  hasilFollowupId: string;
+  deskripsi: string | null;
+  pemilik: { id: string; supervisorId: string | null };
+};
+
+async function followupUntukKelola(
   followupId: string,
   viewerId: string,
-  input: unknown,
-) {
-  const body = ubahFollowupSchema.parse(input);
-  if (!tanggalFollowupSah(body.tanggal, tanggalHariIni())) {
-    throw new AppError("VALIDATION", "Tanggal follow-up tidak boleh di masa depan.");
-  }
-
+): Promise<BarisFollowup> {
   const [row] = await db
     .select({
       id: followup.id,
@@ -131,6 +133,22 @@ export async function ubahFollowup(
   if (!row || !bolehKelolaFollowup(viewerId, row.pemilik)) {
     throw new AppError("NOT_FOUND", "Follow-up tidak ditemukan.");
   }
+  return row;
+}
+
+// Edit riwayat: nilai lama + alasan disimpan per perubahan; tanpa diff = 400
+// (server menolak perubahan kosong tanpa merusak riwayat).
+export async function ubahFollowup(
+  followupId: string,
+  viewerId: string,
+  input: unknown,
+) {
+  const body = ubahFollowupSchema.parse(input);
+  if (!tanggalFollowupSah(body.tanggal, tanggalHariIni())) {
+    throw new AppError("VALIDATION", "Tanggal follow-up tidak boleh di masa depan.");
+  }
+
+  const row = await followupUntukKelola(followupId, viewerId);
   await pastikanHasilAktif(body.hasilFollowupId);
 
   const sesudah = {
@@ -168,6 +186,39 @@ export async function ubahFollowup(
       .where(eq(followup.id, row.id));
   });
   return { id: row.id, ...sesudah };
+}
+
+// Hapus = soft-delete: baris tetap ada karena followup_edit merujuknya dengan
+// RESTRICT, dan riwayat penghapusan dibaca dari followup_edit ("dihapus").
+export async function hapusFollowup(
+  followupId: string,
+  viewerId: string,
+  input: unknown,
+) {
+  const body = hapusFollowupSchema.parse(input);
+  const row = await followupUntukKelola(followupId, viewerId);
+
+  await db.transaction(async (tx) => {
+    const [terhapus] = await tx
+      .update(followup)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(followup.id, row.id), isNull(followup.deletedAt)))
+      .returning({ id: followup.id });
+    if (!terhapus) throw new AppError("NOT_FOUND", "Follow-up tidak ditemukan.");
+
+    await tx.insert(followupEdit).values({
+      followupId: row.id,
+      editorId: viewerId,
+      alasan: body.alasan,
+      sebelum: {
+        tanggal: row.tanggal,
+        hasilFollowupId: row.hasilFollowupId,
+        deskripsi: row.deskripsi,
+      },
+      sesudah: { dihapus: true },
+    });
+  });
+  return { id: row.id, dihapus: true };
 }
 
 // Master Hasil Follow-up dikelola Admin (tabel master, bukan enum).

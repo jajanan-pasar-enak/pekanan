@@ -366,6 +366,9 @@ export const followup = pgTable(
     pencatatSupervisorId: uuid("pencatat_supervisor_id").references(() => karyawan.id, {
       onDelete: "restrict",
     }),
+    // Soft-delete: riwayat edit merujuk baris ini dengan RESTRICT, dan jejak
+    // penghapusan tetap dibaca dari barisnya.
+    deletedAt: timestamp("deleted_at", sekarang),
     createdAt: timestamp("created_at", sekarang).notNull().defaultNow(),
   },
   (t) => [

@@ -1228,7 +1228,11 @@ try {
            SELECT l.id FROM laporan_pekan l WHERE l.supervisor_id IN ${karyawanSmoke})`,
       );
       await client.query(`DELETE FROM laporan_pekan WHERE supervisor_id IN ${karyawanSmoke}`);
-      // Follow-up hasil fase ini dibuat oleh karyawan smoke.
+      // Follow-up hasil fase ini dibuat oleh karyawan smoke; riwayat editnya
+      // (termasuk entri hapus) merujuk baris itu dengan RESTRICT.
+      await client.query(`DELETE FROM followup_edit WHERE followup_id IN (
+         SELECT f.id FROM followup f WHERE f.created_by IN ${karyawanSmoke}
+       ) OR editor_id IN ${karyawanSmoke}`);
       await client.query(`DELETE FROM followup WHERE created_by IN ${karyawanSmoke}`);
       await client.query(`DELETE FROM pembayaran_iuran WHERE karyawan_id IN ${karyawanSmoke}`);
       await client.query(`DELETE FROM klien WHERE karyawan_id IN ${karyawanSmoke}`);

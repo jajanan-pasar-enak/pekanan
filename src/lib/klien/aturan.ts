@@ -26,6 +26,11 @@ export const ubahFollowupSchema = z.object({
   alasan: z.string().trim().min(1, "Alasan perubahan wajib diisi.").max(2000),
 });
 
+// Hapus follow-up juga wajib alasan: jejaknya disimpan di riwayat perubahan.
+export const hapusFollowupSchema = z.object({
+  alasan: z.string().trim().min(1, "Alasan penghapusan wajib diisi.").max(2000),
+});
+
 export type NilaiFollowup = {
   tanggal: string;
   hasilFollowupId: string;
@@ -70,3 +75,4 @@ export const hasilFollowupSchema = z.object({
 export type KlienInput = z.infer<typeof klienSchema>;
 export type FollowupInput = z.infer<typeof followupSchema>;
 export type UbahFollowupInput = z.infer<typeof ubahFollowupSchema>;
+export type HapusFollowupInput = z.infer<typeof hapusFollowupSchema>;

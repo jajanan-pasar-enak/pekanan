@@ -5,6 +5,7 @@ import {
   bolehKelolaFollowup,
   diffFollowup,
   followupSchema,
+  hapusFollowupSchema,
   klienSchema,
   tanggalFollowupSah,
   ubahFollowupSchema,
@@ -66,6 +67,14 @@ test("diffFollowup: hanya kolom yang berubah, null dan string kosong dianggap sa
     diffFollowup(awal, { tanggal: "2026-11-02", hasilFollowupId: idB, deskripsi: "hubungi lagi" }),
     { hasilFollowupId: idB, deskripsi: "hubungi lagi" },
   );
+});
+
+test("hapusFollowupSchema: alasan wajib dan di-trim", () => {
+  assert.deepEqual(hapusFollowupSchema.parse({ alasan: "  salah klien  " }), {
+    alasan: "salah klien",
+  });
+  assert.throws(() => hapusFollowupSchema.parse({ alasan: "   " }));
+  assert.throws(() => hapusFollowupSchema.parse({}));
 });
 
 test("bolehKelolaFollowup: pemilik dan Atasan Supervisor langsung pemilik saja", () => {

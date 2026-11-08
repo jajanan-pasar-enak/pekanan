@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { followup, followupEdit, hasilFollowup, karyawan, klien } from "@/db/schema";
 import { AppError } from "@/lib/http";
@@ -33,11 +33,26 @@ export type FollowupPekan = {
   edit: EditFollowup[];
 };
 
+// Jejak follow-up yang dihapus pada pekan ini: barisnya sudah hilang, jadi
+// nilai terakhir dan alasannya dibaca dari followup_edit.
+export type FollowupDihapus = {
+  id: string;
+  anggotaId: string;
+  klien: { id: string; nama: string };
+  tanggal: string;
+  hasil: { id: string; nama: string };
+  deskripsi: string | null;
+  oleh: { id: string; nama: string };
+  alasan: string;
+  dihapusPada: Date;
+};
+
 export type KonteksFollowupPekan = {
   pekan: { mulai: string; selesai: string };
   penyimpan: string;
   bolehTambah: boolean;
   anggota: (KlienAnggotaLangsung & { followup: FollowupPekan[] })[];
+  dihapus: FollowupDihapus[];
 };
 
 // Daftar Anggota Langsung beserta klien yang mereka pegang — sumber form tambah
@@ -86,7 +101,13 @@ export async function daftarFollowupPekan(
   const anggota = await daftarKlienAnggotaLangsung(supervisorId);
   const ids = anggota.map((a) => a.id);
   if (ids.length === 0) {
-    return { pekan, penyimpan: penyimpan.nama, bolehTambah: false, anggota: [] };
+    return {
+      pekan,
+      penyimpan: penyimpan.nama,
+      bolehTambah: false,
+      anggota: [],
+      dihapus: [],
+    };
   }
 
   const baris = await db
@@ -111,11 +132,12 @@ export async function daftarFollowupPekan(
       and(
         inArray(followup.createdBy, ids),
         sql`${followup.tanggal} BETWEEN ${pekan.mulai} AND ${pekan.selesai}`,
+        isNull(followup.deletedAt),
       ),
     )
     .orderBy(desc(followup.tanggal), desc(followup.createdAt));
 
-  const [riwayat, supervisor] = await Promise.all([
+  const [riwayat, supervisor, dihapus] = await Promise.all([
     baris.length === 0
       ? Promise.resolve([])
       : db
@@ -142,6 +164,32 @@ export async function daftarFollowupPekan(
       .select({ id: karyawan.id, nama: karyawan.nama, supervisorId: karyawan.supervisorId })
       .from(karyawan)
       .where(inArray(karyawan.id, ids)),
+    // Hapus membawa selisih: angka turun tetapi kejadian hapus tetap tampil.
+    db
+      .select({
+        id: followupEdit.id,
+        anggotaId: followup.createdBy,
+        klien: { id: klien.id, nama: klien.nama },
+        tanggal: followup.tanggal,
+        hasil: { id: hasilFollowup.id, nama: hasilFollowup.nama },
+        deskripsi: followup.deskripsi,
+        oleh: { id: karyawan.id, nama: karyawan.nama },
+        alasan: followupEdit.alasan,
+        dihapusPada: followupEdit.createdAt,
+      })
+      .from(followupEdit)
+      .innerJoin(followup, eq(followup.id, followupEdit.followupId))
+      .innerJoin(klien, eq(klien.id, followup.klienId))
+      .innerJoin(hasilFollowup, eq(hasilFollowup.id, followup.hasilFollowupId))
+      .innerJoin(karyawan, eq(karyawan.id, followupEdit.editorId))
+      .where(
+        and(
+          inArray(followup.createdBy, ids),
+          sql`${followup.tanggal} BETWEEN ${pekan.mulai} AND ${pekan.selesai}`,
+          sql`(${followupEdit.sesudah} ? 'dihapus')`,
+        ),
+      )
+      .orderBy(desc(followupEdit.createdAt)),
   ]);
 
   const followupPer = new Map<string, FollowupPekan[]>();
@@ -162,7 +210,9 @@ export async function daftarFollowupPekan(
           : { id: b.pencatatId, nama: b.pencatatNama },
       bolehUbah: bolehKelolaFollowup(viewerId, pemilik),
       edit: riwayat
-        .filter((r) => r.followupId === b.id)
+        .filter(
+          (r) => r.followupId === b.id && !("dihapus" in (r.sesudah as object)),
+        )
         .map((r) => ({
           id: r.id,
           editor: { id: r.editorId, nama: r.editorNama },
@@ -180,5 +230,6 @@ export async function daftarFollowupPekan(
     penyimpan: penyimpan.nama,
     bolehTambah: bolehKelola,
     anggota: anggota.map((a) => ({ ...a, followup: followupPer.get(a.id) ?? [] })),
+    dihapus,
   };
 }

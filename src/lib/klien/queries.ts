@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { followup, followupEdit, hasilFollowup, karyawan, klien } from "@/db/schema";
 import { AppError } from "@/lib/http";
@@ -49,8 +49,8 @@ export async function daftarKlienSaya(karyawanId: string): Promise<KlienRingkas[
       nama: klien.nama,
       kontak: klien.kontak,
       pemilik: { id: karyawan.id, nama: karyawan.nama },
-      jumlahFollowup: sql<number>`(SELECT count(*)::int FROM followup f WHERE f.klien_id = ${klien.id})`,
-      followupTerakhir: sql<string | null>`(SELECT max(f.tanggal)::text FROM followup f WHERE f.klien_id = ${klien.id})`,
+      jumlahFollowup: sql<number>`(SELECT count(*)::int FROM followup f WHERE f.klien_id = ${klien.id} AND f.deleted_at IS NULL)`,
+      followupTerakhir: sql<string | null>`(SELECT max(f.tanggal)::text FROM followup f WHERE f.klien_id = ${klien.id} AND f.deleted_at IS NULL)`,
     })
     .from(klien)
     .innerJoin(karyawan, eq(karyawan.id, klien.karyawanId))
@@ -92,7 +92,7 @@ export async function getKlien(id: string, viewerId: string): Promise<KlienDetai
     .from(followup)
     .innerJoin(hasilFollowup, eq(hasilFollowup.id, followup.hasilFollowupId))
     .innerJoin(karyawan, eq(karyawan.id, followup.createdBy))
-    .where(eq(followup.klienId, id))
+    .where(and(eq(followup.klienId, id), isNull(followup.deletedAt)))
     .orderBy(desc(followup.tanggal), desc(followup.createdAt));
 
   const editan = await db

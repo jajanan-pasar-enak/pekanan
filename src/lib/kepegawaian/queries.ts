@@ -117,6 +117,7 @@ export async function getRekapPekan(
         SELECT count(*)::int FROM followup f
         WHERE f.created_by = ${laporanAnggota.anggotaId}
           AND f.tanggal BETWEEN ${p.mulai} AND ${p.selesai}
+          AND f.deleted_at IS NULL
       )`,
     })
     .from(laporanAnggota)

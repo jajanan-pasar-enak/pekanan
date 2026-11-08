@@ -130,9 +130,12 @@ const idKaryawanSeed = sql`(SELECT k.id FROM karyawan k JOIN "user" u ON u.id = 
 try {
   if (cleanup) {
     await db.transaction(async (tx) => {
-      // Urutan mengikuti FK RESTRICT: followup → klien → iuran → karyawan → user.
+      // Urutan mengikuti FK RESTRICT: followup_edit → followup → klien → iuran → karyawan → user.
       const namaNominal = sql`ARRAY[${sql.join(NOMINAL.map((n) => sql`${n.nama}`), sql`, `)}]::text[]`;
       const namaHasil = sql`ARRAY[${sql.join(HASIL.map((h) => sql`${h.nama}`), sql`, `)}]::text[]`;
+      const idFollowupSeed = sql`(SELECT f.id FROM followup f JOIN klien k ON k.id = f.klien_id
+        WHERE k.karyawan_id IN ${idKaryawanSeed})`;
+      await tx.execute(sql`DELETE FROM followup_edit WHERE followup_id IN ${idFollowupSeed}`);
       await tx.execute(sql`DELETE FROM followup WHERE klien_id IN (
         SELECT k.id FROM klien k WHERE k.karyawan_id IN ${idKaryawanSeed})`);
       await tx.execute(sql`DELETE FROM klien WHERE karyawan_id IN ${idKaryawanSeed}`);

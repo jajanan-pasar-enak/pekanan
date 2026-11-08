@@ -139,6 +139,7 @@ export async function getLaporan(id: string, viewerId: string): Promise<LaporanD
         SELECT count(*)::int FROM followup f
         WHERE f.created_by = ${laporanAnggota.anggotaId}
           AND f.tanggal BETWEEN ${laporan.pekanMulai} AND ${laporan.pekanSelesai}
+          AND f.deleted_at IS NULL
       )`,
     })
     .from(laporanAnggota)
