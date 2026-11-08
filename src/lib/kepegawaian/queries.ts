@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { followup, karyawan, klien, laporanAnggota, laporanPekan, pekan, user } from "@/db/schema";
 import { AppError } from "@/lib/http";
@@ -151,4 +151,78 @@ function kosong(p: { id: string; mulai: string; selesai: string }): RekapPekan {
     baris: [],
     total: { anggota: 0, lengkap: 0, mediaOnline: 0, mediaOffline: 0, followup: 0 },
   };
+}
+
+export type RekapRingkas = {
+  id: string;
+  supervisor: string;
+  pekanId: string;
+  mulai: string;
+  selesai: string;
+  status: string;
+  diisi: number;
+  total: number;
+};
+
+// Laporan milik Anggota Langsung viewer, terbaru dulu. Dipakai Atasan untuk
+// memilih pekan yang ingin dilihat rekapitulasinya.
+export async function daftarRekapAnggota(viewerId: string): Promise<RekapRingkas[]> {
+  const rows = await db
+    .select({
+      id: laporanPekan.id,
+      pekanId: pekan.id,
+      mulai: pekan.mulai,
+      selesai: pekan.selesai,
+      status: laporanPekan.status,
+      supervisor: karyawan.nama,
+    })
+    .from(laporanPekan)
+    .innerJoin(pekan, eq(pekan.id, laporanPekan.pekanId))
+    .innerJoin(karyawan, eq(karyawan.id, laporanPekan.supervisorId))
+    .where(and(eq(karyawan.supervisorId, viewerId), isNull(laporanPekan.deletedAt)))
+    .orderBy(desc(pekan.mulai), asc(karyawan.nama));
+
+  if (rows.length === 0) return [];
+
+  const barisSemua = await db
+    .select({
+      laporanId: laporanAnggota.laporanId,
+      kehadiran: laporanAnggota.kehadiran,
+      mediaOnline: laporanAnggota.mediaOnline,
+      mediaOffline: laporanAnggota.mediaOffline,
+      oneOnOne: laporanAnggota.oneOnOne,
+    })
+    .from(laporanAnggota)
+    .where(
+      inArray(
+        laporanAnggota.laporanId,
+        rows.map((r) => r.id),
+      ),
+    );
+
+  const isi = new Map<string, { diisi: number; total: number }>();
+  for (const b of barisSemua) {
+    const stat = isi.get(b.laporanId) ?? { diisi: 0, total: 0 };
+    stat.total += 1;
+    if (
+      b.kehadiran !== null &&
+      b.mediaOnline !== null &&
+      b.mediaOffline !== null &&
+      b.oneOnOne !== null
+    ) {
+      stat.diisi += 1;
+    }
+    isi.set(b.laporanId, stat);
+  }
+
+  return rows.map((r) => ({
+    id: r.id,
+    supervisor: r.supervisor,
+    pekanId: r.pekanId,
+    mulai: r.mulai,
+    selesai: r.selesai,
+    status: r.status,
+    diisi: isi.get(r.id)?.diisi ?? 0,
+    total: isi.get(r.id)?.total ?? 0,
+  }));
 }

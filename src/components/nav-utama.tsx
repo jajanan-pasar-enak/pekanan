@@ -6,6 +6,7 @@ import { cn } from "cn";
 
 const TAUTAN = [
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/rekap", label: "Rekap" },
   { href: "/klien", label: "Klien" },
   { href: "/iuran", label: "Iuran" },
 ] as const;
