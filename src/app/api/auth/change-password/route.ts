@@ -22,11 +22,29 @@ export async function POST(request: Request) {
     // Flag direset sebelum rotasi sesi: nextCookies mengganti sesi lewat
     // cookies(), yang tidak bisa dipanggil setelah tulis ke cookies. Setelah
     // own session dihapus (revokeOtherSessions), sesi baru tidak bisa dibuat.
+    // Karena itu password lama diperiksa lebih dulu — reset flag lalu gagal
+    // akan membiarkan karyawan lolos dari kewajiban ganti password.
+    const lamaBenar = await auth.api
+      .verifyPassword({ body: { password: currentPassword }, headers: request.headers })
+      .then(() => true)
+      .catch(() => false);
+    if (!lamaBenar) {
+      throw new AppError("VALIDATION", "Password saat ini salah.");
+    }
     await tandaiGantiPasswordSelesai(profil.userId);
-    await auth.api.changePassword({
-      body: { currentPassword, newPassword, revokeOtherSessions: true },
-      headers: request.headers,
-    });
+    try {
+      await auth.api.changePassword({
+        body: { currentPassword, newPassword, revokeOtherSessions: true },
+        headers: request.headers,
+      });
+    } catch (error) {
+      // Better Auth membalas pesan Inggris; aplikasi memakai satu bahasa di semua UI.
+      const kode = (error as { body?: { code?: string } }).body?.code;
+      if (kode === "INVALID_PASSWORD") {
+        throw new AppError("VALIDATION", "Password saat ini salah.");
+      }
+      throw error;
+    }
     return jsonOk({ id: profil.id, email: sesi.user.email });
   });
 }

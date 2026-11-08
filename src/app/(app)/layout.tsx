@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { connection } from "next/server";
@@ -20,7 +21,12 @@ async function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-2.5">
           <NavUtama admin={sesi.user.role === "admin"} />
           <div className="flex items-center gap-3 text-sm">
-            <span className="text-muted-foreground">{profil.nama}</span>
+            <Link
+              href="/akun"
+              className="text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {profil.nama}
+            </Link>
             {sesi.user.role === "admin" && <Badge variant="secondary">Admin</Badge>}
             <KeluarButton />
           </div>
