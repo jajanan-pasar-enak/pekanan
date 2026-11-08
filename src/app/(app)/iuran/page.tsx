@@ -227,7 +227,12 @@ export default async function IuranPage({ searchParams }: PageProps<"/iuran">) {
         <HalamanSkeleton
           anak={
             <>
-              <KartuSkeleton judul="Catat pembayaran" />
+              <header className="flex flex-col gap-1">
+                <h1 className="text-2xl font-semibold tracking-tight">Iuran</h1>
+                <p className="text-sm text-muted-foreground">
+                  Master Nominal Iuran diatur Admin. Satu pembayaran per karyawan per bulan.
+                </p>
+              </header>
               <KartuSkeleton judul="Iuran bulanan" anak={<KartuTabelSkeleton />} />
             </>
           }

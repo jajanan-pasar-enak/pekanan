@@ -53,7 +53,14 @@ export default async function KoreksiPage({
     <Suspense
       fallback={
         <HalamanSkeleton
-          anak={<KartuSkeleton judul="Isi koreksi" anak={<KartuTabelSkeleton />} />}
+          anak={
+            <>
+              <header>
+                <h1 className="text-2xl font-semibold tracking-tight">Koreksi Laporan</h1>
+              </header>
+              <KartuSkeleton judul="Isi koreksi" anak={<KartuTabelSkeleton />} />
+            </>
+          }
         />
       }
     >

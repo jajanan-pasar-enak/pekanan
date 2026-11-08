@@ -138,6 +138,12 @@ export default async function RekapPekanPage({ params }: PageProps<"/rekap/[peka
         <HalamanSkeleton
           anak={
             <>
+              <header className="flex flex-wrap items-start justify-between gap-3">
+                <h1 className="text-2xl font-semibold tracking-tight">Rekap Pekan</h1>
+                <Button variant="outline" asChild>
+                  <Link href="/rekap">Kembali</Link>
+                </Button>
+              </header>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" aria-hidden>
                 {Array.from({ length: 5 }, (_, i) => (
                   <Skeleton key={i} className="h-24 rounded-xl" />
