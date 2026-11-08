@@ -358,9 +358,14 @@ export const followup = pgTable(
       .notNull()
       .references(() => hasilFollowup.id, { onDelete: "restrict" }),
     deskripsi: text("deskripsi"),
+    // Selalu pemilik klien: jumlah follow-up per pekan dihitung dari kolom ini.
     createdBy: uuid("created_by")
       .notNull()
       .references(() => karyawan.id, { onDelete: "restrict" }),
+    // Diisi bila Atasan Supervisor yang mencatat/mengubah atas nama pemilik.
+    pencatatSupervisorId: uuid("pencatat_supervisor_id").references(() => karyawan.id, {
+      onDelete: "restrict",
+    }),
     createdAt: timestamp("created_at", sekarang).notNull().defaultNow(),
   },
   (t) => [
@@ -371,4 +376,22 @@ export const followup = pgTable(
       sql`${t.tanggal} <= ${hariIniWIB}`,
     ),
   ],
+);
+
+export const followupEdit = pgTable(
+  "followup_edit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    followupId: uuid("followup_id")
+      .notNull()
+      .references(() => followup.id, { onDelete: "restrict" }),
+    editorId: uuid("editor_id")
+      .notNull()
+      .references(() => karyawan.id, { onDelete: "restrict" }),
+    alasan: text("alasan").notNull(),
+    sebelum: jsonb("sebelum").$type<Record<string, unknown>>().notNull(),
+    sesudah: jsonb("sesudah").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("created_at", sekarang).notNull().defaultNow(),
+  },
+  (t) => [index("followup_edit_followup_id_idx").on(t.followupId)],
 );

@@ -58,7 +58,9 @@ async function IsiKlien({ id }: { id: string }) {
         <Card>
           <CardHeader>
             <CardTitle>Catat follow-up</CardTitle>
-            <CardDescription>Satu catatan = satu kejadian bertanggal.</CardDescription>
+            <CardDescription>
+            Satu catatan = satu kejadian bertanggal. Dicatat atas nama {klien.pemilik.nama}.
+          </CardDescription>
           </CardHeader>
           <CardContent>
             <FormFollowup
@@ -95,8 +97,21 @@ async function IsiKlien({ id }: { id: string }) {
                     <TableCell>{f.hasil.nama}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {f.deskripsi ?? "—"}
+                      {f.edit.length > 0 && (
+                        <ul className="mt-1 flex flex-col gap-0.5 text-xs">
+                          {f.edit.map((e) => (
+                            <li key={e.id}>
+                              diubah {e.editor.nama}: {e.alasan}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </TableCell>
-                    <TableCell>{`${f.pencatat.nama}`}</TableCell>
+                    <TableCell>
+                      {f.olehSupervisor
+                        ? `${f.olehSupervisor.nama} (atas nama ${f.pencatat.nama})`
+                        : f.pencatat.nama}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

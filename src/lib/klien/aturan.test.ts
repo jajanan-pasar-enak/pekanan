@@ -1,7 +1,14 @@
 // @ts-nocheck -- Node memuat TS tanpa transformasi tipe.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { klienSchema, followupSchema, tanggalFollowupSah } from "./aturan";
+import {
+  bolehKelolaFollowup,
+  diffFollowup,
+  followupSchema,
+  klienSchema,
+  tanggalFollowupSah,
+  ubahFollowupSchema,
+} from "./aturan";
 
 test("tanggalFollowupSah: hari ini dan lampau boleh, besok ditolak", () => {
   assert.equal(tanggalFollowupSah("2026-11-07", "2026-11-07"), true);
@@ -28,4 +35,44 @@ test("followupSchema: tanggal harus ISO, hasil_followup_id harus uuid, deskripsi
 
   assert.throws(() => followupSchema.parse({ tanggal: "2026-13-01", hasilFollowupId: id }));
   assert.throws(() => followupSchema.parse({ tanggal: "2026-11-01", hasilFollowupId: "x" }));
+});
+
+test("ubahFollowupSchema: alasan wajib dan di-trim, deskripsi kosong menjadi null", () => {
+  const id = "3f2a1c9e-1111-4222-8333-444455556666";
+  const ok = ubahFollowupSchema.parse({
+    tanggal: "2026-11-02",
+    hasilFollowupId: id,
+    deskripsi: "  ",
+    alasan: "  salah input hasil  ",
+  });
+  assert.equal(ok.alasan, "salah input hasil");
+  assert.equal(ok.deskripsi, null);
+  assert.throws(() =>
+    ubahFollowupSchema.parse({ tanggal: "2026-11-02", hasilFollowupId: id, alasan: "   " }),
+  );
+});
+
+test("diffFollowup: hanya kolom yang berubah, null dan string kosong dianggap sama", () => {
+  const idA = "3f2a1c9e-1111-4222-8333-444455556666";
+  const idB = "3f2a1c9e-1111-4222-8333-444455556667";
+  const awal = { tanggal: "2026-11-02", hasilFollowupId: idA, deskripsi: null };
+
+  assert.deepEqual(diffFollowup(awal, { ...awal }), {});
+  assert.deepEqual(
+    diffFollowup(awal, { tanggal: "2026-11-03", hasilFollowupId: idA, deskripsi: null }),
+    { tanggal: "2026-11-03" },
+  );
+  assert.deepEqual(
+    diffFollowup(awal, { tanggal: "2026-11-02", hasilFollowupId: idB, deskripsi: "hubungi lagi" }),
+    { hasilFollowupId: idB, deskripsi: "hubungi lagi" },
+  );
+});
+
+test("bolehKelolaFollowup: pemilik dan Atasan Supervisor langsung pemilik saja", () => {
+  const pemilik = { id: "anggota", supervisorId: "sari" };
+  assert.equal(bolehKelolaFollowup("anggota", pemilik), true);
+  assert.equal(bolehKelolaFollowup("sari", pemilik), true);
+  assert.equal(bolehKelolaFollowup("tono", pemilik), false);
+  assert.equal(bolehKelolaFollowup("anggota", { id: "anggota", supervisorId: null }), true);
+  assert.equal(bolehKelolaFollowup("sari", { id: "anggota", supervisorId: null }), false);
 });

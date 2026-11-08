@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { DialogFollowup } from "@/components/dialog-followup";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SelectBaris } from "@/components/select-baris";
@@ -16,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { kirimApi } from "@/lib/api-client";
+import type { KonteksFollowupPekan } from "@/lib/klien/followup";
 import { CARA_ONE_ON_ONE, STATUS_KEHADIRAN, type BarisNilai } from "@/lib/laporan/aturan";
 import type { BarisLaporan } from "@/lib/laporan/queries";
 
@@ -65,11 +67,17 @@ export function FormLaporan({
   bolehUbah,
   status: statusLaporan,
   barisAwal,
+  hariIni,
+  konteksFollowup,
+  opsiHasil,
 }: {
   laporanId: string;
   bolehUbah: boolean;
   status: string;
   barisAwal: BarisLaporan[];
+  hariIni: string;
+  konteksFollowup: KonteksFollowupPekan;
+  opsiHasil: { id: string; nama: string }[];
 }) {
   const router = useRouter();
   const [baris, setBaris] = useState<BarisForm[]>(() => barisAwal.map(keBarisForm));
@@ -277,12 +285,18 @@ export function FormLaporan({
                       rows={1}
                     />
                   </TableCell>
-                  {/* Dihitung dari kejadian di halaman Klien, bukan diisi di sini. */}
-                  <TableCell
-                    className="text-right tabular-nums"
-                    title="Jumlah follow-up klien bertanggal pada pekan ini"
-                  >
-                    {b.followup}
+                  {/* Dihitung dari kejadian, bukan diisi di sini; klik untuk melihat/mengelola daftarnya. */}
+                  <TableCell className="text-right">
+                    <span className="inline-flex items-center">
+                      <span className="tabular-nums">{b.followup}</span>
+                      <DialogFollowup
+                        laporanId={laporanId}
+                        namaAnggota={b.nama}
+                        hariIni={hariIni}
+                        konteksAwal={konteksFollowup}
+                        opsiHasil={opsiHasil}
+                      />
+                    </span>
                   </TableCell>
                   {bolehUbah && (
                     <TableCell className="text-xs text-muted-foreground">

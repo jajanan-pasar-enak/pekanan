@@ -19,6 +19,44 @@ export const followupSchema = z.object({
   deskripsi: z.preprocess(kosongJadiNull, z.string().trim().max(2000).nullable()).default(null),
 });
 
+export const ubahFollowupSchema = z.object({
+  tanggal: z.iso.date("Tanggal follow-up tidak valid."),
+  hasilFollowupId: z.uuid("Hasil follow-up tidak valid."),
+  deskripsi: z.preprocess(kosongJadiNull, z.string().trim().max(2000).nullable()).default(null),
+  alasan: z.string().trim().min(1, "Alasan perubahan wajib diisi.").max(2000),
+});
+
+export type NilaiFollowup = {
+  tanggal: string;
+  hasilFollowupId: string;
+  deskripsi: string | null;
+};
+
+// Hanya kolom yang benar-benar berubah; kosong = tidak ada yang perlu disimpan.
+export function diffFollowup(
+  sebelum: NilaiFollowup,
+  sesudah: NilaiFollowup,
+): Partial<NilaiFollowup> {
+  const hasil: Partial<NilaiFollowup> = {};
+  if (sebelum.tanggal !== sesudah.tanggal) hasil.tanggal = sesudah.tanggal;
+  if (sebelum.hasilFollowupId !== sesudah.hasilFollowupId) {
+    hasil.hasilFollowupId = sesudah.hasilFollowupId;
+  }
+  if ((sebelum.deskripsi ?? null) !== (sesudah.deskripsi ?? null)) {
+    hasil.deskripsi = sesudah.deskripsi;
+  }
+  return hasil;
+}
+
+// Pemilik klien, atau Atasan Supervisor langsung pemilik. Admin tidak (sama
+// seperti riwayat follow-up: Admin hanya mengalihkan kepemilikan).
+export function bolehKelolaFollowup(
+  viewerId: string,
+  pemilik: { id: string; supervisorId: string | null },
+): boolean {
+  return viewerId === pemilik.id || pemilik.supervisorId === viewerId;
+}
+
 export const alihKlienSchema = z.object({
   keKaryawanId: z.uuid("Karyawan tujuan tidak valid."),
 });
@@ -31,3 +69,4 @@ export const hasilFollowupSchema = z.object({
 
 export type KlienInput = z.infer<typeof klienSchema>;
 export type FollowupInput = z.infer<typeof followupSchema>;
+export type UbahFollowupInput = z.infer<typeof ubahFollowupSchema>;

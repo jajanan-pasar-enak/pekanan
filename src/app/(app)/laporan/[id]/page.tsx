@@ -14,7 +14,10 @@ import {
 } from "@/components/ui/card";
 import { requireKaryawan } from "@/lib/auth/current";
 import { AppError } from "@/lib/http";
+import { daftarFollowupPekan } from "@/lib/klien/followup";
+import { daftarHasilFollowup } from "@/lib/klien/queries";
 import { getLaporan } from "@/lib/laporan/queries";
+import { tanggalHariIni } from "@/lib/waktu";
 
 type BarisKoreksi = Record<string, unknown>;
 
@@ -52,6 +55,10 @@ async function IsiLaporan({ id }: { id: string }) {
     throw error;
   }
 
+  const [konteksFollowup, opsiHasil] = await Promise.all([
+    daftarFollowupPekan(laporan.supervisor.id, laporan.pekan, profil.id),
+    daftarHasilFollowup(true),
+  ]);
   const namaAnggota = new Map(laporan.baris.map((b) => [b.anggotaId, b.nama]));
 
   return (
@@ -103,6 +110,9 @@ async function IsiLaporan({ id }: { id: string }) {
               bolehUbah={laporan.bolehUbah}
               status={laporan.status}
               barisAwal={laporan.baris}
+              hariIni={tanggalHariIni()}
+              konteksFollowup={konteksFollowup}
+              opsiHasil={opsiHasil.map((h) => ({ id: h.id, nama: h.nama }))}
             />
           )}
         </CardContent>
