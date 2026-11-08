@@ -66,6 +66,20 @@ Semua sudah live di produksi dan diverifikasi dengan Playwright terhadap `pnpm s
 - **Penyimpangan kosmetik yang diketahui:** dua opsi master `hasil_followup` bisa bernama sama (beda `id`), sehingga badge riwayat tampil mis. "hasil Tertarik lanjut → Tertarik lanjut". Bukan bug data; pertimbangkan unique nama di master bila ingin menghindari.
 - **Uji atas nama pemilik:** follow-up yang dicatat atasan tetap `created_by = pemilik`; hak ubah di dialog dihitung per kejadian (`bolehUbah`) — dialog baru membuka data lewat `GET /api/laporan/[id]/followup`, jadi angka di tabel dan isi dialog selalu dihitung dari query yang sama (`daftarFollowupPekan`).
 
+## 1e. Hasil sesi 2026-11-08 (lanjutan 4) — hapus follow-up dari dialog
+
+- **Skema (migrasi `0004_unusual_white_tiger.sql`, sudah diterapkan ke Neon):** `followup.deleted_at timestamptz` (nullable). Aditif.
+- **Kenapa soft-delete, bukan `DELETE`:** `followup_edit.followup_id` → `followup` adalah `ON DELETE restrict`, dan riwayat edit (termasuk jejak hapus) harus tetap terbaca. Percobaan hard delete → `23001` → 500. Baris di-null-kan dengan `deleted_at`.
+- **Aturan:** siapa yang boleh hapus = sama dengan ubah (`bolehKelolaFollowup`: pemilik klien / Atasan Supervisor langsungnya; Admin tidak). **Alasan wajib** (`hapusFollowupSchema`), ditolak kosong → 400 di server.
+- **Data:** `UPDATE followup SET deleted_at = now()` + `INSERT followup_edit` dengan `sebelum` = nilai lama dan `sesudah = { dihapus: true }`, dalam satu transaksi. Baris yang sudah terhapus → 404.
+- **Semua hitungan & daftar memfilter `deleted_at IS NULL`:** angka Follow-up di `/laporan/[id]` (`laporan/queries.ts`) dan Rekap (`kepegawaian/queries.ts`), `daftarKlienSaya` (`jumlahFollowup`, `followupTerakhir`), riwayat `/klien/[id]`, `daftarFollowupPekan`. **Jangan menambahkan filter ini** ke query "dihapus" di `followup.ts` — baris di sana memang sudah soft-deleted.
+- **API:** `DELETE /api/followup/[id]` body `{ alasan }`. `kirimApi` di `api-client.ts` kini menerima `DELETE`.
+- **UI (`dialog-followup.tsx`):** tombol **Hapus** (destructive) di samping **Ubah** → konfirmasi di dalam dialog yang sama (`KonfirmasiHapus`): ringkasan kejadian + alasan wajib + tombol terkunci tanpa alasan. Setelah hapus: toast, daftar di-segarkan, dan seksi **"Dihapus pada pekan ini (n)"** tampil (klien, tanggal, hasil dicoret + deskripsi + `dihapus <nama>: <alasan>`). Angka tabel turun saat dialog ditutup (`router.refresh()`).
+- **Tipe:** `FollowupDihapus` (id = id `followup_edit`, `anggotaId` = `created_by`) di `KonteksFollowupPekan.dihapus`.
+- **Skrip cleanup diperbaiki** (`seed.mts --cleanup`, `smoke.mts` finally): `followup_edit` dihapus **sebelum** `followup`/`karyawan` (RESTRICT; dulu gagal bila ada riwayat edit).
+- **Uji:** `pnpm test` **32/32** (+`hapusFollowupSchema`); `pnpm build` exit 0. Uji browser `/tmp/pw/hapus-followup.mjs` terhadap `pnpm start`: **10/10** (konfirmasi, tombol terkunci, alasan, angka 8→7, riwayat tetap setelah reload, DELETE id acak → 400). `/klien/[id]` menampilkan 4 kejadian (4 soft-deleted tidak dihitung).
+- **Belum dilakukan:** commit/push, dan entri hapus di `/klien/[id]` (riwayat hapus hanya tampil di dialog laporan).
+
 ## 1c. Hasil sesi 2026-11-08 (lanjutan 2) — lebar tabel laporan
 
 - `min-w-40/44/48` dihapus dari `<TableHead>` tabel `form-laporan.tsx` (Anggota, Kehadiran, Keterangan kehadiran, One-on-one, Keterangan O2O) dan `form-koreksi.tsx` (kolom sama). `w-28` di Media online/offline tetap; `min-w-*` bawaan shadcn (`ui/input.tsx`, `ui/select.tsx`) tidak disentuh.
