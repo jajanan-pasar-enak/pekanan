@@ -1,10 +1,10 @@
 # HANDOFF — pekanan
 
-> **Baca ini dulu.** Status terakhir (2026-11-08, sesi lanjutan): **live** di **https://pekanan.vercel.app** (Vercel Hobby, `main` auto-deploy). Remote: **`https://github.com/jajanan-pasar-enak/pekanan.git`** (publik; remote `sini-sana` sudah ditinggalkan tetapi **masih ada riwayatnya di GitHub**). `main` sinkron di **`7891865`**. `pnpm test` **28/28**, `pnpm build` exit 0. Sesi ini menambah Commit 7–9 (lihat §1b).
+> **Baca ini dulu.** Status terakhir (2026-11-08, sesi lanjutan 3 — follow-up dari layar Laporan Pekan): **live** di **https://pekanan.vercel.app** (Vercel Hobby, `main` auto-deploy). Remote: **`https://github.com/jajanan-pasar-enak/pekanan.git`** (publik; remote `sini-sana` sudah ditinggalkan tetapi **masih ada riwayatnya di GitHub**). `main` sinkron di **`3386ccd`**. `pnpm test` **31/31**, `pnpm build` exit 0. Commit sesi ini: `0b2a7db` (lebar tabel), `cb7b7c1` (fitur follow-up), `3386ccd` (docs), lalu handoff ini — lihat §1c/§1d.
 
 > **Yang belum beres:**
 > 1. ~~Ganti password admin~~ — **SELESAI oleh pengguna** pada 2026-11-08 ±10:44 WIB. `AdminBaru123!` **tidak berlaku lagi** (sign-in 401). Password baru hanya diketahui pengguna. **`seed-admin` tidak mengganti password** dan menolak jalan lagi selama sudah ada `user.role = 'admin'` — jangan mencoba "memulihkan" password admin lewat skrip.
-> 2. **Data uji belum dibersihkan** — DB produksi = branch Neon yang sama dengan dev lokal. Kondisi per akhir sesi: **77 user**, 77 karyawan, 47 klien, 5 laporan hidup, 42 followup, **300 sesi**. Dari 77 user: 1 `admin@pekanan.local`, 1 `admin@seed.local`, 8 akun seed lain, **68 akun `uji-browser*`/`probe-*`** sisa uji. Backup: branch Neon `backup-sebelum-cleanup-20261108` + `/tmp/pekanan-backup/public-20261108-0834.sql`. Perintah hapus **butuh permintaan eksplisit dari pengguna** (lihat §9.3).
+> 2. **Data uji belum dibersihkan** — DB produksi = branch Neon yang sama dengan dev lokal. Kondisi per akhir sesi: **77 user**, 77 karyawan, 47 klien, 7 laporan (5 Draf, 1 Terkirim, 1 Dikoreksi), **50 followup**, **6 `followup_edit`**, **333 sesi**. Dari 77 user: 1 `admin@pekanan.local`, 1 `admin@seed.local`, 8 akun seed lain, **68 akun `uji-browser*`/`probe-*`** sisa uji. Backup: branch Neon `backup-sebelum-cleanup-20261108` + `/tmp/pekanan-backup/public-20261108-0834.sql` (keduanya **sebelum** `followup_edit` dan kolom `pencatat_supervisor_id` ditambahkan — restore dari backup ini berarti juga membuang fitur follow-up). Perintah hapus **butuh permintaan eksplisit dari pengguna** (lihat §9.3).
 > 3. **`deepmerge` (Dependabot, low)** belum bisa dipatch — hanya lewat `shadcn` CLI, tidak masuk runtime.
 > 4. **Kebersihan riwayat git**: `HANDOFF.md` versi lama memuat `AdminBaru123!` di riwayat kedua repo. Karena password sudah diganti, nilainya basi; `git filter-repo` **tidak perlu** kecuali pengguna ingin membersihkan riwayat.
 
@@ -13,10 +13,10 @@
 Aplikasi **Next.js 16.4.5 (App Router, Cache Components)** + **Neon Postgres** (Drizzle + `pg`) di `/home/xan/project/skrmb/pekanan`. Mencatat kinerja pekanan tim: Laporan Pekan (kehadiran, sebar media, one-on-one), Klien + Follow-up, dan Iuran bulanan.
 
 - Package manager: **pnpm 12.16.1** · Node **v24.22.1** lokal (environment Qoder menyebut v26; yang dipakai `pnpm exec` adalah v24)
-- Git: branch `main`, commit **`7891865 feat(ui): kolom follow-up di tabel Laporan Pekan`** (terakhir di-push); sebelumnya `aec853d`, `ef45675`, `eb5d1f4`, `b3c4b2b`, `45ff04f` (lihat §1b), lalu `1a799dc` (handoff deploy), `0b49dba` (deps), `ade5699`, `de13912`, `8dc453d` (Commit 5 UI), `bd64c4a` (Commit 4).
+- Git: branch `main`, commit **`3386ccd docs: catat aturan edit follow-up dan rute API baru`** (terakhir di-push); sebelumnya `cb7b7c1` (fitur follow-up), `a419ff6` + `0b2a7db` (lebar tabel), `7891865` (kolom follow-up), `aec853d`, `ef45675`, `eb5d1f4`, `b3c4b2b`, `45ff04f` (lihat §1b), lalu `1a799dc` (handoff deploy), `0b49dba` (deps), `ade5699`, `de13912`, `8dc453d` (Commit 5 UI), `bd64c4a` (Commit 4).
 - **Remote**: `origin` = `https://github.com/jajanan-pasar-enak/pekanan.git` (publik; org dibuat 2026-11-07, akun `mishbah` punya akses via SSH). Remote lama `sini-sana/pekanan` masih memuat riwayat lama — hapus/arsipkan bila perlu.
 - **Produksi**: https://pekanan.vercel.app (project Vercel Hobby, region seharusnya `sin1`, auto-deploy dari `main`). `/` → 200, `/api/me` → 401 (benar). Env Vercel: `DATABASE_URL_POOLED`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL=https://pekanan.vercel.app`, `ADMIN_EMAIL`.
-- **DB produksi = DB dev lokal**: satu branch Neon (`production`, project `still-firefly-08452520`, org `org-empty-credit-57766595`, `aws-ap-southeast-1`). 3 migrasi Drizzle diterapkan, 15 tabel `public`.
+- **DB produksi = DB dev lokal**: satu branch Neon (`production`, project `still-firefly-08452520`, org `org-empty-credit-57766595`, `aws-ap-southeast-1`). **4 migrasi Drizzle** diterapkan (`0000`–`0003`, termasuk `0003_melodic_james_howlett.sql` untuk follow-up), 15 tabel `public` (termasuk `followup_edit`).
 - Admin `admin@pekanan.local` (`Admin Perhimpunan`, level Tetap, `aktif = true`, `harus_ganti_password = false`): **password sudah diganti pengguna 2026-11-08; tidak dicatat di repo.** Smoke: karena admin bukan pemilik password yang diketahui, jalankan dengan `ADMIN_PASSWORD='<password admin>'` — **jangan pakai `AdminBaru123!`** (401). Alternatif untuk smoke tanpa menyentuh admin: jalankan terhadap `admin@seed.local` / `SeedPekanan123!` (akun admin kedua, `pnpm seed.mts`), atau berharap smoke melewati fase yang butuh admin.
 - Akun lain di DB: `admin@seed.local` + 8 akun seed + 68 akun uji (`uji-browser*`, `probe-*`). Tidak ada karyawan data real.
 
@@ -61,7 +61,10 @@ Semua sudah live di produksi dan diverifikasi dengan Playwright terhadap `pnpm s
 - Rute baru: `GET /api/laporan/[id]/followup`, `PATCH /api/followup/[id]`. `POST /api/klien/[id]/followup` kini menerima atasan.
 - Logika di `src/lib/klien/followup.ts` (query + tipe `KonteksFollowupPekan`) dan `src/lib/klien/{aturan,mutations,queries}.ts`. Uji unit baru di `klien/aturan.test.ts` (`ubahFollowupSchema`, `diffFollowup`, `bolehKelolaFollowup`) → `pnpm test` **31/31**.
 - Uji browser `/tmp/pw/followup.mjs` terhadap `pnpm start`: dialog, tambah, simpan terkunci tanpa alasan, riwayat edit, angka tabel naik (4→5), kontrol atasan, PATCH tak dikenal → 404. Lulus.
-- **Catatan data:** `sup-1@seed.local` (Sari) kini anggota laporan **salah satu supervisor** (baris akun `uji-browser*`), dan klien "Toko Uji Browser" milik Tono Supervisor. Ini sisa pengalihan klien pada uji lalu; angka follow-up Tono bertambah oleh uji sesi ini.
+- **Uji produksi** (`/tmp/pw/prod-followup.mjs` terhadap https://pekanan.vercel.app, akun `sup-1@seed.local`, laporan `dffe4dba-6a2a-4317-97f0-429e2f19fc68`, baris Tono Supervisor): **11/11 check lulus**; angka Follow-up 7 → 8 dan bertahan setelah reload.
+- **Catatan data:** `sup-1@seed.local` (Sari) kini anggota laporan **salah satu supervisor** (baris akun `uji-browser*`), dan klien "Toko Uji Browser" milik Tono Supervisor. Ini sisa pengalihan klien pada uji lalu; angka follow-up Tono bertambah oleh uji sesi ini (8 followup berdeskripsi mengandung "uji" di klien itu + 6 baris `followup_edit`).
+- **Penyimpangan kosmetik yang diketahui:** dua opsi master `hasil_followup` bisa bernama sama (beda `id`), sehingga badge riwayat tampil mis. "hasil Tertarik lanjut → Tertarik lanjut". Bukan bug data; pertimbangkan unique nama di master bila ingin menghindari.
+- **Uji atas nama pemilik:** follow-up yang dicatat atasan tetap `created_by = pemilik`; hak ubah di dialog dihitung per kejadian (`bolehUbah`) — dialog baru membuka data lewat `GET /api/laporan/[id]/followup`, jadi angka di tabel dan isi dialog selalu dihitung dari query yang sama (`daftarFollowupPekan`).
 
 ## 1c. Hasil sesi 2026-11-08 (lanjutan 2) — lebar tabel laporan
 
@@ -248,18 +251,19 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
 
 1. ~~Push, Commit 6 deploy, Commit 7–9 UI~~ — **selesai dan live**, lihat §1b.
 2. ~~Ganti password admin~~ — **selesai oleh pengguna** (password baru tidak dicatat di repo).
-3. **Pembersihan data uji di DB produksi (BELUM; butuh permintaan eksplisit pengguna).** Kondisi akhir sesi: **77 user** (1 `admin@pekanan.local` real + 1 `admin@seed.local` + 8 akun seed + **68 akun uji** `uji-browser*`/`probe-*`), 47 klien "Toko Uji Browser", 5 laporan hidup, **42 followup, 300 sesi**. Master `nominal_iuran` & `hasil_followup` **dipertahankan**.
+3. **Pembersihan data uji di DB produksi (BELUM; butuh permintaan eksplisit pengguna).** Kondisi akhir sesi (2026-11-08, dihitung ulang dengan psql): **77 user** (1 `admin@pekanan.local` real + 1 `admin@seed.local` + 8 akun seed + **68 akun uji** `uji-browser*`/`probe-*`), 77 karyawan, 47 klien, 7 laporan (5 Draf, 1 Terkirim, 1 Dikoreksi), **50 followup, 6 `followup_edit`, 333 sesi**. Master `nominal_iuran` & `hasil_followup` **dipertahankan**.
    - **Keputusan yang harus diambil pengguna lebih dulu:** apakah akun `@seed.local` (Sari/Tono/Wulan/anggota/admin seed) ikut dihapus atau **dipertahankan** sebagai data demo. Sesi ini justru memakainya untuk uji dan memberi pengguna daftar akun tersebut (§1).
-   - Backup: branch Neon `backup-sebelum-cleanup-20261108` dan `/tmp/pekanan-backup/public-20261108-0834.sql` (snapshot **sebelum** Commit 7–9, tetapi data domain tidak berubah).
-   - Urutan FK dalam satu transaksi: `koreksi_laporan` → `laporan_anggota` → `laporan_pekan` → `followup` → `pembayaran_iuran` → `klien` → `karyawan` (null-kan `supervisor_id` dulu) → `session` → `account` → `user`, terbatas pada user yang dipilih. Kolom klien = `karyawan_id` (bukan `pemilik_id`).
+   - Backup: branch Neon `backup-sebelum-cleanup-20261108` dan `/tmp/pekanan-backup/public-20261108-0834.sql` — **keduanya dibuat sebelum migrasi `0003`**, jadi tidak memuat `followup_edit`/`pencatat_supervisor_id`. **Ambil backup baru** (`pg_dump` skema `public`, atau branch Neon baru) sebelum cleanup.
+   - Urutan FK dalam satu transaksi: **`followup_edit` → `koreksi_laporan` → `laporan_anggota` → `laporan_pekan` → `followup` → `pembayaran_iuran` → `klien` → `karyawan` (null-kan `supervisor_id` dulu) → `session` → `account` → `user`**, terbatas pada user yang dipilih. `followup_edit` merujuk `followup`/`karyawan` dengan RESTRICT → **wajib sebelum `followup`**. Kolom klien = `karyawan_id` (bukan `pemilik_id`); `followup.pencatat_supervisor_id` juga RESTRICT ke `karyawan`.
    - Sebelum menghapus, **hitung ulang** jumlahnya (angka di atas berubah tiap sesi uji).
 4. **Kandidat pekerjaan berikutnya (belum ada permintaan eksplisit):**
    - ~~Rapikan lebar tabel `/laporan/[id]`~~ — **selesai** (§1c).
+   - ~~Follow-up bisa diklik, daftar klien, tambah + edit oleh atasan~~ — **selesai & live** (§1d).
    - `scripts/test-db.mts` untuk trigger `retire_transferred_laporan` — satu-satunya item checklist yang belum punya skrip tersimpan.
    - Smoke masih butuh password admin yang tidak diketahui; pertimbangkan menjalankannya terhadap `admin@seed.local`.
 5. **Belum diuji manual (browser):** bootstrap setelah pergantian pekan nyata (Draf baru + catch-up). Rute Rekap sekarang **sudah punya layar** (§1b) — poin lama sudah usang.
 6. **Kebersihan riwayat git:** `AdminBaru123!` masih ada di `HANDOFF.md` versi lama pada riwayat kedua repo, tetapi **sudah tidak berlaku**. `git filter-repo` tidak wajib.
-7. Skrip uji browser ada di `/tmp/pw` (+ Playwright-Core); **tidak di repo**. Sesi ini berakhir dengan **server lokal dimatikan** (port 3000 bebas).
+7. Skrip uji browser ada di `/tmp/pw` (+ Playwright-Core, Chrome `/usr/bin/google-chrome-stable`); **tidak di repo**: `uji.mjs`, `rekap.mjs`, `akun.mjs`, `wajib.mjs`, `tabel.mjs`, `followup.mjs`, `prod*.mjs`, `prod-followup.mjs`. Sesi ini berakhir dengan **server lokal dimatikan** (port 3000 bebas). `BASE` script di-hardcode ke `http://localhost:3000` — untuk uji produksi salin script dan ganti BASE.
 
 **Jebakan locator Playwright yang ditemukan sesi ini (jangan diulang):**
 - `body > header` **tidak selalu cocok** — header aplikasi berada di dalam `div` pembungkus, jadi `page.locator("header")` menemukan 1 elemen sedangkan `"body > header"` menemukan 0. Jangan percaya catatan lama yang menyuruh pakai `body > header`.
@@ -281,7 +285,7 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
 - Koreksi menyimpan `sebelum`/`sesudah` hanya untuk baris yang **benar-benar berubah**; tanpa diff → 400.
 - `isSupervisorOf`/`isAtasanOf` dibatalkan sebagai helper terpisah: relasi cukup dibaca dari `karyawan.supervisor_id` yang sudah di-join di query (`queries.ts` predikat `bolehUbahLaporan`/`bolehKoreksiLaporan`).
 
-**Status akun admin:** `admin@pekanan.local` (`harus_ganti_password = false`, `aktif = true`). Password **dibuat pengguna sendiri pada 2026-11-08** dan **tidak** dicatat di repo; `AdminBaru123!` sudah tidak berlaku. `pnpm seed:admin` idempoten, **tidak** mengganti password yang ada, dan **berhenti** bila sudah ada `user.role = 'admin'`. Tabel `session` berisi 300 baris (sisa smoke/uji) — ikut terhapus pada cleanup §9.3.
+**Status akun admin:** `admin@pekanan.local` (`harus_ganti_password = false`, `aktif = true`). Password **dibuat pengguna sendiri pada 2026-11-08** dan **tidak** dicatat di repo; `AdminBaru123!` sudah tidak berlaku. `pnpm seed:admin` idempoten, **tidak** mengganti password yang ada, dan **berhenti** bila sudah ada `user.role = 'admin'`. Tabel `session` berisi 333 baris (sisa smoke/uji) — ikut terhapus pada cleanup §9.3.
 
 **Akun seed demo** (semua password `SeedPekanan123!`, terverifikasi login 200 di produksi): `sup-1@seed.local` Sari (Supervisor, atasan Tono/Wulan), `sup-2@seed.local` Tono, `sup-3@seed.local` Wulan (Supervisor), `magang-1@seed.local`, `magang-2@seed.local`, `tetap-1@seed.local`, `tetap-2@seed.local` (anggota), `admin@seed.local` (admin). Cocok untuk mencoba `/laporan`, `/rekap`, `/klien`, `/iuran`, `/admin` tanpa menyentuh akun admin real.
 
@@ -294,7 +298,7 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
 - DB (trigger & CHECK): `scripts/test-db.mts` — pola psql Commit 1 dipindah ke Drizzle langsung, setiap kasus dalam transaksi yang di-`ROLLBACK`, exit non-nol bila ada yang lolos. Butuh `DATABASE_URL_UNPOOLED`; jangan pernah commit data uji.
 - Urutan kerja per fitur: uji gagal → implementasi → uji hijau → `pnpm build` → commit.
 - **Jalankan test secara serial** (`pnpm test` sudah `--test-concurrency=1`; skrip DB/HTTP satu per satu, tidak paralel).
-- Commit 2: `src/lib/http.test.ts` (6 uji). Commit 3: `src/lib/waktu.test.ts` (7), `src/lib/laporan/aturan.test.ts` (4). Commit 4: `klien/aturan.test.ts`, `iuran/aturan.test.ts`, `kepegawaian/aturan.test.ts` → total **28**.
+- Commit 2: `src/lib/http.test.ts` (6 uji). Commit 3: `src/lib/waktu.test.ts` (7), `src/lib/laporan/aturan.test.ts` (4). Commit 4: `klien/aturan.test.ts`, `iuran/aturan.test.ts`, `kepegawaian/aturan.test.ts` → total 28. Sesi lanjutan 3: 3 uji baru di `klien/aturan.test.ts` (`ubahFollowupSchema`, `diffFollowup`, `bolehKelolaFollowup`) → total **31**.
 - Commit 5 (UI) tidak butuh uji unit baru; verifikasi lewat build + uji manual browser (sudah: Playwright terhadap `pnpm start`, semua fase OK).
 
 ### Catatan operasional baru
