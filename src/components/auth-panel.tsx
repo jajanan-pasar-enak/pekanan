@@ -39,7 +39,7 @@ export function AuthPanel() {
 
   return (
     <Card>
-      <form onSubmit={submit}>
+      <form onSubmit={submit} className="flex flex-col gap-(--card-spacing)">
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="email">Email</Label>
