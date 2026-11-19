@@ -21,6 +21,7 @@ import {
 import { requireKaryawanHalaman } from "@/lib/auth/current";
 import { AppError } from "@/lib/http";
 import { getRekapPekan } from "@/lib/kepegawaian/queries";
+import { formatRentangTanggal } from "@/lib/waktu";
 
 const POLA_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -58,7 +59,7 @@ async function IsiRekapPekan({ pekanId }: { pekanId: string }) {
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">Rekap Pekan</h1>
           <p className="text-sm text-muted-foreground">
-            {pekan.mulai} s.d. {pekan.selesai} WIB
+            {formatRentangTanggal(pekan.mulai, pekan.selesai)} WIB
           </p>
         </div>
         <Button variant="outline" asChild>

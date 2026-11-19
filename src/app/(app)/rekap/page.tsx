@@ -15,6 +15,7 @@ import {
 import { BarisTabelSkeleton, HalamanSkeleton, KartuSkeleton } from "@/components/skeleton";
 import { requireKaryawanHalaman } from "@/lib/auth/current";
 import { daftarRekapAnggota } from "@/lib/kepegawaian/queries";
+import { formatRentangTanggal } from "@/lib/waktu";
 
 async function IsiRekap() {
   await connection();
@@ -55,9 +56,7 @@ async function IsiRekap() {
                 {daftar.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell className="font-medium">{r.supervisor}</TableCell>
-                    <TableCell>
-                      {r.mulai} s.d. {r.selesai}
-                    </TableCell>
+                    <TableCell>{formatRentangTanggal(r.mulai, r.selesai)}</TableCell>
                     <TableCell>
                       <Badge variant={r.status === "Draf" ? "secondary" : "outline"}>
                         {r.status}

@@ -17,7 +17,10 @@ export function NavUtama({ admin }: { admin: boolean }) {
 
   return (
     <nav className="flex min-w-0 flex-wrap items-center gap-1 text-sm">
-      <Link href="/dashboard" className="mr-3 font-semibold tracking-tight">
+      <Link
+        href="/dashboard"
+        className="mr-3 rounded-md font-semibold tracking-tight focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
+      >
         Pekanan
       </Link>
       {tautan.map(({ href, label }) => {
@@ -28,8 +31,10 @@ export function NavUtama({ admin }: { admin: boolean }) {
             href={href}
             aria-current={aktif ? "page" : undefined}
             className={cn(
-              "rounded-md px-2.5 py-1.5 transition-colors hover:bg-muted",
-              aktif ? "bg-muted font-medium" : "text-muted-foreground",
+              "rounded-md px-2.5 py-1.5 transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none",
+              aktif
+                ? "bg-secondary font-medium text-foreground ring-1 ring-border"
+                : "text-muted-foreground",
             )}
           >
             {label}

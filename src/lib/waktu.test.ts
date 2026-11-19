@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { awalPekan, bulanBerjalan, pekanWIB, tambahHari, tanggalHariIni } from "./waktu";
+import {
+  awalPekan,
+  bulanBerjalan,
+  formatRentangTanggal,
+  formatTanggal,
+  formatTanggalWaktu,
+  pekanWIB,
+  tambahHari,
+  tanggalHariIni,
+} from "./waktu";
 
 // WIB = UTC+7 tanpa DST.
 const utc = (iso: string) => new Date(`${iso}Z`);
@@ -89,4 +98,24 @@ test("bulanBerjalan memakai tanggal WIB dan selalu tanggal 1", () => {
   // 31 Okt 17:00 UTC = 1 Nov 00:00 WIB.
   assert.equal(bulanBerjalan(utc("2026-10-31T17:00:00")), "2026-11-01");
   assert.equal(bulanBerjalan(utc("2026-12-31T17:00:00")), "2027-01-01");
+});
+
+test("formatTanggal menulis bulan Indonesia, ISO tetap utuh bila tidak valid", () => {
+  assert.equal(formatTanggal("2026-11-07"), "7 Nov 2026");
+  assert.equal(formatTanggal("2026-01-01"), "1 Jan 2026");
+  assert.equal(formatTanggal("2026-08-31"), "31 Agu 2026");
+  assert.equal(formatTanggal("bukan-tanggal"), "bukan-tanggal");
+});
+
+test("formatRentangTanggal merapatkan rentang dalam bulan dan tahun yang sama", () => {
+  assert.equal(formatRentangTanggal("2026-11-08", "2026-11-14"), "8-14 Nov 2026");
+  assert.equal(formatRentangTanggal("2026-10-25", "2026-10-31"), "25-31 Okt 2026");
+  assert.equal(formatRentangTanggal("2026-10-25", "2026-11-01"), "25 Okt - 1 Nov 2026");
+  assert.equal(formatRentangTanggal("2026-12-27", "2027-01-02"), "27 Des 2026 - 2 Jan 2027");
+  assert.equal(formatRentangTanggal("2026-11-08", "rusak"), "2026-11-08 s.d. rusak");
+});
+
+test("formatTanggalWaktu menulis waktu WIB dalam bahasa Indonesia", () => {
+  assert.equal(formatTanggalWaktu(utc("2026-11-19T07:30:00")), "19 Nov 2026, 14.30");
+  assert.equal(formatTanggalWaktu("rusak"), "rusak");
 });

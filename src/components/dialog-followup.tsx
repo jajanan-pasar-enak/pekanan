@@ -25,6 +25,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { kirimApi } from "@/lib/api-client";
 import type { FollowupDihapus, FollowupPekan, KonteksFollowupPekan } from "@/lib/klien/followup";
+import { formatRentangTanggal, formatTanggal } from "@/lib/waktu";
 
 type OpsiHasil = { id: string; nama: string };
 
@@ -57,7 +58,11 @@ function ringkasPerubahan(f: FollowupPekan, opsi: OpsiHasil[]): string[] {
   const a = terakhir.sebelum;
   const b = terakhir.sesudah;
   const bagian: string[] = [];
-  if (a.tanggal !== b.tanggal) bagian.push(`tanggal ${a.tanggal} → ${b.tanggal}`);
+  if (a.tanggal !== b.tanggal) {
+    bagian.push(
+      `tanggal ${formatTanggal(String(a.tanggal))} menjadi ${formatTanggal(String(b.tanggal))}`,
+    );
+  }
   if (a.hasilFollowupId !== b.hasilFollowupId) {
     bagian.push(
       `hasil ${namaHasil(opsi, a.hasilFollowupId)} → ${namaHasil(opsi, b.hasilFollowupId)}`,
@@ -73,7 +78,7 @@ function RiwayatDihapus({ daftar }: { daftar: FollowupDihapus[] }) {
       {daftar.map((d) => (
         <li key={d.id} className="flex flex-col gap-1 text-sm">
           <p className="text-muted-foreground line-through">
-            {d.klien.nama} · {d.tanggal} · {d.hasil.nama}
+            {d.klien.nama}, {formatTanggal(d.tanggal)}, {d.hasil.nama}
           </p>
           {(d.deskripsi || d.alasan) && (
             <p className="text-xs text-muted-foreground">
@@ -112,8 +117,8 @@ function KonfirmasiHapus({
       <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm">
         <p className="font-medium">Hapus follow-up ini?</p>
         <p className="mt-1 text-muted-foreground">
-          {awal.klien.nama} · {awal.tanggal} · {awal.hasil.nama}
-          {awal.deskripsi ? ` · ${awal.deskripsi}` : ""}
+          {awal.klien.nama}, {formatTanggal(awal.tanggal)}, {awal.hasil.nama}
+          {awal.deskripsi ? `, ${awal.deskripsi}` : ""}
         </p>
         <p className="mt-2 text-muted-foreground">
           Follow-up hilang dari hitungan pekan, tetapi tanggal, hasil, deskripsi, dan alasan tetap
@@ -360,10 +365,10 @@ export function DialogFollowup({
       <Dialog open={terbuka} onOpenChange={tutup}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Follow-up · {anggota.nama}</DialogTitle>
+            <DialogTitle>Follow-up: {anggota.nama}</DialogTitle>
             <DialogDescription>
-              Kejadian bertanggal {konteks.pekan.mulai} s.d. {konteks.pekan.selesai} WIB. Angka di
-              laporan dihitung dari daftar ini.
+              Kejadian bertanggal {formatRentangTanggal(konteks.pekan.mulai, konteks.pekan.selesai)}{" "}
+              WIB. Angka di laporan dihitung dari daftar ini.
             </DialogDescription>
           </DialogHeader>
 
@@ -429,11 +434,13 @@ export function DialogFollowup({
                         <div className="flex flex-col gap-1">
                           <p className="text-sm font-medium">{f.klien.nama}</p>
                           <p className="text-xs text-muted-foreground">
-                            {f.tanggal} · {f.hasil.nama}
-                            {f.olehSupervisor
-                              ? ` · dicatat ${f.olehSupervisor.nama} atas nama ${f.pencatat.nama}`
-                              : ""}
+                            {formatTanggal(f.tanggal)}, {f.hasil.nama}
                           </p>
+                          {f.olehSupervisor && (
+                            <p className="text-xs text-muted-foreground">
+                              Dicatat {f.olehSupervisor.nama} atas nama {f.pencatat.nama}
+                            </p>
+                          )}
                         </div>
                         {f.bolehUbah && (
                           <div className="flex gap-2">

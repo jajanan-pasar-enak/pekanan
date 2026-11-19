@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { requireKaryawanHalaman } from "@/lib/auth/current";
 import { AppError } from "@/lib/http";
 import { getLaporan } from "@/lib/laporan/queries";
+import { formatRentangTanggal } from "@/lib/waktu";
 
 async function IsiKoreksi({ id }: { id: string }) {
   await connection();
@@ -28,8 +29,8 @@ async function IsiKoreksi({ id }: { id: string }) {
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">Koreksi Laporan</h1>
           <p className="text-sm text-muted-foreground">
-            {laporan.pekan.mulai} s.d. {laporan.pekan.selesai} WIB · Supervisor:{" "}
-            {laporan.supervisor.nama}
+            {formatRentangTanggal(laporan.pekan.mulai, laporan.pekan.selesai)} WIB. Supervisor:{" "}
+            {laporan.supervisor.nama}.
           </p>
         </div>
         <Button variant="outline" asChild>

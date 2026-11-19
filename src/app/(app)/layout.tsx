@@ -19,13 +19,13 @@ async function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="sticky top-0 z-10 border-b bg-background/90 backdrop-blur">
+      <header className="sticky top-0 z-10 border-b bg-background">
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-2.5">
           <NavUtama admin={sesi.user.role === "admin"} />
           <div className="flex min-w-0 items-center gap-3 text-sm">
             <Link
               href="/akun"
-              className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
             >
               <UserIcon className="size-4" aria-hidden />
               <span className="max-w-40 truncate" title={profil.nama}>
@@ -51,7 +51,7 @@ async function AppShell({ children }: { children: React.ReactNode }) {
 function KerangkaAplikasi() {
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="sticky top-0 z-10 border-b bg-background/90 backdrop-blur">
+      <header className="sticky top-0 z-10 border-b bg-background">
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-2.5">
           <div className="flex items-center gap-2" aria-hidden>
             <Skeleton className="mr-3 h-4 w-16" />

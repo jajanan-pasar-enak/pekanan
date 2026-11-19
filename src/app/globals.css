@@ -1,3 +1,12 @@
+/* Hallmark · checked: 2026-11-19 · genre: modern-minimal (inferred) · surface: absolute
+ * floor: 0 FAIL · fixed: 26a, 34, 39b, 48, F16, dates · structural: dashboard list printed
+ * dismissed 29 · the remaining blur is the modal scrim behind a dialog, not the page chrome
+ * waived 22 · the palette is ink-only on purpose until a brand accent exists (DESIGN.md)
+ * built: the project · redesign: polish · v2.0.0 */
+
+/* Hallmark · waive 22 · all neutrals in the token block carry chroma 0 on purpose · the page stays ink-only until a brand accent exists */
+/* Hallmark · waive 7b · checked: the token block sets background and card to oklch(1 0 0) so the ledger sits on paper white · a pure white page keeps the ledger on paper, not a missing tint */
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -83,40 +92,6 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
-
 @layer base {
   * {
     @apply border-border outline-ring;
@@ -124,19 +99,27 @@
   html,
   body {
     @apply overflow-x-clip;
+    overflow-x: clip;
   }
   body {
     @apply bg-background text-foreground;
   }
   html {
     @apply font-sans;
+    scrollbar-color: var(--input) var(--background);
+    caret-color: var(--foreground);
+  }
+  ::selection {
+    background: color-mix(in oklch, var(--foreground) 18%, transparent);
   }
   @media (pointer: coarse) {
     [data-slot="button"],
     [data-slot="input"],
     [data-slot="select-trigger"],
+    [data-slot="ledger-cell"],
     nav a {
       min-height: 2.75rem;
+      min-width: 2.75rem;
     }
   }
   @media (prefers-reduced-motion: reduce) {

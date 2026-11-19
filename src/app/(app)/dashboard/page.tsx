@@ -22,7 +22,7 @@ import {
 import { requireKaryawanHalaman } from "@/lib/auth/current";
 import { daftarLaporanSaya } from "@/lib/laporan/queries";
 import { daftarAnggotaLangsung } from "@/lib/pekan/bootstrap";
-import { pekanWIB } from "@/lib/waktu";
+import { formatRentangTanggal, pekanWIB } from "@/lib/waktu";
 
 function lencanaStatus(status: string, pekanBerjalan: boolean) {
   if (status === "Terkirim") return <Badge>Terkirim</Badge>;
@@ -50,7 +50,7 @@ async function IsiDashboard() {
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">Halo, {profil.nama}</h1>
           <p className="text-sm text-muted-foreground">
-            Pekan berjalan: {pekan.mulai} s.d. {pekan.selesai} WIB
+            Pekan berjalan: {formatRentangTanggal(pekan.mulai, pekan.selesai)} WIB
           </p>
         </div>
         {laporanBerjalan && (
@@ -88,9 +88,7 @@ async function IsiDashboard() {
                 <TableBody>
                   {laporan.map((l) => (
                     <TableRow key={l.id}>
-                      <TableCell>
-                        {l.mulai} s.d. {l.selesai}
-                      </TableCell>
+                      <TableCell>{formatRentangTanggal(l.mulai, l.selesai)}</TableCell>
                       <TableCell>{lencanaStatus(l.status, l.pekanBerjalan)}</TableCell>
                       <TableCell className="text-right tabular-nums">
                         {`${l.diisi}/${l.total}`}

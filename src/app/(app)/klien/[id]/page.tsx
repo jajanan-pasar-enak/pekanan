@@ -18,7 +18,7 @@ import {
 import { requireKaryawanHalaman } from "@/lib/auth/current";
 import { AppError } from "@/lib/http";
 import { daftarHasilFollowup, getKlien } from "@/lib/klien/queries";
-import { tanggalHariIni } from "@/lib/waktu";
+import { formatTanggal, tanggalHariIni } from "@/lib/waktu";
 
 async function IsiKlien({ id }: { id: string }) {
   await connection();
@@ -41,7 +41,7 @@ async function IsiKlien({ id }: { id: string }) {
             {!klien.bolehCatat && <Badge variant="outline">hanya baca</Badge>}
           </div>
           <p className="text-sm text-muted-foreground">
-            {klien.kontak ?? "Tanpa kontak"} · Pemilik: {klien.pemilik.nama}
+            Kontak: {klien.kontak ?? "belum diisi"}. Pemilik: {klien.pemilik.nama}.
           </p>
         </div>
         <Button variant="outline" asChild>
@@ -84,7 +84,7 @@ async function IsiKlien({ id }: { id: string }) {
               <TableBody>
                 {klien.followup.map((f) => (
                   <TableRow key={f.id}>
-                    <TableCell className="whitespace-nowrap">{f.tanggal}</TableCell>
+                    <TableCell className="whitespace-nowrap">{formatTanggal(f.tanggal)}</TableCell>
                     <TableCell>{f.hasil.nama}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {f.deskripsi ?? "Belum diisi"}

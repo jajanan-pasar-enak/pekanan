@@ -17,7 +17,7 @@ import { AppError } from "@/lib/http";
 import { daftarFollowupPekan } from "@/lib/klien/followup";
 import { daftarHasilFollowup } from "@/lib/klien/queries";
 import { getLaporan } from "@/lib/laporan/queries";
-import { tanggalHariIni } from "@/lib/waktu";
+import { tanggalHariIni, formatRentangTanggal, formatTanggalWaktu } from "@/lib/waktu";
 
 type BarisKoreksi = Record<string, unknown>;
 
@@ -76,9 +76,8 @@ async function IsiLaporan({ id }: { id: string }) {
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">
-            {laporan.pekan.mulai} s.d. {laporan.pekan.selesai} WIB · Supervisor:{" "}
-            {laporan.supervisor.nama}
-            {laporan.pekanBerjalan ? " · pekan berjalan" : " · pekan lampau"}
+            {formatRentangTanggal(laporan.pekan.mulai, laporan.pekan.selesai)} WIB. Supervisor:{" "}
+            {laporan.supervisor.nama}. {laporan.pekanBerjalan ? "Pekan berjalan." : "Pekan lampau."}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -127,9 +126,7 @@ async function IsiLaporan({ id }: { id: string }) {
               <div key={k.id} className="flex flex-col gap-1 border-l-2 pl-3">
                 <p className="text-sm">
                   <span className="font-medium">{k.korektor}</span>{" "}
-                  <span className="text-muted-foreground">
-                    · {new Date(k.createdAt).toLocaleString("id-ID")}
-                  </span>
+                  <span className="text-muted-foreground">{formatTanggalWaktu(k.createdAt)}</span>
                 </p>
                 <p className="text-sm">{k.alasan}</p>
                 <ul className="flex flex-col gap-0.5 text-xs text-muted-foreground">
