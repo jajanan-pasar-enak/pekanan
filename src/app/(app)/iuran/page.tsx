@@ -9,7 +9,9 @@ import {
   IsiKartuSkeleton,
   KartuSkeleton,
   KartuTabelSkeleton,
+  Skeleton,
 } from "@/components/skeleton";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -110,6 +112,11 @@ async function IsiIuran({
   const lunasBulanIni = rekap.filter(
     (r) => r.bulan.find((b) => b.bulan === berjalan)?.lunas,
   ).length;
+  const belumBulanIni = rekap.filter((r) => !r.bulan.find((b) => b.bulan === berjalan)?.lunas);
+  const persenLunas = rekap.length > 0 ? Math.round((lunasBulanIni / rekap.length) * 100) : 0;
+  const namaBelum = belumBulanIni.map((r) => r.nama);
+  const namaBelumTampil = namaBelum.slice(0, 6);
+  const namaBelumSisa = namaBelum.length - namaBelumTampil.length;
   const bisaCatat = new Set(orang.map((o) => o.id));
   const parameter = await searchParams;
   const catatDari =
@@ -122,9 +129,58 @@ async function IsiIuran({
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">Iuran</h1>
         <p className="text-sm text-muted-foreground">
-          Master Nominal Iuran diatur Admin. Satu pembayaran per karyawan per bulan.
+          Pantau iuran bulanan diri sendiri dan Anggota Langsung.
         </p>
       </header>
+
+      <section
+        aria-labelledby="bulan-berjalan"
+        className="rounded-xl bg-card ring-1 ring-foreground/10"
+      >
+        <div className="grid gap-6 p-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+          <div className="flex min-w-0 flex-col gap-3">
+            <p className="text-sm text-muted-foreground">Bulan berjalan</p>
+            <h2 id="bulan-berjalan" className="text-3xl font-semibold tracking-tight">
+              {labelBulan(berjalan)}
+            </h2>
+            <div className="flex max-w-md flex-col gap-2">
+              <p className="flex items-baseline gap-2">
+                <span className="text-2xl leading-none font-semibold tabular-nums">
+                  {lunasBulanIni}/{rekap.length}
+                </span>
+                <span className="text-sm text-muted-foreground">sudah membayar</span>
+              </p>
+              <div
+                role="progressbar"
+                aria-label={`Pembayaran iuran ${labelBulan(berjalan)}`}
+                aria-valuemin={0}
+                aria-valuemax={rekap.length}
+                aria-valuenow={lunasBulanIni}
+                className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+              >
+                <div
+                  className="h-full rounded-full bg-signal"
+                  style={{ width: `${persenLunas}%` }}
+                />
+              </div>
+            </div>
+            {belumBulanIni.length === 0 ? (
+              <p className="text-sm font-medium text-signal">Semua sudah membayar bulan ini.</p>
+            ) : (
+              <p className="max-w-md text-sm text-muted-foreground">
+                Belum membayar: {namaBelumTampil.join(", ")}
+                {namaBelumSisa > 0 && `, dan ${namaBelumSisa} lainnya`}.
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col gap-2 md:items-end">
+            <Button asChild size="lg">
+              <a href="#catat-iuran">Catat pembayaran</a>
+            </Button>
+            <p className="text-xs text-muted-foreground">Satu pembayaran per karyawan per bulan.</p>
+          </div>
+        </div>
+      </section>
 
       <Card id="catat-iuran" className="scroll-mt-20">
         <CardHeader>
@@ -148,7 +204,7 @@ async function IsiIuran({
         <CardHeader>
           <CardTitle>Ledger iuran</CardTitle>
           <CardDescription>
-            {`${labelBulan(kolom[0]?.bulan ?? berjalan)} sampai ${labelBulan(berjalan)}. ${lunasBulanIni} dari ${rekap.length} karyawan sudah membayar ${labelBulan(berjalan)}.`}
+            Dua belas bulan terakhir. Kolom pertama adalah bulan berjalan.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
@@ -173,7 +229,8 @@ async function IsiIuran({
                         scope="col"
                         className={cn(
                           "sticky top-0 z-20 border-b bg-card px-1 py-2 text-center align-bottom font-normal whitespace-nowrap",
-                          b.bulan === berjalan && "bg-secondary",
+                          b.bulan === berjalan &&
+                            "border-b-2 border-b-signal font-medium text-signal",
                         )}
                       >
                         <span className="block text-xs">{BULAN_PENDEK[bulanKe! - 1]}</span>
@@ -203,13 +260,13 @@ async function IsiIuran({
                         key={b.bulan}
                         className={cn(
                           "px-1 py-1 text-center",
-                          b.bulan === berjalan && !b.lunas && "bg-secondary/50",
+                          b.bulan === berjalan && !b.lunas && "bg-signal/5",
                         )}
                       >
                         {b.lunas ? (
                           <span
                             data-slot="ledger-cell"
-                            className="mx-auto flex size-8 items-center justify-center rounded-md bg-secondary text-foreground"
+                            className="mx-auto flex size-8 items-center justify-center rounded-md bg-signal/10 text-signal"
                             title={`Tercatat, ${rupiah.format(b.nominal ?? 0)}`}
                           >
                             <CheckIcon className="size-3.5" aria-hidden />
@@ -289,9 +346,17 @@ export default function IuranPage({ searchParams }: PageProps<"/iuran">) {
       fallback={
         <HalamanSkeleton
           judul="Iuran"
-          subjudul="Master Nominal Iuran diatur Admin. Satu pembayaran per karyawan per bulan."
+          subjudul="Pantau iuran bulanan diri sendiri dan Anggota Langsung."
           anak={
             <>
+              <div className="rounded-xl bg-card p-6 ring-1 ring-foreground/10" aria-hidden>
+                <div className="flex flex-col gap-3">
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-9 w-56 max-w-full" />
+                  <Skeleton className="h-7 w-24" />
+                  <Skeleton className="h-1.5 w-full max-w-md rounded-full" />
+                </div>
+              </div>
               <KartuSkeleton judul="Catat pembayaran" anak={<IsiKartuSkeleton />} />
               <KartuTabelSkeleton />
               <KartuSkeleton judul="Riwayat pembayaran" anak={<BarisTabelSkeleton />} />
