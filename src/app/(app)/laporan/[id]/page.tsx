@@ -64,12 +64,11 @@ async function IsiLaporan({ id }: { id: string }) {
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">Laporan Pekan</h1>
             <Badge
-              variant={
+              variant={laporan.status === "Draf" ? "secondary" : "outline"}
+              className={
                 laporan.status === "Terkirim"
-                  ? "default"
-                  : laporan.status === "Dikoreksi"
-                    ? "outline"
-                    : "secondary"
+                  ? "border-signal/25 bg-signal/10 font-medium text-signal"
+                  : undefined
               }
             >
               {laporan.status}

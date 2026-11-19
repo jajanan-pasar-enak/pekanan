@@ -262,6 +262,11 @@ Audit `/hallmark` (scope app, genre modern-minimal). Diagnosis: masalahnya bukan
 - Kolom "Terakhir" diganti "Follow-up terakhir"; nilai "Belum ada" diredupkan agar tanggal yang ada lebih menonjol.
 - Verifikasi server HTML dengan sesi sup-1 (0 klien): empty state dan filter `q=zzz` benar; eslint/prettier/tsc/build OK.
 
+## 1p. Sesi 2026-11-19 — lencana status laporan
+
+- Lencana "Terkirim" di header `/laporan/[id]` kini memakai tint `--signal` yang sama dengan dashboard dan rekap; Draf tetap secondary, Dikoreksi outline.
+- Verifikasi server HTML: laporan Terkirim memuat kelas signal, dua laporan Draf tidak; build OK.
+
 ## 2. Lokasi dokumen (baca berurutan)
 
 | File | Isi |
