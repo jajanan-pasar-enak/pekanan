@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull, max, sql } from "drizzle-orm";
+import { and, eq, gt, ilike, isNull, max, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { karyawan, laporanPekan, pekan } from "@/db/schema";
 import { pekanWIB, tanggalHariIni } from "@/lib/waktu";
@@ -91,4 +91,48 @@ export async function daftarAnggotaLangsung(supervisorId: string) {
     .from(karyawan)
     .where(eq(karyawan.supervisorId, supervisorId))
     .orderBy(karyawan.nama);
+}
+
+export type OpsiAnggotaLangsung = {
+  q?: string;
+  halaman?: number;
+  perHalaman?: number;
+};
+
+export type HalamanAnggotaLangsung = {
+  baris: Awaited<ReturnType<typeof daftarAnggotaLangsung>>;
+  total: number;
+  halaman: number;
+  totalHalaman: number;
+};
+
+export async function halamanAnggotaLangsung(
+  supervisorId: string,
+  opsi: OpsiAnggotaLangsung = {},
+): Promise<HalamanAnggotaLangsung> {
+  const cari = opsi.q?.trim();
+  const pola = cari ? `%${cari.replace(/[\\%_]/g, "\\$&")}%` : null;
+  const where = and(
+    eq(karyawan.supervisorId, supervisorId),
+    pola ? ilike(karyawan.nama, pola) : undefined,
+  );
+  const perHalaman = Math.max(1, opsi.perHalaman ?? 10);
+
+  const [hitung] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(karyawan)
+    .where(where);
+  const total = hitung?.total ?? 0;
+  const totalHalaman = Math.max(1, Math.ceil(total / perHalaman));
+  const halaman = Math.min(Math.max(1, opsi.halaman ?? 1), totalHalaman);
+
+  const baris = await db
+    .select({ id: karyawan.id, nama: karyawan.nama, level: karyawan.level })
+    .from(karyawan)
+    .where(where)
+    .orderBy(karyawan.nama)
+    .limit(perHalaman)
+    .offset((halaman - 1) * perHalaman);
+
+  return { baris, total, halaman, totalHalaman };
 }

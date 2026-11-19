@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import {
   BarisTabelSkeleton,
@@ -21,8 +22,18 @@ import {
 } from "@/components/ui/table";
 import { requireKaryawanHalaman } from "@/lib/auth/current";
 import { daftarLaporanSaya } from "@/lib/laporan/queries";
-import { daftarAnggotaLangsung } from "@/lib/pekan/bootstrap";
+import { halamanAnggotaLangsung } from "@/lib/pekan/bootstrap";
 import { formatRentangTanggal, pekanWIB } from "@/lib/waktu";
+
+const ANGGOTA_PER_HALAMAN = 10;
+
+function tautanAnggota(q: string, hal: number): string {
+  const p = new URLSearchParams();
+  if (q) p.set("q", q);
+  if (hal > 1) p.set("hal", String(hal));
+  const s = p.toString();
+  return s ? `/dashboard?${s}` : "/dashboard";
+}
 
 function lencanaStatus(status: string, pekanBerjalan: boolean) {
   if (status === "Terkirim") return <Badge>Terkirim</Badge>;
@@ -34,12 +45,16 @@ function lencanaStatus(status: string, pekanBerjalan: boolean) {
   );
 }
 
-async function IsiDashboard() {
+async function IsiDashboard({ q, hal }: { q: string; hal: number }) {
   await connection();
   const { profil } = await requireKaryawanHalaman();
   const [laporan, anggota] = await Promise.all([
     daftarLaporanSaya(profil.id),
-    daftarAnggotaLangsung(profil.id),
+    halamanAnggotaLangsung(profil.id, {
+      q,
+      halaman: hal,
+      perHalaman: ANGGOTA_PER_HALAMAN,
+    }),
   ]);
   const pekan = pekanWIB();
   const laporanBerjalan = laporan.find((l) => l.pekanBerjalan) ?? null;
@@ -110,21 +125,85 @@ async function IsiDashboard() {
           <CardHeader>
             <CardTitle>Anggota Langsung</CardTitle>
             <CardDescription>
-              {anggota.length === 0
-                ? "Belum ada anggota yang Anda bimbing."
-                : `${anggota.length} orang. Datanya Anda isi di Laporan Pekan.`}
+              {anggota.total === 0
+                ? q
+                  ? "Tidak ada anggota yang cocok."
+                  : "Belum ada anggota yang Anda bimbing."
+                : q
+                  ? `${anggota.total} anggota cocok.`
+                  : `${anggota.total} orang. Datanya Anda isi di Laporan Pekan.`}
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-2">
-            {anggota.map((a, i) => (
-              <div key={a.id} className="flex flex-col gap-2">
-                {i > 0 && <Separator />}
-                <div className="flex items-center justify-between gap-2">
-                  <span>{`${a.nama}`}</span>
-                  <Badge variant="outline">{a.level}</Badge>
+          <CardContent className="flex flex-col gap-3">
+            <form
+              action="/dashboard"
+              method="get"
+              role="search"
+              className="flex flex-wrap items-center gap-2"
+            >
+              <Input
+                type="search"
+                name="q"
+                defaultValue={q}
+                placeholder="Cari nama anggota"
+                aria-label="Cari nama anggota langsung"
+                className="focus-visible:ring-3 focus-visible:ring-ring min-w-0 flex-1"
+              />
+              <Button type="submit" variant="outline" className="active:translate-y-px">
+                Cari
+              </Button>
+              {q && (
+                <Button variant="ghost" asChild>
+                  <Link href="/dashboard">Hapus</Link>
+                </Button>
+              )}
+            </form>
+
+            {anggota.total === 0
+              ? q && (
+                  <p className="text-sm text-muted-foreground">
+                    Coba kata lain atau hapus pencarian.
+                  </p>
+                )
+              : anggota.baris.map((a, i) => (
+                  <div key={a.id} className="flex flex-col gap-2">
+                    {i > 0 && <Separator />}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate" title={a.nama}>
+                        {a.nama}
+                      </span>
+                      <Badge variant="outline">{a.level}</Badge>
+                    </div>
+                  </div>
+                ))}
+
+            {anggota.totalHalaman > 1 && (
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm text-muted-foreground tabular-nums">
+                  Halaman {anggota.halaman} dari {anggota.totalHalaman}
+                </p>
+                <div className="flex gap-2">
+                  {anggota.halaman > 1 ? (
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={tautanAnggota(q, anggota.halaman - 1)}>Sebelumnya</Link>
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" disabled className="disabled:opacity-60">
+                      Sebelumnya
+                    </Button>
+                  )}
+                  {anggota.halaman < anggota.totalHalaman ? (
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={tautanAnggota(q, anggota.halaman + 1)}>Berikutnya</Link>
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" disabled className="disabled:opacity-60">
+                      Berikutnya
+                    </Button>
+                  )}
                 </div>
               </div>
-            ))}
+            )}
           </CardContent>
         </Card>
       </div>
@@ -155,10 +234,14 @@ function DashboardSkeleton() {
   );
 }
 
-export default function DashboardPage() {
+export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
+  const sp = await searchParams;
+  const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 80) : "";
+  const hal = Math.max(1, Number(sp.hal) || 1);
+
   return (
     <Suspense fallback={<DashboardSkeleton />}>
-      <IsiDashboard />
+      <IsiDashboard q={q} hal={hal} />
     </Suspense>
   );
 }

@@ -71,7 +71,7 @@ Source of truth: `src/app/globals.css` (`@theme inline` + `:root`). If a `tokens
 ## Open items
 - Dark mode is not supported: the `.dark` token block was removed; the `dark:` utilities inside UI primitives are inert until a token set and a toggle are added together.
 - No accent hue exists. The first brand accent should replace `--color-primary` for the primary action and the active state, not add a second colour layer.
-- Structural backlog, not allowed at polish depth: the dashboard member list has no search, filter or cap. `/iuran` is one 12-month ledger (58 rows); `/klien` has URL-backed search (`q`), a no-follow-up filter (`belum=1`) and 25-row pages (`hal`).
+- Dense lists are server-paged and URL-backed. `/iuran` is one 12-month ledger (58 rows); `/klien` has search (`q`), a no-follow-up filter (`belum=1`) and 25-row pages (`hal`); the dashboard's Anggota Langsung card has name search (`q`) and 10-row pages (`hal`).
 - The profile byline on `/akun` still joins name and email with a middle dot; tolerate one dot as a byline, never two in a meta line.
 
 ## Exports

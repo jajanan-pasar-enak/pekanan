@@ -1,6 +1,6 @@
 # HANDOFF — pekanan
 
-> **Status UI terakhir (2026-11-19, sesi 6 — audit desain Hallmark, polish, ledger `/iuran`, pencarian `/klien`):** perubahan sesi 6 sudah **di-commit** pada 2026-11-19 dalam tiga commit (polish UI, ledger iuran, pencarian klien; daftar file di §1h, hash di `git log`). `pnpm lint` bersih, `tsc --noEmit` exit 0, sloplint halaman bersih (waiver tercatat di stamp `globals.css`). RAM puncak 89% (batas 90%). Backlog tersisa: daftar anggota di `/dashboard`. **Baca §1h sebelum kerja lanjutan.**
+> **Status UI terakhir (2026-11-19, sesi 6 — audit desain Hallmark, polish, ledger `/iuran`, pencarian `/klien`, anggota `/dashboard`):** commit sesi 6 sudah di-push (`85d8e7e`) dalam tiga commit. Daftar anggota dashboard kini punya cari + 10 baris/halaman (§1i, **belum di-commit**). `pnpm lint`/eslint bersih, sloplint halaman bersih (waiver tercatat di stamp `globals.css`). RAM puncak 89% (batas 90%); full `tsc --noEmit` **belum bisa dijalankan** karena OOM/heap — jalankan saat RAM longgar. **Baca §1h/§1i sebelum kerja lanjutan.**
 >
 > **Baca ini dulu.** Status terakhir (2026-11-09, sesi 5 — skeleton, SSL log Vercel, prettier + bersih-bersih lint): **live** di **https://pekanan.vercel.app** (Vercel Hobby, `main` auto-deploy). Remote: **`https://github.com/jajanan-pasar-enak/pekanan.git`** (publik; remote `sini-sana` sudah ditinggalkan tetapi **masih ada riwayatnya di GitHub**). `main` sinkron di **`8512042`** (sudah di-push, Vercel auto-deploy). **5 migrasi** Drizzle diterapkan (`0000`–`0004`; sesi ini **tidak** mengubah skema). Gerbang: `pnpm test` **32/32**, `pnpm lint` **bersih (0 problem)**, `pnpm format:check` lulus, `pnpm build` exit 0; `next start` lokal `/` 200 dan `/api/me` 401. 8 commit sesi ini: `66b8b0b`, `d1e3758`, `a6e95e3`, `82e6e44`, `dee932a`, `da7ca98`, `78639ad`, `8512042` — lihat §1f/§1g.
 
@@ -204,7 +204,15 @@ Audit `/hallmark` (scope app, genre modern-minimal). Diagnosis: masalahnya bukan
 
 **File sesi 6:** `AGENTS.md`*, `DESIGN.md`*, `error.tsx`*, `not-found.tsx`*, `.gitignore`, `src/app/globals.css`, `src/lib/waktu.ts` + test, halaman `dashboard/rekap/klien/laporan`, `(app)/layout.tsx`, `dialog-followup`, `nav-utama`, `ui/button`, `lib/iuran/{queries,page}`, `lib/klien/{queries,page}` (*baru). Dipecah 3 commit: (1) polish + DESIGN/AGENTS + halaman error, (2) ledger iuran, (3) klien cari/filter/halaman.
 
-**Berikutnya:** daftar anggota `/dashboard` (57 baris tanpa batas → cap + cari, pola sama seperti `/klien`), lalu `pnpm build` **hanya bila RAM < 90%**. Dev server pengguna (port 3000) masih hidup — jangan dimatikan.
+**Berikutnya:** `pnpm build` (+ `tsc --noEmit` penuh) **hanya bila RAM < 90%** — lihat §1i. Dev server pengguna (port 3000) masih hidup — jangan dimatikan.
+
+## 1i. Sesi 2026-11-19 lanjutan — anggota `/dashboard` berhalaman + cari (belum di-commit)
+
+- `src/lib/pekan/bootstrap.ts`: `halamanAnggotaLangsung(supervisorId, { q, halaman, perHalaman })` — count + `limit/offset` dengan clamp, `q` nama pakai ILIKE dengan escape `% _ \`, default 10 baris. `daftarAnggotaLangsung` **tetap** (dipakai `/iuran`, `followup.ts`, `GET /api/pekan/bootstrap`).
+- `src/app/(app)/dashboard/page.tsx`: kartu Anggota Langsung kini punya form cari (`?q=`), link "Hapus", daftar 10 baris + Separator, paginasi (`?hal=`) dengan tombol disabled; deskripsi kartu menampilkan total atau "N anggota cocok".
+- Verifikasi live (dev server, sesi cookie): 57 anggota → 10 baris hal. 1, 7 baris hal. 6; `hal=999` di-clamp ke 6; `q=Uji` → 55 cocok; `q=zzzz` → 0; `q=%25` → 0 (wildcard ter-escape); tautan halaman mempertahankan `q` (`?q=Uji&hal=3`). DOM: 0 overflow horizontal; sloplint `--scope app` bersih; eslint 2 file bersih.
+- **Catatan gerbang:** full `tsc --noEmit` OOM pada heap 384 MB dan dibatalkan watchdog RAM di 91% pada heap 512 MB; scoped tsconfig juga OOM. Typecheck penuh masih utang — jalankan `pnpm build` saat RAM longgar.
+- File berubah: `src/app/(app)/dashboard/page.tsx`, `src/lib/pekan/bootstrap.ts`, `DESIGN.md`, `HANDOFF.md`. Screenshot: `.hallmark/captures/dashboard-{sesudah,anggota,filter,mobile}.png`.
 
 ## 2. Lokasi dokumen (baca berurutan)
 
