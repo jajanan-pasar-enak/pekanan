@@ -1,6 +1,6 @@
 # HANDOFF — pekanan
 
-> **Status UI terakhir (2026-11-19, sesi 6 — audit desain Hallmark, polish, ledger `/iuran`, pencarian `/klien`, anggota `/dashboard`):** commit sesi 6 sudah di-push (`85d8e7e`) dalam tiga commit. Daftar anggota dashboard kini punya cari + 10 baris/halaman (§1i, **belum di-commit**). `pnpm lint`/eslint bersih, sloplint halaman bersih (waiver tercatat di stamp `globals.css`). Gerbang penuh 2026-11-19: tes **35/35**, lint **0**, format **0** (`.gstack/` ditambahkan ke `.prettierignore`), `tsc --noEmit` **exit 0** (RAM puncak 82%), `pnpm build` **exit 0** (puncak 45%). **Baca §1h–§1t sebelum kerja lanjutan.**
+> **Status UI terakhir (2026-11-19, sesi 6 — audit desain Hallmark, polish, ledger `/iuran`, pencarian `/klien`, anggota `/dashboard`):** commit sesi 6 sudah di-push (`85d8e7e`) dalam tiga commit. Daftar anggota dashboard kini punya cari + 10 baris/halaman (§1i, **belum di-commit**). `pnpm lint`/eslint bersih, sloplint halaman bersih (waiver tercatat di stamp `globals.css`). Gerbang penuh 2026-11-19: tes **35/35**, lint **0**, format **0** (`.gstack/` ditambahkan ke `.prettierignore`), `tsc --noEmit` **exit 0** (RAM puncak 82%), `pnpm build` **exit 0** (puncak 45%). **Baca §1h–§1u sebelum kerja lanjutan.**
 >
 > **Baca ini dulu.** Status terakhir (2026-11-09, sesi 5 — skeleton, SSL log Vercel, prettier + bersih-bersih lint): **live** di **https://pekanan.vercel.app** (Vercel Hobby, `main` auto-deploy). Remote: **`https://github.com/jajanan-pasar-enak/pekanan.git`** (publik; remote `sini-sana` sudah ditinggalkan tetapi **masih ada riwayatnya di GitHub**). `main` sinkron di **`8512042`** (sudah di-push, Vercel auto-deploy). **5 migrasi** Drizzle diterapkan (`0000`–`0004`; sesi ini **tidak** mengubah skema). Gerbang: `pnpm test` **32/32**, `pnpm lint` **bersih (0 problem)**, `pnpm format:check` lulus, `pnpm build` exit 0; `next start` lokal `/` 200 dan `/api/me` 401. 8 commit sesi ini: `66b8b0b`, `d1e3758`, `a6e95e3`, `82e6e44`, `dee932a`, `da7ca98`, `78639ad`, `8512042` — lihat §1f/§1g.
 
@@ -304,6 +304,14 @@ Audit `/hallmark` (scope app, genre modern-minimal). Diagnosis: masalahnya bukan
 - **Verifikasi CDP** (`pnpm start`, cookie sup-1, 6 rute × 1280/390): `/dashboard`, `/rekap`, `/klien`, `/iuran`, `/laporan/[id]`, `/akun` semuanya `h1` Source Serif 4 24 px, aturan kepala 1 px, tanpa overflow; topbar 53 px putih; ringkasan 30 px serif; meta 14 px Geist #69625A. Tangkapan layar di `.hallmark/design/` (gitignored).
 - Gate: `pnpm build` exit 0, `tsc --noEmit` 0, tes 35/35, sloplint 5 berkas **0 FAIL**, prettier bersih. Preview berjalan di `http://localhost:3000`. **Belum di-commit.**
 - **Catatan:** tinjauan visual otomatis tidak bisa membaca PNG di harness ini (subagent hanya "binary content"); verifikasi visual bergantung pada metrik terukur + tangkapan layar untuk dibuka pengguna. Semua klaim visual di atas berasal dari pengukuran CDP, bukan dari melihat piksel.
+
+## 1u. Sesi 2026-11-19 — dry-run pembersihan data produksi (belum ada yang dihapus)
+
+- Skrip read-only `.hallmark/ops/bersihkan-data-uji.mts` (gitignored): koneksi ke branch Neon `production` (project `still-firefly-08452520`), semua query di dalam `BEGIN READ ONLY`.
+- **Kondisi 2026-11-19 (berbeda dari hitungan 2026-11-09 di §0):** 12 akun total = 1 admin asli (`ADMIN_EMAIL`, dilindungi), 8 akun seed + 2 probe (`@seed.local`), dan **1 akun admin di luar pola seed, dibuat 2026-11-19, 0 sesi**. Akun terakhir butuh keputusan pemilik: pertahankan atau hapus/demosi. 5 baris `pekan`; 0 klien; 0 follow-up; 0 master bernama seed (nama master di produksi berbeda).
+- **Target hapus (pola `@seed.local`, `uji-browser*`, `probe-*`, kecuali `ADMIN_EMAIL`):** 10 user, 313 sesi, 10 account, 10 karyawan, 8 laporan pekan, 16 baris laporan, 24 koreksi, 24 pembayaran iuran. Baris campuran (akun uji menyentuh data non-uji): **0** di semua kategori. Master referensi dan `pekan` tidak disentuh.
+- **Dampak:** `sup-1@seed.local` dipakai untuk verifikasi lokal; setelah dihapus, data demo lokal hilang. Seed ulang ke host produksi butuh `FORCE=1` (lihat `scripts/seed.mts`).
+- **Belum dieksekusi.** Hapus menuntut persetujuan eksplisit + backup branch Neon baru. Rotasi password admin juga belum (manual oleh pemilik lewat `/akun`).
 
 
 ## 2. Lokasi dokumen (baca berurutan)
