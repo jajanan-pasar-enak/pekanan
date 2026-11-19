@@ -214,6 +214,14 @@ Audit `/hallmark` (scope app, genre modern-minimal). Diagnosis: masalahnya bukan
 - **Catatan gerbang:** percobaan awal `tsc --noEmit` OOM pada heap 384 MB dan dibatalkan watchdog RAM di 91% pada heap 512 MB. Saat RAM turun ke 76%, gate otomatis menjalankan ulang `tsc --noEmit` dengan heap 768 MB: **exit 0**, RAM puncak 82%, tanpa abort. Setelah Chrome dimatikan dan dev server di-restart (RAM 77% → 39%), `pnpm build` dijalankan dengan dev server berhenti sementara: **exit 0**, RAM puncak 45%; dev server dinyalakan lagi (Port 3000). `format:check` gagal hanya karena profil `.gstack/` — kini di `.prettierignore`; format 0.
 - File berubah: `src/app/(app)/dashboard/page.tsx`, `src/lib/pekan/bootstrap.ts`, `DESIGN.md`, `HANDOFF.md`. Screenshot: `.hallmark/captures/dashboard-{sesudah,anggota,filter,mobile}.png`.
 
+## 1j. Sesi 2026-11-19 — perbaikan validasi Next 16 di `/dashboard` dan `/klien`
+
+- Dua pesan berbeda muncul di log dev. (1) `Next.js encountered URL data during prerendering or a navigation` — **bug nyata**: `await searchParams` di badan halaman, di luar `<Suspense>`, dilarang Cache Components. (2) `Could not validate instant ... [cause]: NEXT_REDIRECT` — validator instant UI dev menabrak `redirect()` yang sah di `AppShell` (sesi belum ada, atau masih wajib ganti password).
+- Perbaikan: default export `/dashboard` dan `/klien` kini sinkron; promise `searchParams` diteruskan ke komponen async di dalam `<Suspense>` (`IsiDashboard`, `IsiHalamanKlien`), pola yang sudah dipakai `/iuran`. Fallback `/klien` memakai `HalamanSkeleton` + `KartuSkeleton`/`KartuTabelSkeleton`. Jenis prop: `PageProps<"/rute">["searchParams"]` (bukan `PageProps` penuh, yang menuntut `params`).
+- Sisa pesan `NEXT_REDIRECT` adalah noise validator dev, bukan bug alur: hilang saat sesi valid dan `harus_ganti_password` sudah false (selesai lewat `/ganti-password`). Produksi tidak menjalankan validator ini.
+- Verifikasi: konsol Chromium headless bersih untuk `/dashboard`, `/dashboard?q=Uji`, `/dashboard?hal=2`, `/klien`, `/klien?belum=1`; halaman 2/6 dan filter 46/45 tetap benar; eslint 0, prettier 0, `tsc --noEmit` 0 (heap 768 MB), tes 35/35.
+- File berubah: `src/app/(app)/dashboard/page.tsx`, `src/app/(app)/klien/page.tsx`, `HANDOFF.md`.
+
 ## 2. Lokasi dokumen (baca berurutan)
 
 | File | Isi |

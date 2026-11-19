@@ -45,8 +45,15 @@ function lencanaStatus(status: string, pekanBerjalan: boolean) {
   );
 }
 
-async function IsiDashboard({ q, hal }: { q: string; hal: number }) {
+async function IsiDashboard({
+  searchParams,
+}: {
+  searchParams: PageProps<"/dashboard">["searchParams"];
+}) {
   await connection();
+  const sp = await searchParams;
+  const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 80) : "";
+  const hal = Math.max(1, Number(sp.hal) || 1);
   const { profil } = await requireKaryawanHalaman();
   const [laporan, anggota] = await Promise.all([
     daftarLaporanSaya(profil.id),
@@ -234,14 +241,10 @@ function DashboardSkeleton() {
   );
 }
 
-export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
-  const sp = await searchParams;
-  const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 80) : "";
-  const hal = Math.max(1, Number(sp.hal) || 1);
-
+export default function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
   return (
     <Suspense fallback={<DashboardSkeleton />}>
-      <IsiDashboard q={q} hal={hal} />
+      <IsiDashboard searchParams={searchParams} />
     </Suspense>
   );
 }

@@ -2,7 +2,13 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { FormKlienBaru } from "@/components/form-klien-baru";
-import { BarisTabelSkeleton } from "@/components/skeleton";
+import {
+  BarisTabelSkeleton,
+  HalamanSkeleton,
+  IsiKartuSkeleton,
+  KartuSkeleton,
+  KartuTabelSkeleton,
+} from "@/components/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -115,7 +121,32 @@ async function IsiDaftar({ q, belum, hal }: { q: string; belum: boolean; hal: nu
   );
 }
 
-export default async function KlienPage({ searchParams }: PageProps<"/klien">) {
+export default function KlienPage({ searchParams }: PageProps<"/klien">) {
+  return (
+    <Suspense
+      fallback={
+        <HalamanSkeleton
+          judul="Klien Saya"
+          subjudul="Follow-up dicatat dari kejadian; jumlah per pekan dihitung otomatis."
+          anak={
+            <>
+              <KartuSkeleton judul="Tambah klien" anak={<IsiKartuSkeleton jumlahBaris={3} />} />
+              <KartuTabelSkeleton jumlahBaris={8} />
+            </>
+          }
+        />
+      }
+    >
+      <IsiHalamanKlien searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function IsiHalamanKlien({
+  searchParams,
+}: {
+  searchParams: PageProps<"/klien">["searchParams"];
+}) {
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 80) : "";
   const belum = sp.belum === "1";
