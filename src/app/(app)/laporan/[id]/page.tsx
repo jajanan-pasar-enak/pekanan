@@ -3,12 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { FormLaporan } from "@/components/form-laporan";
-import {
-  BarisTabelSkeleton,
-  HalamanSkeleton,
-  IsiKartuSkeleton,
-  KartuSkeleton,
-} from "@/components/skeleton";
+import { HalamanSkeleton, IsiKartuSkeleton, KartuSkeleton } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,12 +51,13 @@ async function IsiLaporan({ id }: { id: string }) {
     daftarHasilFollowup(true),
   ]);
   const namaAnggota = new Map(laporan.baris.map((b) => [b.anggotaId, b.nama]));
+  const bisaKirim = laporan.bolehUbah && laporan.status === "Draf";
 
   return (
     <>
       <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">Laporan Pekan</h1>
             <Badge
               variant={laporan.status === "Draf" ? "secondary" : "outline"}
@@ -75,40 +71,39 @@ async function IsiLaporan({ id }: { id: string }) {
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">
-            {formatRentangTanggal(laporan.pekan.mulai, laporan.pekan.selesai)} WIB. Supervisor:{" "}
-            {laporan.supervisor.nama}. {laporan.pekanBerjalan ? "Pekan berjalan." : "Pekan lampau."}
+            {formatRentangTanggal(laporan.pekan.mulai, laporan.pekan.selesai)} WIB
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Supervisor: {laporan.supervisor.nama}.{" "}
+            {laporan.pekanBerjalan ? "Pekan berjalan." : "Pekan lampau."}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" asChild>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="ghost" asChild>
             <Link href="/dashboard">Kembali</Link>
           </Button>
           {laporan.bolehKoreksi && (
-            <Button asChild>
+            <Button variant={bisaKirim ? "outline" : "default"} asChild>
               <Link href={`/laporan/${laporan.id}/koreksi`}>Koreksi</Link>
             </Button>
           )}
         </div>
       </header>
 
-      <Card>
-        <CardContent>
-          {laporan.baris.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Laporan tidak punya baris anggota.</p>
-          ) : (
-            <FormLaporan
-              key={`${laporan.status}:${laporan.bolehUbah}`}
-              laporanId={laporan.id}
-              bolehUbah={laporan.bolehUbah}
-              status={laporan.status}
-              barisAwal={laporan.baris}
-              hariIni={tanggalHariIni()}
-              konteksFollowup={konteksFollowup}
-              opsiHasil={opsiHasil.map((h) => ({ id: h.id, nama: h.nama }))}
-            />
-          )}
-        </CardContent>
-      </Card>
+      {laporan.baris.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Laporan tidak punya baris anggota.</p>
+      ) : (
+        <FormLaporan
+          key={`${laporan.status}:${laporan.bolehUbah}`}
+          laporanId={laporan.id}
+          bolehUbah={laporan.bolehUbah}
+          status={laporan.status}
+          barisAwal={laporan.baris}
+          hariIni={tanggalHariIni()}
+          konteksFollowup={konteksFollowup}
+          opsiHasil={opsiHasil.map((h) => ({ id: h.id, nama: h.nama }))}
+        />
+      )}
 
       <Card>
         <CardHeader>
@@ -164,7 +159,7 @@ export default async function LaporanPage({ params }: PageProps<"/laporan/[id]">
           }
           anak={
             <>
-              <KartuSkeleton anak={<BarisTabelSkeleton jumlahBaris={6} />} />
+              <KartuSkeleton anak={<IsiKartuSkeleton />} />
               <KartuSkeleton judul="Riwayat Koreksi" anak={<IsiKartuSkeleton />} />
             </>
           }

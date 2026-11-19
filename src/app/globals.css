@@ -1,12 +1,11 @@
 /* Hallmark · checked: 2026-11-19 · genre: modern-minimal (inferred) · surface: absolute
  * floor: 0 FAIL · fixed: 26a, 34, 39b, 48, F16, dates · structural: dashboard list printed
  * dismissed 29 · the remaining blur is the modal scrim behind a dialog, not the page chrome
- * waived 22 · the palette is ink-only on purpose until a brand accent exists (DESIGN.md)
- * built: the project · redesign: polish · v2.0.0 */
+ * waived 22 · warm neutrals (chroma ≤0.012) and one teal signal, both on purpose (DESIGN.md)
+ * built: the project · redesign: warm ledger · v2.0.0 */
 
-/* Hallmark · waive 22 · all neutrals in the token block carry chroma 0 on purpose · the page stays ink-only until a brand accent exists */
-/* Hallmark · 2026-11-19 · waiver 22 narrowed: --signal (teal) is the one accent, used only for progress and status */
-/* Hallmark · waive 7b · checked: the token block sets background and card to oklch(1 0 0) so the ledger sits on paper white · a pure white page keeps the ledger on paper, not a missing tint */
+/* Hallmark · waive 22 · paper, ink and rules carry low chroma (≤0.012) on purpose: a warm ledger sheet · --signal (teal) stays the only accent, for progress and settled state */
+/* Hallmark · 2026-11-19 · 7b answered: card is pure white on warm paper, so the sheet reads against the desk rather than a missing tint */
 
 @import "tailwindcss";
 @import "tw-animate-css";
@@ -20,6 +19,7 @@
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
+  --font-display: var(--font-display);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -60,39 +60,39 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: oklch(0.976 0.009 85);
+  --foreground: oklch(0.19 0.012 70);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.19 0.012 70);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.62 0 0);
-  --ring: oklch(0.55 0 0);
-  --signal: oklch(0.5 0.1 195);
+  --popover-foreground: oklch(0.19 0.012 70);
+  --primary: oklch(0.24 0.014 70);
+  --primary-foreground: oklch(0.99 0.004 85);
+  --secondary: oklch(0.945 0.012 82);
+  --secondary-foreground: oklch(0.24 0.014 70);
+  --muted: oklch(0.945 0.012 82);
+  --muted-foreground: oklch(0.5 0.015 72);
+  --accent: oklch(0.945 0.012 82);
+  --accent-foreground: oklch(0.24 0.014 70);
+  --destructive: oklch(0.542 0.204 27.325);
+  --border: oklch(0.885 0.012 80);
+  --input: oklch(0.58 0.01 75);
+  --ring: oklch(0.5 0.012 70);
+  --signal: oklch(0.47 0.08 195);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --radius: 0.375rem;
+  --sidebar: oklch(0.962 0.01 84);
+  --sidebar-foreground: oklch(0.19 0.012 70);
+  --sidebar-primary: oklch(0.24 0.014 70);
+  --sidebar-primary-foreground: oklch(0.99 0.004 85);
+  --sidebar-accent: oklch(0.945 0.012 82);
+  --sidebar-accent-foreground: oklch(0.24 0.014 70);
+  --sidebar-border: oklch(0.885 0.012 80);
+  --sidebar-ring: oklch(0.5 0.012 70);
 }
 
 @layer base {
@@ -106,6 +106,15 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    text-wrap: balance;
+  }
+  main > header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1rem;
   }
   html {
     @apply font-sans;

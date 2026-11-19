@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { requireKaryawanHalaman } from "@/lib/auth/current";
-import { daftarLaporanSaya } from "@/lib/laporan/queries";
+import { daftarLaporanSaya, statusLengkapAnggota } from "@/lib/laporan/queries";
 import { halamanAnggotaLangsung } from "@/lib/pekan/bootstrap";
 import { formatRentangTanggal, pekanWIB } from "@/lib/waktu";
 
@@ -71,6 +71,7 @@ async function IsiDashboard({
   ]);
   const pekan = pekanWIB();
   const laporanBerjalan = laporan.find((l) => l.pekanBerjalan) ?? null;
+  const statusPekan = laporanBerjalan ? await statusLengkapAnggota(laporanBerjalan.id) : null;
   const riwayat = laporan.filter((l) => !l.pekanBerjalan);
   const persen =
     laporanBerjalan && laporanBerjalan.total > 0
@@ -93,7 +94,7 @@ async function IsiDashboard({
             <div className="flex flex-wrap items-center gap-3">
               <h2
                 id="pekan-berjalan"
-                className="text-3xl font-semibold tracking-tight text-balance"
+                className="font-display text-3xl font-semibold tracking-tight text-balance"
               >
                 {formatRentangTanggal(pekan.mulai, pekan.selesai)}
               </h2>
@@ -103,7 +104,7 @@ async function IsiDashboard({
             {laporanBerjalan ? (
               <div className="flex max-w-md flex-col gap-2">
                 <p className="flex items-baseline gap-2">
-                  <span className="text-2xl leading-none font-semibold tabular-nums">
+                  <span className="font-display text-[1.6rem] leading-none font-semibold tabular-nums">
                     {laporanBerjalan.diisi}/{laporanBerjalan.total}
                   </span>
                   <span className="text-sm text-muted-foreground">anggota terisi</span>
@@ -196,7 +197,9 @@ async function IsiDashboard({
                   : "Belum ada anggota yang Anda bimbing."
                 : q
                   ? `${anggota.total} anggota cocok.`
-                  : `${anggota.total} orang. Datanya Anda isi di Laporan Pekan.`}
+                  : statusPekan
+                    ? `${anggota.total} orang. Status pengisian pekan ini di samping nama.`
+                    : `${anggota.total} orang. Datanya Anda isi di Laporan Pekan.`}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
@@ -237,7 +240,21 @@ async function IsiDashboard({
                       <span className="min-w-0 truncate" title={a.nama}>
                         {a.nama}
                       </span>
-                      <Badge variant="outline">{a.level}</Badge>
+                      <span className="flex shrink-0 items-center gap-2">
+                        <Badge variant="outline">{a.level}</Badge>
+                        {statusPekan && (
+                          <span className="text-xs" title="Status pengisian pekan ini">
+                            <span className="sr-only">Pekan ini: </span>
+                            {statusPekan.get(a.id) === true ? (
+                              <span className="font-medium text-signal">Lengkap</span>
+                            ) : statusPekan.has(a.id) ? (
+                              <span className="text-muted-foreground">Belum diisi</span>
+                            ) : (
+                              <span className="text-muted-foreground">Tidak di laporan</span>
+                            )}
+                          </span>
+                        )}
+                      </span>
                     </div>
                   </div>
                 ))}

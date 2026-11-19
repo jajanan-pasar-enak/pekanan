@@ -16,13 +16,10 @@ export function NavUtama({ admin }: { admin: boolean }) {
   const tautan = admin ? [...TAUTAN, { href: "/admin", label: "Admin" }] : TAUTAN;
 
   return (
-    <nav className="flex min-w-0 flex-wrap items-center gap-1 text-sm">
-      <Link
-        href="/dashboard"
-        className="mr-3 rounded-md font-semibold tracking-tight focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
-      >
-        Pekanan
-      </Link>
+    <nav
+      aria-label="Navigasi utama"
+      className="flex min-w-0 items-center gap-1 overflow-x-auto text-sm md:justify-center"
+    >
       {tautan.map(({ href, label }) => {
         const aktif = pathname === href || pathname.startsWith(`${href}/`);
         return (
@@ -31,7 +28,7 @@ export function NavUtama({ admin }: { admin: boolean }) {
             href={href}
             aria-current={aktif ? "page" : undefined}
             className={cn(
-              "rounded-md px-2.5 py-1.5 transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none",
+              "rounded-md px-2.5 py-1.5 whitespace-nowrap transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none",
               aktif
                 ? "bg-secondary font-medium text-foreground ring-1 ring-border"
                 : "text-muted-foreground",

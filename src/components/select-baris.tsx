@@ -39,7 +39,7 @@ export function SelectBaris({
       }}
       disabled={disabled}
     >
-      <SelectTrigger aria-label={label} onBlur={onBlur}>
+      <SelectTrigger aria-label={label} onBlur={onBlur} className="w-full">
         <SelectValue placeholder="Pilih" />
       </SelectTrigger>
       <SelectContent

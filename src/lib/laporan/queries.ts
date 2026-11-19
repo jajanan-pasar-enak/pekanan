@@ -222,3 +222,21 @@ export async function daftarLaporanSaya(supervisorId: string): Promise<LaporanRi
     total: isi.get(r.id)?.total ?? 0,
   }));
 }
+
+// Kelengkapan per anggota untuk satu laporan; dipakai kartu anggota dashboard
+// agar status pekan ini terlihat tanpa membuka laporan.
+export async function statusLengkapAnggota(laporanId: string): Promise<Map<string, boolean>> {
+  const baris = await db
+    .select({
+      anggotaId: laporanAnggota.anggotaId,
+      kehadiran: laporanAnggota.kehadiran,
+      keteranganHadir: laporanAnggota.keteranganHadir,
+      mediaOnline: laporanAnggota.mediaOnline,
+      mediaOffline: laporanAnggota.mediaOffline,
+      oneOnOne: laporanAnggota.oneOnOne,
+      keteranganOneOnOne: laporanAnggota.keteranganOneOnOne,
+    })
+    .from(laporanAnggota)
+    .where(eq(laporanAnggota.laporanId, laporanId));
+  return new Map(baris.map((b) => [b.anggotaId, barisLengkap(b)]));
+}
