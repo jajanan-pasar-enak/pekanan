@@ -6,7 +6,7 @@ export function Skeleton({ className, ...props }: ComponentProps<"div">) {
     <div
       data-slot="skeleton"
       aria-hidden
-      className={cn("animate-pulse rounded-md bg-muted", className)}
+      className={cn("motion-safe:animate-pulse rounded-md bg-muted", className)}
       {...props}
     />
   );

@@ -16,7 +16,7 @@ export function NavUtama({ admin }: { admin: boolean }) {
   const tautan = admin ? [...TAUTAN, { href: "/admin", label: "Admin" }] : TAUTAN;
 
   return (
-    <nav className="flex items-center gap-1 text-sm">
+    <nav className="flex min-w-0 flex-wrap items-center gap-1 text-sm">
       <Link href="/dashboard" className="mr-3 font-semibold tracking-tight">
         Pekanan
       </Link>

@@ -5,11 +5,11 @@ import { GantiPasswordForm } from "@/components/ganti-password-form";
 import { KeluarButton } from "@/components/keluar-button";
 import { Skeleton } from "@/components/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
-import { requireKaryawan } from "@/lib/auth/current";
+import { requireKaryawanHalaman } from "@/lib/auth/current";
 
 async function IsiHalaman() {
   await connection();
-  const { profil } = await requireKaryawan({ izinkanGantiPassword: true });
+  const { profil } = await requireKaryawanHalaman({ izinkanGantiPassword: true });
   if (!profil.harusGantiPassword) redirect("/dashboard");
 
   return (

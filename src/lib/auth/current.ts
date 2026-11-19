@@ -44,6 +44,25 @@ export async function requireKaryawan({
   return { sesi, profil };
 }
 
+// Untuk Server Component halaman: tanpa sesi harus mengarahkan ke login,
+// bukan melempar error seperti endpoint API.
+export async function requireKaryawanHalaman({
+  izinkanGantiPassword = false,
+}: { izinkanGantiPassword?: boolean } = {}): Promise<AppUser> {
+  const sesi = await requireSession();
+  const profil = await ambilProfil(sesi.user.id);
+  if (!profil) {
+    throw new AppError("FORBIDDEN", "Akun ini belum punya profil karyawan.");
+  }
+  if (!profil.aktif) {
+    throw new AppError("INACTIVE", "Akun sudah nonaktif.");
+  }
+  if (profil.harusGantiPassword && !izinkanGantiPassword) {
+    redirect("/ganti-password");
+  }
+  return { sesi, profil };
+}
+
 export async function requireAdmin(): Promise<AppUser> {
   const user = await requireKaryawan();
   if (user.sesi.user.role !== "admin") {

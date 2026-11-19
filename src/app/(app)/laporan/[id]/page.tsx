@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { requireKaryawan } from "@/lib/auth/current";
+import { requireKaryawanHalaman } from "@/lib/auth/current";
 import { AppError } from "@/lib/http";
 import { daftarFollowupPekan } from "@/lib/klien/followup";
 import { daftarHasilFollowup } from "@/lib/klien/queries";
@@ -42,7 +42,7 @@ function ringkasDiff(sebelum: unknown, sesudah: unknown, namaAnggota: Map<string
 
 async function IsiLaporan({ id }: { id: string }) {
   await connection();
-  const { profil } = await requireKaryawan();
+  const { profil } = await requireKaryawanHalaman();
   let laporan;
   try {
     laporan = await getLaporan(id, profil.id);

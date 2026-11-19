@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { requireKaryawan } from "@/lib/auth/current";
+import { requireKaryawanHalaman } from "@/lib/auth/current";
 import { daftarNominalIuran, daftarPembayaran, rekapIuranKaryawan } from "@/lib/iuran/queries";
 import { daftarAnggotaLangsung } from "@/lib/pekan/bootstrap";
 import { bulanBerjalan, tanggalHariIni } from "@/lib/waktu";
@@ -71,7 +71,7 @@ async function IsiIuran({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   await connection();
-  const { profil } = await requireKaryawan();
+  const { profil } = await requireKaryawanHalaman();
   const berjalan = bulanBerjalan();
   const bulan = duaBelasBulan(berjalan);
   const dariBulan = bulan[bulan.length - 1]!;
@@ -152,13 +152,13 @@ async function IsiIuran({
                       {b.lunas ? (
                         <Badge>Tercatat</Badge>
                       ) : b.bulan === berjalan ? (
-                        <Badge variant="secondary">Belum — bulan berjalan</Badge>
+                        <Badge variant="secondary">Belum dibayar bulan ini</Badge>
                       ) : (
                         <Badge variant="outline">Belum</Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {b.nominal === null ? "—" : rupiah.format(b.nominal)}
+                      {b.nominal === null ? "Belum diisi" : rupiah.format(b.nominal)}
                     </TableCell>
                     <TableCell className="text-right">
                       {!b.lunas && b.bulan <= berjalan && (
@@ -220,8 +220,7 @@ async function IsiIuran({
   );
 }
 
-export default async function IuranPage({ searchParams }: PageProps<"/iuran">) {
-  const parameter = await searchParams;
+export default function IuranPage({ searchParams }: PageProps<"/iuran">) {
   return (
     <Suspense
       fallback={
@@ -238,7 +237,7 @@ export default async function IuranPage({ searchParams }: PageProps<"/iuran">) {
         />
       }
     >
-      <IsiIuran searchParams={Promise.resolve(parameter)} />
+      <IsiIuran searchParams={searchParams} />
     </Suspense>
   );
 }

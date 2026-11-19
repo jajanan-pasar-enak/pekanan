@@ -13,12 +13,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { BarisTabelSkeleton, HalamanSkeleton, KartuSkeleton } from "@/components/skeleton";
-import { requireKaryawan } from "@/lib/auth/current";
+import { requireKaryawanHalaman } from "@/lib/auth/current";
 import { daftarRekapAnggota } from "@/lib/kepegawaian/queries";
 
 async function IsiRekap() {
   await connection();
-  const { profil } = await requireKaryawan();
+  const { profil } = await requireKaryawanHalaman();
   const daftar = await daftarRekapAnggota(profil.id);
 
   return (
@@ -56,7 +56,7 @@ async function IsiRekap() {
                   <TableRow key={r.id}>
                     <TableCell className="font-medium">{r.supervisor}</TableCell>
                     <TableCell>
-                      {r.mulai} – {r.selesai}
+                      {r.mulai} s.d. {r.selesai}
                     </TableCell>
                     <TableCell>
                       <Badge variant={r.status === "Draf" ? "secondary" : "outline"}>

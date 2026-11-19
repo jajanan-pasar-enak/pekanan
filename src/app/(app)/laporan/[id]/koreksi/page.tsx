@@ -6,13 +6,13 @@ import { FormKoreksi } from "@/components/form-koreksi";
 import { BarisTabelSkeleton, HalamanSkeleton, KartuSkeleton } from "@/components/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { requireKaryawan } from "@/lib/auth/current";
+import { requireKaryawanHalaman } from "@/lib/auth/current";
 import { AppError } from "@/lib/http";
 import { getLaporan } from "@/lib/laporan/queries";
 
 async function IsiKoreksi({ id }: { id: string }) {
   await connection();
-  const { profil } = await requireKaryawan();
+  const { profil } = await requireKaryawanHalaman();
   let laporan;
   try {
     laporan = await getLaporan(id, profil.id);

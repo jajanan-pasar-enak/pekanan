@@ -15,14 +15,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { requireKaryawan } from "@/lib/auth/current";
+import { requireKaryawanHalaman } from "@/lib/auth/current";
 import { AppError } from "@/lib/http";
 import { daftarHasilFollowup, getKlien } from "@/lib/klien/queries";
 import { tanggalHariIni } from "@/lib/waktu";
 
 async function IsiKlien({ id }: { id: string }) {
   await connection();
-  const { profil } = await requireKaryawan();
+  const { profil } = await requireKaryawanHalaman();
   let klien;
   try {
     klien = await getKlien(id, profil.id);
@@ -87,7 +87,7 @@ async function IsiKlien({ id }: { id: string }) {
                     <TableCell className="whitespace-nowrap">{f.tanggal}</TableCell>
                     <TableCell>{f.hasil.nama}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {f.deskripsi ?? "—"}
+                      {f.deskripsi ?? "Belum diisi"}
                       {f.edit.length > 0 && (
                         <ul className="mt-1 flex flex-col gap-0.5 text-xs">
                           {f.edit.map((e) => (

@@ -7,14 +7,14 @@ import { MasterHasilFollowup } from "@/components/admin/master-hasil-followup";
 import { MasterNominalIuran } from "@/components/admin/master-nominal-iuran";
 import { HalamanSkeleton, KartuTabelSkeleton } from "@/components/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { requireKaryawan } from "@/lib/auth/current";
+import { requireKaryawanHalaman } from "@/lib/auth/current";
 import { daftarHasilFollowup } from "@/lib/klien/queries";
 import { daftarNominalIuran } from "@/lib/iuran/queries";
 import { daftarKaryawan } from "@/lib/kepegawaian/queries";
 
 async function IsiAdmin() {
   await connection();
-  const { sesi, profil } = await requireKaryawan();
+  const { sesi, profil } = await requireKaryawanHalaman();
   if (sesi.user.role !== "admin") redirect("/dashboard");
 
   const [karyawan, nominal, hasil] = await Promise.all([

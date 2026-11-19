@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { requireKaryawan } from "@/lib/auth/current";
+import { requireKaryawanHalaman } from "@/lib/auth/current";
 import { daftarLaporanSaya } from "@/lib/laporan/queries";
 import { daftarAnggotaLangsung } from "@/lib/pekan/bootstrap";
 import { pekanWIB } from "@/lib/waktu";
@@ -36,7 +36,7 @@ function lencanaStatus(status: string, pekanBerjalan: boolean) {
 
 async function IsiDashboard() {
   await connection();
-  const { profil } = await requireKaryawan();
+  const { profil } = await requireKaryawanHalaman();
   const [laporan, anggota] = await Promise.all([
     daftarLaporanSaya(profil.id),
     daftarAnggotaLangsung(profil.id),
@@ -89,7 +89,7 @@ async function IsiDashboard() {
                   {laporan.map((l) => (
                     <TableRow key={l.id}>
                       <TableCell>
-                        {l.mulai} – {l.selesai}
+                        {l.mulai} s.d. {l.selesai}
                       </TableCell>
                       <TableCell>{lencanaStatus(l.status, l.pekanBerjalan)}</TableCell>
                       <TableCell className="text-right tabular-nums">
@@ -114,7 +114,7 @@ async function IsiDashboard() {
             <CardDescription>
               {anggota.length === 0
                 ? "Belum ada anggota yang Anda bimbing."
-                : `${anggota.length} orang — datanya Anda isi di Laporan Pekan.`}
+                : `${anggota.length} orang. Datanya Anda isi di Laporan Pekan.`}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">

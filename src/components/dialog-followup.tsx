@@ -476,7 +476,7 @@ export function DialogFollowup({
                           {f.edit.map((e) => (
                             <li key={e.id}>
                               <span className="font-medium">{e.editor.nama}</span> ·{" "}
-                              {new Date(e.createdAt).toLocaleString("id-ID")} — {e.alasan}
+                              {new Date(e.createdAt).toLocaleString("id-ID")}: {e.alasan}
                               {ringkasPerubahan(f, opsiHasil).length > 0 && (
                                 <>
                                   {" "}

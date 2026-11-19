@@ -13,12 +13,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { requireKaryawan } from "@/lib/auth/current";
+import { requireKaryawanHalaman } from "@/lib/auth/current";
 import { daftarKlienSaya } from "@/lib/klien/queries";
 
 async function DaftarKlien() {
   await connection();
-  const { profil } = await requireKaryawan();
+  const { profil } = await requireKaryawanHalaman();
   const klien = await daftarKlienSaya(profil.id);
 
   return (
@@ -45,9 +45,11 @@ async function DaftarKlien() {
               {klien.map((k) => (
                 <TableRow key={k.id}>
                   <TableCell className="font-medium">{`${k.nama}`}</TableCell>
-                  <TableCell className="text-muted-foreground">{k.kontak ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {k.kontak ?? "Belum diisi"}
+                  </TableCell>
                   <TableCell className="text-right tabular-nums">{k.jumlahFollowup}</TableCell>
-                  <TableCell>{k.followupTerakhir ?? "—"}</TableCell>
+                  <TableCell>{k.followupTerakhir ?? "Belum ada"}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="sm" asChild>
                       <Link href={`/klien/${k.id}`}>Buka</Link>

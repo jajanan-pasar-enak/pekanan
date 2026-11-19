@@ -352,7 +352,7 @@ export function KelolaKaryawan({
                   </TableCell>
                   <TableCell>{k.email}</TableCell>
                   <TableCell>{k.level}</TableCell>
-                  <TableCell>{k.supervisorNama ?? "—"}</TableCell>
+                  <TableCell>{k.supervisorNama ?? "Belum ada"}</TableCell>
                   <TableCell className="text-right tabular-nums">{k.anggotaLangsung}</TableCell>
                   <TableCell className="text-right tabular-nums">{k.klien}</TableCell>
                   <TableCell>

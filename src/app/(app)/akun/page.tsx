@@ -6,11 +6,11 @@ import { JudulSkeleton } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { requireKaryawan } from "@/lib/auth/current";
+import { requireKaryawanHalaman } from "@/lib/auth/current";
 
 async function HeaderAkun() {
   await connection();
-  const { sesi, profil } = await requireKaryawan();
+  const { sesi, profil } = await requireKaryawanHalaman();
 
   return (
     <header className="flex flex-wrap items-start justify-between gap-3">

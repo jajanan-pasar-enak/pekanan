@@ -18,20 +18,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { requireKaryawan } from "@/lib/auth/current";
+import { requireKaryawanHalaman } from "@/lib/auth/current";
 import { AppError } from "@/lib/http";
 import { getRekapPekan } from "@/lib/kepegawaian/queries";
 
 const POLA_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function angka(n: number | null): string {
-  return n === null ? "—" : String(n);
+  return n === null ? "Belum diisi" : String(n);
 }
 
 async function IsiRekapPekan({ pekanId }: { pekanId: string }) {
   await connection();
   if (!POLA_UUID.test(pekanId)) notFound();
-  const { sesi, profil } = await requireKaryawan();
+  const { sesi, profil } = await requireKaryawanHalaman();
   let rekap;
   try {
     rekap = await getRekapPekan(pekanId, {
@@ -105,14 +105,14 @@ async function IsiRekapPekan({ pekanId }: { pekanId: string }) {
                 {baris.map((b) => (
                   <TableRow key={b.anggotaId}>
                     <TableCell className="font-medium">{b.nama}</TableCell>
-                    <TableCell>{b.kehadiran ?? "—"}</TableCell>
+                    <TableCell>{b.kehadiran ?? "Belum diisi"}</TableCell>
                     <TableCell className="text-right tabular-nums">
                       {angka(b.mediaOnline)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {angka(b.mediaOffline)}
                     </TableCell>
-                    <TableCell>{b.oneOnOne ?? "—"}</TableCell>
+                    <TableCell>{b.oneOnOne ?? "Belum diisi"}</TableCell>
                     <TableCell className="text-right tabular-nums">{b.followup}</TableCell>
                   </TableRow>
                 ))}

@@ -128,7 +128,7 @@ export function CatatIuran({
             <SelectContent>
               {nominal.map((n) => (
                 <SelectItem key={n.id} value={n.id}>
-                  {n.nama} — {rupiah.format(n.nominal)}
+                  {n.nama}: {rupiah.format(n.nominal)}
                 </SelectItem>
               ))}
             </SelectContent>
