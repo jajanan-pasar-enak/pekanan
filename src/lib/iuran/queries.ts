@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import { karyawan, nominalIuran, pembayaranIuran } from "@/db/schema";
@@ -77,43 +77,68 @@ export type RekapIuranBulan = {
   lunas: boolean;
 };
 
-// Tampilan 12 bulan untuk satu karyawan (biasa dipakai halaman /iuran).
-export async function rekapIuranKaryawan(
-  karyawanId: string,
+// Tampilan 12 bulan untuk sekumpulan karyawan dalam dua query, bukan dua per orang.
+export async function rekapIuranBanyak(
+  karyawanIds: string[],
   dariBulan: string,
   sampaiBulan: string,
-): Promise<RekapIuranBulan[]> {
-  const [k] = await db
-    .select({ nama: karyawan.nama })
-    .from(karyawan)
-    .where(eq(karyawan.id, karyawanId))
-    .limit(1);
-  if (!k) throw new AppError("NOT_FOUND", "Karyawan tidak ditemukan.");
+): Promise<Map<string, RekapIuranBulan[]>> {
+  const ids = [...new Set(karyawanIds)];
 
-  const bayar = await db
-    .select({ bulan: pembayaranIuran.bulan, nominal: nominalIuran.nominal })
-    .from(pembayaranIuran)
-    .innerJoin(nominalIuran, eq(nominalIuran.id, pembayaranIuran.nominalIuranId))
-    .where(eq(pembayaranIuran.karyawanId, karyawanId));
-  const perBulan = new Map(bayar.map((b) => [b.bulan, b.nominal]));
+  const [orang, bayar] = await Promise.all([
+    db
+      .select({ id: karyawan.id, nama: karyawan.nama })
+      .from(karyawan)
+      .where(inArray(karyawan.id, ids)),
+    db
+      .select({
+        karyawanId: pembayaranIuran.karyawanId,
+        bulan: pembayaranIuran.bulan,
+        nominal: nominalIuran.nominal,
+      })
+      .from(pembayaranIuran)
+      .innerJoin(nominalIuran, eq(nominalIuran.id, pembayaranIuran.nominalIuranId))
+      .where(inArray(pembayaranIuran.karyawanId, ids)),
+  ]);
 
-  const hasil: RekapIuranBulan[] = [];
-  let [tahun, bulan] = dariBulan.split("-").map(Number);
+  if (orang.length !== ids.length) {
+    throw new AppError("NOT_FOUND", "Karyawan tidak ditemukan.");
+  }
+
+  const nama = new Map(orang.map((o) => [o.id, o.nama]));
+  const perOrang = new Map<string, Map<string, number>>();
+  for (const b of bayar) {
+    const peta = perOrang.get(b.karyawanId) ?? new Map<string, number>();
+    peta.set(b.bulan, b.nominal);
+    perOrang.set(b.karyawanId, peta);
+  }
+
+  const daftarBulan: string[] = [];
+  let [tahun, bulan] = dariBulan.split("-").map(Number) as [number, number];
   while (true) {
     const iso = `${tahun}-${String(bulan).padStart(2, "0")}-01`;
     if (iso > sampaiBulan) break;
-    hasil.push({
-      bulan: iso,
-      karyawanId,
-      nama: k.nama,
-      nominal: perBulan.get(iso) ?? null,
-      lunas: perBulan.has(iso),
-    });
-    bulan! += 1;
-    if (bulan! > 12) {
+    daftarBulan.push(iso);
+    bulan += 1;
+    if (bulan > 12) {
       bulan = 1;
-      tahun! += 1;
+      tahun += 1;
     }
+  }
+
+  const hasil = new Map<string, RekapIuranBulan[]>();
+  for (const id of ids) {
+    const peta = perOrang.get(id);
+    hasil.set(
+      id,
+      daftarBulan.map((b) => ({
+        bulan: b,
+        karyawanId: id,
+        nama: nama.get(id)!,
+        nominal: peta?.get(b) ?? null,
+        lunas: peta?.has(b) ?? false,
+      })),
+    );
   }
   return hasil;
 }

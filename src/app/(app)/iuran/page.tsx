@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
+import { CheckIcon, PlusIcon } from "lucide-react";
+import { cn } from "cn";
 import { CatatIuran } from "@/components/catat-iuran";
 import {
   BarisTabelSkeleton,
@@ -8,8 +10,6 @@ import {
   KartuSkeleton,
   KartuTabelSkeleton,
 } from "@/components/skeleton";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -20,9 +20,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { requireKaryawanHalaman } from "@/lib/auth/current";
-import { daftarNominalIuran, daftarPembayaran, rekapIuranKaryawan } from "@/lib/iuran/queries";
+import { daftarNominalIuran, daftarPembayaran, rekapIuranBanyak } from "@/lib/iuran/queries";
 import { daftarAnggotaLangsung } from "@/lib/pekan/bootstrap";
-import { bulanBerjalan, tanggalHariIni } from "@/lib/waktu";
+import { bulanBerjalan, formatTanggal, tanggalHariIni } from "@/lib/waktu";
 
 const rupiah = new Intl.NumberFormat("id-ID", {
   style: "currency",
@@ -43,6 +43,21 @@ const BULAN = [
   "Oktober",
   "November",
   "Desember",
+];
+
+const BULAN_PENDEK = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "Mei",
+  "Jun",
+  "Jul",
+  "Agu",
+  "Sep",
+  "Okt",
+  "Nov",
+  "Des",
 ];
 
 export function labelBulan(iso: string): string {
@@ -85,12 +100,16 @@ async function IsiIuran({
     { id: profil.id, nama: `${profil.nama} (saya)` },
     ...anggota.map((a) => ({ id: a.id, nama: a.nama })),
   ];
-  const rekap = await Promise.all(
-    orang.map(async (o) => ({
-      ...o,
-      bulan: await rekapIuranKaryawan(o.id, dariBulan, berjalan),
-    })),
+  const rekapPeta = await rekapIuranBanyak(
+    orang.map((o) => o.id),
+    dariBulan,
+    berjalan,
   );
+  const rekap = orang.map((o) => ({ ...o, bulan: rekapPeta.get(o.id) ?? [] }));
+  const kolom = rekap[0]?.bulan ?? [];
+  const lunasBulanIni = rekap.filter(
+    (r) => r.bulan.find((b) => b.bulan === berjalan)?.lunas,
+  ).length;
   const bisaCatat = new Set(orang.map((o) => o.id));
   const parameter = await searchParams;
   const catatDari =
@@ -125,55 +144,99 @@ async function IsiIuran({
         </CardContent>
       </Card>
 
-      {rekap.map((r) => (
-        <Card key={r.id}>
-          <CardHeader>
-            <CardTitle>{`${r.nama}`}</CardTitle>
-            <CardDescription>
-              {r.bulan.filter((b) => b.lunas).length}/{r.bulan.length} bulan lunas (12 bulan
-              terakhir).
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Bulan</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Nominal</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {r.bulan.map((b) => (
-                  <TableRow key={b.bulan}>
-                    <TableCell>{labelBulan(b.bulan)}</TableCell>
-                    <TableCell>
-                      {b.lunas ? (
-                        <Badge>Tercatat</Badge>
-                      ) : b.bulan === berjalan ? (
-                        <Badge variant="secondary">Belum dibayar bulan ini</Badge>
-                      ) : (
-                        <Badge variant="outline">Belum</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {b.nominal === null ? "Belum diisi" : rupiah.format(b.nominal)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {!b.lunas && b.bulan <= berjalan && (
-                        <Button variant="ghost" size="sm" asChild>
-                          <a href={`/iuran?catat=${r.id}|${b.bulan}#catat-iuran`}>Catat</a>
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
+      <Card>
+        <CardHeader>
+          <CardTitle>Ledger iuran</CardTitle>
+          <CardDescription>
+            {`${labelBulan(kolom[0]?.bulan ?? berjalan)} sampai ${labelBulan(berjalan)}. ${lunasBulanIni} dari ${rekap.length} karyawan sudah membayar ${labelBulan(berjalan)}.`}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <p className="text-xs text-muted-foreground">
+            Centang berarti tercatat. Tombol + mencatat pembayaran untuk bulan itu.
+          </p>
+          <div className="max-h-[70vh] overflow-auto rounded-md border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  <th
+                    scope="col"
+                    className="sticky top-0 left-0 z-30 min-w-40 border-b bg-card px-2 py-2 text-left font-medium"
+                  >
+                    Karyawan
+                  </th>
+                  {kolom.map((b) => {
+                    const [tahun, bulanKe] = b.bulan.split("-").map(Number);
+                    return (
+                      <th
+                        key={b.bulan}
+                        scope="col"
+                        className={cn(
+                          "sticky top-0 z-20 border-b bg-card px-1 py-2 text-center align-bottom font-normal whitespace-nowrap",
+                          b.bulan === berjalan && "bg-secondary",
+                        )}
+                      >
+                        <span className="block text-xs">{BULAN_PENDEK[bulanKe! - 1]}</span>
+                        <span className="block text-[11px] text-muted-foreground">{tahun}</span>
+                      </th>
+                    );
+                  })}
+                  <th
+                    scope="col"
+                    className="sticky top-0 z-20 border-b bg-card px-2 py-2 text-right font-medium whitespace-nowrap"
+                  >
+                    Lunas
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rekap.map((r) => (
+                  <tr key={r.id} className="border-b last:border-0">
+                    <th
+                      scope="row"
+                      className="sticky left-0 z-10 min-w-40 border-r bg-card px-2 py-1.5 text-left font-medium"
+                    >
+                      {r.nama}
+                    </th>
+                    {r.bulan.map((b) => (
+                      <td
+                        key={b.bulan}
+                        className={cn(
+                          "px-1 py-1 text-center",
+                          b.bulan === berjalan && !b.lunas && "bg-secondary/50",
+                        )}
+                      >
+                        {b.lunas ? (
+                          <span
+                            data-slot="ledger-cell"
+                            className="mx-auto flex size-8 items-center justify-center rounded-md bg-secondary text-foreground"
+                            title={`Tercatat, ${rupiah.format(b.nominal ?? 0)}`}
+                          >
+                            <CheckIcon className="size-3.5" aria-hidden />
+                            <span className="sr-only">{`Tercatat ${labelBulan(b.bulan)}`}</span>
+                          </span>
+                        ) : (
+                          <a
+                            href={`/iuran?catat=${r.id}|${b.bulan}#catat-iuran`}
+                            data-slot="ledger-cell"
+                            className="mx-auto flex size-8 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:border-foreground hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none active:translate-y-px"
+                            aria-label={`Catat iuran ${r.nama} untuk ${labelBulan(b.bulan)}`}
+                          >
+                            <PlusIcon className="size-3.5" aria-hidden />
+                          </a>
+                        )}
+                      </td>
+                    ))}
+                    <td className="px-2 py-1.5 text-right tabular-nums">
+                      {r.bulan.filter((b) => b.lunas).length}/{r.bulan.length}
+                    </td>
+                  </tr>
                 ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -202,7 +265,7 @@ async function IsiIuran({
                     <TableCell>{`${p.karyawan.nama}`}</TableCell>
                     <TableCell>{labelBulan(p.bulan)}</TableCell>
                     <TableCell>{p.nominal.nama}</TableCell>
-                    <TableCell>{p.tanggalBayar}</TableCell>
+                    <TableCell>{formatTanggal(p.tanggalBayar)}</TableCell>
                     <TableCell>
                       {`${p.pencatat.nama}`}
                       {p.olehSupervisor && (
