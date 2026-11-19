@@ -255,6 +255,13 @@ Audit `/hallmark` (scope app, genre modern-minimal). Diagnosis: masalahnya bukan
 - Verifikasi preview produksi (sup-1): `/iuran` 2/3 lunas, progres 67%, satu nama belum bayar, prefill `?catat=` memilih Wulan; `/rekap` 3 kelompok pekan, 5 laporan, ringkasan 0/2 dengan dua nama menunggu; tanpa overflow 1280/375, konsol bersih. Gate: eslint 0, prettier 0, tsc 0, tes 35/35, build OK.
 - **Catatan Dependabot:** alert #2 `GHSA-gcqx-w48m-w2h4` (`deepmerge@4.3.1`, lewat CLI shadcn) adalah advisory yang **ditarik 16 Nov 2026** dan bukan kerentanan. Tidak ada tindakan; jangan dibahas lagi.
 
+## 1o. Sesi 2026-11-19 — polish `/klien`
+
+- Empty state kini satu blok bergaris putus-putus: judul + arahan berikutnya ("Tambahkan klien pertama Anda lewat formulir di atas."), tanpa kalimat "0 klien." yang dobel.
+- Filter tanpa hasil memakai blok yang sama dengan arahan "Coba kata lain atau hapus filter."
+- Kolom "Terakhir" diganti "Follow-up terakhir"; nilai "Belum ada" diredupkan agar tanggal yang ada lebih menonjol.
+- Verifikasi server HTML dengan sesi sup-1 (0 klien): empty state dan filter `q=zzz` benar; eslint/prettier/tsc/build OK.
+
 ## 2. Lokasi dokumen (baca berurutan)
 
 | File | Isi |

@@ -41,16 +41,23 @@ async function IsiDaftar({ q, belum, hal }: { q: string; belum: boolean; hal: nu
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground">
-        {q || belum ? `${hasil.total} klien cocok.` : `${hasil.total} klien.`}
-      </p>
+      {hasil.total > 0 && (
+        <p className="text-sm text-muted-foreground">
+          {q || belum ? `${hasil.total} klien cocok.` : `${hasil.total} klien.`}
+        </p>
+      )}
 
       {hasil.total === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          {q || belum
-            ? "Tidak ada klien yang cocok. Coba kata lain atau hapus filter."
-            : "Belum ada klien."}
-        </p>
+        <div className="flex flex-col gap-1 rounded-lg border border-dashed px-4 py-6">
+          <p className="font-medium">
+            {q || belum ? "Tidak ada klien yang cocok." : "Belum ada klien."}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {q || belum
+              ? "Coba kata lain atau hapus filter."
+              : "Tambahkan klien pertama Anda lewat formulir di atas."}
+          </p>
+        </div>
       ) : (
         <Table>
           <TableHeader>
@@ -58,7 +65,7 @@ async function IsiDaftar({ q, belum, hal }: { q: string; belum: boolean; hal: nu
               <TableHead>Nama</TableHead>
               <TableHead>Kontak</TableHead>
               <TableHead className="text-right">Follow-up</TableHead>
-              <TableHead>Terakhir</TableHead>
+              <TableHead>Follow-up terakhir</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
@@ -70,7 +77,7 @@ async function IsiDaftar({ q, belum, hal }: { q: string; belum: boolean; hal: nu
                   {k.kontak ?? "Belum diisi"}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">{k.jumlahFollowup}</TableCell>
-                <TableCell>
+                <TableCell className={k.followupTerakhir ? undefined : "text-muted-foreground"}>
                   {k.followupTerakhir ? formatTanggal(k.followupTerakhir) : "Belum ada"}
                 </TableCell>
                 <TableCell className="text-right">
