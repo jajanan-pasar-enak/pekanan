@@ -1,3 +1,4 @@
 drizzle/
 pnpm-lock.yaml
+.gstack/
 *.md
