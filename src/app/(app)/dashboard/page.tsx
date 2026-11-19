@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import {
   BarisTabelSkeleton,
-  HalamanSkeleton,
   KartuAnggotaSkeleton,
   KartuSkeleton,
+  Skeleton,
 } from "@/components/skeleton";
 import {
   Table,
@@ -36,7 +36,13 @@ function tautanAnggota(q: string, hal: number): string {
 }
 
 function lencanaStatus(status: string, pekanBerjalan: boolean) {
-  if (status === "Terkirim") return <Badge>Terkirim</Badge>;
+  if (status === "Terkirim") {
+    return (
+      <Badge className="border-signal/25 bg-signal/10 text-signal font-medium" variant="outline">
+        Terkirim
+      </Badge>
+    );
+  }
   if (status === "Dikoreksi") return <Badge variant="outline">Dikoreksi</Badge>;
   return (
     <Badge variant={pekanBerjalan ? "secondary" : "destructive"}>
@@ -65,39 +71,91 @@ async function IsiDashboard({
   ]);
   const pekan = pekanWIB();
   const laporanBerjalan = laporan.find((l) => l.pekanBerjalan) ?? null;
+  const riwayat = laporan.filter((l) => !l.pekanBerjalan);
+  const persen =
+    laporanBerjalan && laporanBerjalan.total > 0
+      ? Math.round((laporanBerjalan.diisi / laporanBerjalan.total) * 100)
+      : 0;
 
   return (
     <>
-      <section className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Halo, {profil.nama}</h1>
-          <p className="text-sm text-muted-foreground">
-            Pekan berjalan: {formatRentangTanggal(pekan.mulai, pekan.selesai)} WIB
-          </p>
+      <header className="flex flex-col gap-1">
+        <h1 className="text-2xl font-semibold tracking-tight">Halo, {profil.nama}</h1>
+      </header>
+
+      <section
+        aria-labelledby="pekan-berjalan"
+        className="rounded-xl bg-card ring-1 ring-foreground/10"
+      >
+        <div className="grid gap-6 p-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+          <div className="flex min-w-0 flex-col gap-3">
+            <p className="text-sm text-muted-foreground">Pekan berjalan</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <h2
+                id="pekan-berjalan"
+                className="text-3xl font-semibold tracking-tight text-balance"
+              >
+                {formatRentangTanggal(pekan.mulai, pekan.selesai)}
+              </h2>
+              {laporanBerjalan && lencanaStatus(laporanBerjalan.status, true)}
+            </div>
+
+            {laporanBerjalan ? (
+              <div className="flex max-w-md flex-col gap-2">
+                <p className="flex items-baseline gap-2">
+                  <span className="text-2xl leading-none font-semibold tabular-nums">
+                    {laporanBerjalan.diisi}/{laporanBerjalan.total}
+                  </span>
+                  <span className="text-sm text-muted-foreground">anggota terisi</span>
+                </p>
+                <div
+                  role="progressbar"
+                  aria-label="Anggota yang sudah terisi pada pekan berjalan"
+                  aria-valuemin={0}
+                  aria-valuemax={laporanBerjalan.total}
+                  aria-valuenow={laporanBerjalan.diisi}
+                  className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+                >
+                  <div className="h-full rounded-full bg-signal" style={{ width: `${persen}%` }} />
+                </div>
+              </div>
+            ) : (
+              <p className="max-w-md text-sm text-muted-foreground">
+                Belum ada laporan untuk pekan ini. Laporan Draf dibuat otomatis bila Anda punya
+                Anggota Langsung.
+              </p>
+            )}
+          </div>
+
+          {laporanBerjalan && (
+            <div className="flex flex-col gap-2 md:items-end">
+              <Button asChild size="lg">
+                <Link href={`/laporan/${laporanBerjalan.id}`}>
+                  {laporanBerjalan.status === "Draf" ? "Isi laporan pekan" : "Lihat laporan pekan"}
+                </Link>
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                {laporanBerjalan.status === "Draf"
+                  ? "Lengkapi kehadiran, follow-up, dan one-on-one."
+                  : "Periksa kembali isi laporan pekan ini."}
+              </p>
+            </div>
+          )}
         </div>
-        {laporanBerjalan && (
-          <Button asChild>
-            <Link href={`/laporan/${laporanBerjalan.id}`}>
-              {laporanBerjalan.status === "Draf" ? "Isi Laporan Pekan" : "Lihat Laporan Pekan"}
-            </Link>
-          </Button>
-        )}
       </section>
 
       <div className="grid gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-3">
           <CardHeader>
-            <CardTitle>Laporan Pekan Saya</CardTitle>
+            <CardTitle>Riwayat pekan</CardTitle>
             <CardDescription>
-              Dibuat otomatis setiap pekan selama Anda punya Anggota Langsung.
+              {riwayat.length === 0
+                ? "Belum ada pekan sebelumnya."
+                : `${riwayat.length} pekan sebelumnya, terbaru di atas.`}
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            {laporan.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Belum ada laporan. Laporan Draf dibuat bila Anda punya Anggota Langsung.
-              </p>
-            ) : (
+          {riwayat.length > 0 && (
+            <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -108,10 +166,10 @@ async function IsiDashboard({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {laporan.map((l) => (
+                  {riwayat.map((l) => (
                     <TableRow key={l.id}>
                       <TableCell>{formatRentangTanggal(l.mulai, l.selesai)}</TableCell>
-                      <TableCell>{lencanaStatus(l.status, l.pekanBerjalan)}</TableCell>
+                      <TableCell>{lencanaStatus(l.status, false)}</TableCell>
                       <TableCell className="text-right tabular-nums">
                         {`${l.diisi}/${l.total}`}
                       </TableCell>
@@ -124,8 +182,8 @@ async function IsiDashboard({
                   ))}
                 </TableBody>
               </Table>
-            )}
-          </CardContent>
+            </CardContent>
+          )}
         </Card>
 
         <Card className="lg:col-span-2">
@@ -220,24 +278,32 @@ async function IsiDashboard({
 
 function DashboardSkeleton() {
   return (
-    <HalamanSkeleton
-      anak={
-        <div className="flex flex-col gap-6">
-          <div className="grid gap-6 lg:grid-cols-5">
-            <KartuSkeleton
-              judul="Laporan Pekan Saya"
-              className="lg:col-span-3"
-              anak={<BarisTabelSkeleton jumlahBaris={2} />}
-            />
-            <KartuSkeleton
-              judul="Anggota Langsung"
-              className="lg:col-span-2"
-              anak={<KartuAnggotaSkeleton jumlahBaris={5} />}
-            />
-          </div>
+    <div className="flex flex-col gap-6" aria-busy="true" aria-live="polite">
+      <span className="sr-only">Memuat data…</span>
+      <header>
+        <Skeleton className="h-8 w-56" />
+      </header>
+      <div className="rounded-xl bg-card p-6 ring-1 ring-foreground/10">
+        <div className="flex flex-col gap-3">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-9 w-64 max-w-full" />
+          <Skeleton className="h-7 w-24" />
+          <Skeleton className="h-1.5 w-full max-w-md rounded-full" />
         </div>
-      }
-    />
+      </div>
+      <div className="grid gap-6 lg:grid-cols-5">
+        <KartuSkeleton
+          judul="Riwayat pekan"
+          className="lg:col-span-3"
+          anak={<BarisTabelSkeleton jumlahBaris={2} />}
+        />
+        <KartuSkeleton
+          judul="Anggota Langsung"
+          className="lg:col-span-2"
+          anak={<KartuAnggotaSkeleton jumlahBaris={5} />}
+        />
+      </div>
+    </div>
   );
 }
 

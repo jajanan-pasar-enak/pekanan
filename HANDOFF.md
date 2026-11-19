@@ -222,6 +222,32 @@ Audit `/hallmark` (scope app, genre modern-minimal). Diagnosis: masalahnya bukan
 - Verifikasi: konsol Chromium headless bersih untuk `/dashboard`, `/dashboard?q=Uji`, `/dashboard?hal=2`, `/klien`, `/klien?belum=1`; halaman 2/6 dan filter 46/45 tetap benar; eslint 0, prettier 0, `tsc --noEmit` 0 (heap 768 MB), tes 35/35.
 - File berubah: `src/app/(app)/dashboard/page.tsx`, `src/app/(app)/klien/page.tsx`, `HANDOFF.md`.
 
+## 1k. Sesi 2026-11-19 — skeleton hanya untuk data yang benar-benar dimuat
+
+- Prinsip: bagian statis (judul, form, tombol) dirender langsung; skeleton hanya untuk wilayah yang menunggu data.
+- `(auth)/page.tsx` (login): panel form langsung tampil; hanya pemeriksaan sesi (redirect bila sudah masuk) yang di-`Suspense` dengan fallback `null` — skeleton panel dihapus.
+- `(auth)/ganti-password/page.tsx`: judul, kartu form, dan tombol keluar langsung tampil; hanya nama pemilik + penjaga redirect yang di-`Suspense` (skeleton satu baris).
+- `(app)/klien/page.tsx`: header dan kartu "Tambah klien" (form statis) di luar `Suspense`; hanya kartu daftar (butuh `?q/belum/hal` + data) yang di-`Suspense` dengan fallback `KartuTabelSkeleton`.
+- Halaman lain tetap: isinya bergantung data (dashboard, rekap, admin, iuran, laporan, detail klien) sehingga skeleton wilayah data masih diperlukan; judul statis sudah tampil sebagai teks asli di fallback `HalamanSkeleton`.
+- Verifikasi build produksi (`pnpm build` + `pnpm start`): form login ada di HTML awal tanpa skeleton; `/ganti-password` untuk user tanpa kewajiban → redirect ke `/dashboard`; `/klien` cari/filter/paginasi tetap benar (46/45 klien, `q=Uji` → halaman 1/6); konsol bersih. Gate: eslint 0, prettier 0, tsc 0, tes 35/35.
+
+## 1l. Sesi 2026-11-19 — bersihkan data duplikat (data uji) di DB
+
+- Disetujui pemilik proyek: hapus semua data uji bernama sama, master referensi disisakan satu per nama.
+- Akun uji `Uji Browser` (55) + `Uji Browser Ubah` (11): seluruh `user`/`account`/`session`/`karyawan` dihapus, beserta 122 `laporan_anggota`, 15 `pembayaran_iuran`.
+- Klien `Toko Uji Browser` (47): 50 `followup` + 11 `followup_edit` dihapus lebih dulu, lalu klien.
+- Master: `nominal_iuran` 20 → 2 baris, `hasil_followup` 28 → 3 baris. Referensi dipindahkan ke baris yang dipertahankan (6 `followup` untuk "Tertarik lanjut"); nominal/nilai identik sehingga riwayat tidak berubah.
+- Verifikasi pasca-hapus: 0 duplikat nama, 0 `user` tanpa profil, `/iuran` dan `/klien` render tanpa error konsol. Konsekuensi wajar: `sup-1` kini 0 klien dan daftar anggota dashboard tinggal data non-uji.
+- Tidak ada perubahan kode; skrip hapus dijalankan sekali dari file sementara dan sudah dihapus.
+
+## 1m. Sesi 2026-11-19 — pass pertama hierarki `/dashboard`
+
+- Blok "Pekan berjalan" jadi fokus utama: rentang pekan 30px, lencana status, angka `diisi/total` + bilah progres, dan CTA "Isi laporan pekan" ukuran `lg` di sisi kanan.
+- Kartu "Laporan Pekan Saya" dipecah: pekan berjalan pindah ke blok fokus; kartu kiri kini "Riwayat pekan" (hanya pekan sebelumnya).
+- "Anggota Langsung" tetap di kanan (`lg:col-span-2`), pencarian/paginasi tidak berubah.
+- Token baru `--signal: oklch(0.5 0.1 195)` + `--color-signal`; dipakai untuk bilah progres dan lencana "Terkirim" saja. Waiver 22 di `globals.css` dipersempit.
+- Verifikasi preview produksi (login sup-1): hero `15-21 Nov 2026`, progres `0/2` (aria 0..2), CTA "Isi laporan pekan", pencarian `q=Tono` menyaring 2 → 1 anggota, tanpa overflow di 1280 dan 375, konsol bersih. Gate: eslint 0, prettier 0, tsc 0, tes 35/35, build OK.
+
 ## 2. Lokasi dokumen (baca berurutan)
 
 | File | Isi |

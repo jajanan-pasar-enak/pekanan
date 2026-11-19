@@ -5,6 +5,7 @@
  * built: the project · redesign: polish · v2.0.0 */
 
 /* Hallmark · waive 22 · all neutrals in the token block carry chroma 0 on purpose · the page stays ink-only until a brand accent exists */
+/* Hallmark · 2026-11-19 · waiver 22 narrowed: --signal (teal) is the one accent, used only for progress and status */
 /* Hallmark · waive 7b · checked: the token block sets background and card to oklch(1 0 0) so the ledger sits on paper white · a pure white page keeps the ledger on paper, not a missing tint */
 
 @import "tailwindcss";
@@ -33,6 +34,7 @@
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
+  --color-signal: var(--signal);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
@@ -76,6 +78,7 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.62 0 0);
   --ring: oklch(0.55 0 0);
+  --signal: oklch(0.5 0.1 195);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
