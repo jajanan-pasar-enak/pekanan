@@ -1,5 +1,7 @@
 # HANDOFF — pekanan
 
+> **Status UI terakhir (2026-11-19, sesi 6 — audit desain Hallmark, polish, ledger `/iuran`, pencarian `/klien`):** perubahan sesi 6 sudah **di-commit** pada 2026-11-19 dalam tiga commit (polish UI, ledger iuran, pencarian klien; daftar file di §1h, hash di `git log`). `pnpm lint` bersih, `tsc --noEmit` exit 0, sloplint halaman bersih (waiver tercatat di stamp `globals.css`). RAM puncak 89% (batas 90%). Backlog tersisa: daftar anggota di `/dashboard`. **Baca §1h sebelum kerja lanjutan.**
+>
 > **Baca ini dulu.** Status terakhir (2026-11-09, sesi 5 — skeleton, SSL log Vercel, prettier + bersih-bersih lint): **live** di **https://pekanan.vercel.app** (Vercel Hobby, `main` auto-deploy). Remote: **`https://github.com/jajanan-pasar-enak/pekanan.git`** (publik; remote `sini-sana` sudah ditinggalkan tetapi **masih ada riwayatnya di GitHub**). `main` sinkron di **`8512042`** (sudah di-push, Vercel auto-deploy). **5 migrasi** Drizzle diterapkan (`0000`–`0004`; sesi ini **tidak** mengubah skema). Gerbang: `pnpm test` **32/32**, `pnpm lint` **bersih (0 problem)**, `pnpm format:check` lulus, `pnpm build` exit 0; `next start` lokal `/` 200 dan `/api/me` 401. 8 commit sesi ini: `66b8b0b`, `d1e3758`, `a6e95e3`, `82e6e44`, `dee932a`, `da7ca98`, `78639ad`, `8512042` — lihat §1f/§1g.
 
 > **Yang belum beres:**
@@ -179,12 +181,39 @@ Semua sudah di-push ke `main`. Sebelumnya **semua** `Suspense fallback={null}` (
 - `src/app/api/todos/route.ts` dihapus (tabelnya sudah di-drop). Sisa scaffold yang masih ada dan **masih dirujuk `todo.md` Commit 2**: `src/components/todo-list.tsx`, `src/app/api/ping-function/`, `src/lib/functions.ts`, `hello.ts`, `neon.ts`, `scripts/verify-db.mts`, `scripts/smoke.mts` (masih menyebut `/api/todos`).
 - Diverifikasi via psql: 14 tabel, 15 CHECK, unique parsial hidup, trigger memensiunkan baris yang kalah tanpa menghapus, `neon_auth` utuh. Uji constraint dilakukan dalam transaksi `ROLLBACK` (DB bersih).
 
+## 1h. Sesi 2026-11-19 — audit desain, polish, ledger `/iuran`, pencarian `/klien`
+
+Audit `/hallmark` (scope app, genre modern-minimal). Diagnosis: masalahnya bukan warna/tipografi tapi **struktur halaman** — `/iuran` merender satu kartu per orang (58 kartu, ~735 baris) dengan query per orang, `/klien` mencetak semua klien tanpa cari/filter/halaman, tanggal mentah, kontrol kecil, header blur.
+
+**Artefak baru**
+- `DESIGN.md` — sistem terkunci: token OKLCH ink-only (waiver gate 22), tipografi, kontrol ≥32px + target 44px untuk `pointer: coarse`, ledger rapat, dark mode **tidak didukung** (token dark mati dihapus), daftar item terbuka.
+- `AGENTS.md` — aturan mesin: cek `free -m` sebelum tes/build/browser, RAM total < 90%, tanpa swap, jangan matikan dev server pengguna.
+- `src/app/error.tsx`, `src/app/not-found.tsx`, `.gitignore` + `.hallmark/`.
+
+**`/iuran` — satu ledger, bukan kartu per orang**
+- `src/lib/iuran/queries.ts`: `rekapIuranBanyak(karyawanIds, dari, sampai)` menggantikan `rekapIuranKaryawan` — 2 query untuk semua orang (was N+1 ~120 query).
+- Halaman: tabel 58 × 12 bulan (ledger), header sticky + kolom nama sticky, bulan berjalan ditandai `bg-secondary`, sel lunas (centang + `sr-only`) vs belum (tautan `?catat=id|bulan#catat-iuran`), kolom "Lunas x/y". Kartu riwayat pembayaran tetap.
+- Verifikasi headless: 696 sel, sticky delta 1px (scrollTop 420 / scrollLeft 280), mobile 390px tidak overflow.
+
+**`/klien` — cari, filter, halaman lewat URL**
+- `src/lib/klien/queries.ts`: `halamanKlienSaya` (count + `limit/offset`, clamp halaman), `q` pakai ILIKE dengan escape `% _ \`, `belumFollowup` pakai `NOT EXISTS`. `daftarKlienSaya` **tetap** (kontrak `GET /api/klien` = array penuh untuk smoke).
+- Halaman: `?q=&belum=1&hal=N`, 25 baris/halaman, toolbar `method="get"` + toggle "Belum ada follow-up"/"Semua klien" + "Hapus filter", paginasi dengan tombol disabled.
+- Verifikasi: 46 klien → 25/21 baris; 45 tanpa follow-up; filter+cari benar.
+
+**Gerbang:** `pnpm lint` bersih, `tsc --noEmit` exit 0 (heap 512 MB), sloplint halaman bersih, RAM puncak 89%. Waiver tertulis di stamp `src/app/globals.css`: gate 22 (palet ink-only), gate 7b (permukaan putih), gate 29 di-dismiss (blur hanya scrim dialog). Screenshot: `.hallmark/captures/` (gitignored).
+
+**File sesi 6:** `AGENTS.md`*, `DESIGN.md`*, `error.tsx`*, `not-found.tsx`*, `.gitignore`, `src/app/globals.css`, `src/lib/waktu.ts` + test, halaman `dashboard/rekap/klien/laporan`, `(app)/layout.tsx`, `dialog-followup`, `nav-utama`, `ui/button`, `lib/iuran/{queries,page}`, `lib/klien/{queries,page}` (*baru). Dipecah 3 commit: (1) polish + DESIGN/AGENTS + halaman error, (2) ledger iuran, (3) klien cari/filter/halaman.
+
+**Berikutnya:** daftar anggota `/dashboard` (57 baris tanpa batas → cap + cari, pola sama seperti `/klien`), lalu `pnpm build` **hanya bila RAM < 90%**. Dev server pengguna (port 3000) masih hidup — jangan dimatikan.
+
 ## 2. Lokasi dokumen (baca berurutan)
 
 | File | Isi |
 |---|---|
 | `HANDOFF.md` | (file ini) status, jebakan, langkah berikutnya |
 | `CONTEXT.md` | **Glosarium domain (sumber kebenaran aturan bisnis)** |
+| `DESIGN.md` | Sistem UI terkunci (token, tipografi, kontrol, ledger, dark mode tidak didukung) — baca sebelum mengubah tampilan |
+| `AGENTS.md` | Aturan mesin (RAM < 90%, tanpa swap, jangan matikan dev server pengguna) |
 | `plan.md` | Rencana implementasi yang disetujui + **§Arsitektur Kode** + **§9 urutan commit** |
 | `todo.md` | Checklist per commit (Commit 1–5 sudah dicentang; Commit 6 sebagian) |
 | `docs/adr/0001-sesi-auth-dilayani-better-auth-lokal.md` | Better Auth lokal, bukan proxy Neon Auth |

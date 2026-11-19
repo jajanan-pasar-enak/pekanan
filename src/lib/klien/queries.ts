@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { followup, followupEdit, hasilFollowup, karyawan, klien } from "@/db/schema";
 import { AppError } from "@/lib/http";
@@ -42,22 +42,81 @@ export type KlienDetail = {
   followup: FollowupRingkas[];
 };
 
+const kolomKlienRingkas = {
+  id: klien.id,
+  nama: klien.nama,
+  kontak: klien.kontak,
+  pemilik: { id: karyawan.id, nama: karyawan.nama },
+  jumlahFollowup: sql<number>`(SELECT count(*)::int FROM followup f WHERE f.klien_id = ${klien.id} AND f.deleted_at IS NULL)`,
+  followupTerakhir: sql<
+    string | null
+  >`(SELECT max(f.tanggal)::text FROM followup f WHERE f.klien_id = ${klien.id} AND f.deleted_at IS NULL)`,
+};
+
+function polaCari(q: string): string {
+  return `%${q.replace(/[\\%_]/g, "\\$&")}%`;
+}
+
+function syaratDaftarKlien(karyawanId: string, opsi: OpsiDaftarKlien) {
+  const cari = opsi.q?.trim();
+  const pola = cari ? polaCari(cari) : null;
+  return and(
+    eq(klien.karyawanId, karyawanId),
+    pola ? or(ilike(klien.nama, pola), ilike(klien.kontak, pola)) : undefined,
+    opsi.belumFollowup
+      ? sql`not exists (select 1 from followup f where f.klien_id = ${klien.id} and f.deleted_at is null)`
+      : undefined,
+  );
+}
+
+export type OpsiDaftarKlien = {
+  q?: string;
+  belumFollowup?: boolean;
+  halaman?: number;
+  perHalaman?: number;
+};
+
+export type HalamanKlien = {
+  baris: KlienRingkas[];
+  total: number;
+  halaman: number;
+  totalHalaman: number;
+};
+
 export async function daftarKlienSaya(karyawanId: string): Promise<KlienRingkas[]> {
   return db
-    .select({
-      id: klien.id,
-      nama: klien.nama,
-      kontak: klien.kontak,
-      pemilik: { id: karyawan.id, nama: karyawan.nama },
-      jumlahFollowup: sql<number>`(SELECT count(*)::int FROM followup f WHERE f.klien_id = ${klien.id} AND f.deleted_at IS NULL)`,
-      followupTerakhir: sql<
-        string | null
-      >`(SELECT max(f.tanggal)::text FROM followup f WHERE f.klien_id = ${klien.id} AND f.deleted_at IS NULL)`,
-    })
+    .select(kolomKlienRingkas)
     .from(klien)
     .innerJoin(karyawan, eq(karyawan.id, klien.karyawanId))
     .where(eq(klien.karyawanId, karyawanId))
     .orderBy(asc(klien.nama));
+}
+
+export async function halamanKlienSaya(
+  karyawanId: string,
+  opsi: OpsiDaftarKlien = {},
+): Promise<HalamanKlien> {
+  const where = syaratDaftarKlien(karyawanId, opsi);
+  const perHalaman = Math.max(1, opsi.perHalaman ?? 25);
+
+  const [hitung] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(klien)
+    .where(where);
+  const total = hitung?.total ?? 0;
+  const totalHalaman = Math.max(1, Math.ceil(total / perHalaman));
+  const halaman = Math.min(Math.max(1, opsi.halaman ?? 1), totalHalaman);
+
+  const baris = await db
+    .select(kolomKlienRingkas)
+    .from(klien)
+    .innerJoin(karyawan, eq(karyawan.id, klien.karyawanId))
+    .where(where)
+    .orderBy(asc(klien.nama))
+    .limit(perHalaman)
+    .offset((halaman - 1) * perHalaman);
+
+  return { baris, total, halaman, totalHalaman };
 }
 
 // Riwayat follow-up: pemilik klien atau Atasan Supervisor langsung pemilik
