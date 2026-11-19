@@ -248,6 +248,13 @@ Audit `/hallmark` (scope app, genre modern-minimal). Diagnosis: masalahnya bukan
 - Token baru `--signal: oklch(0.5 0.1 195)` + `--color-signal`; dipakai untuk bilah progres dan lencana "Terkirim" saja. Waiver 22 di `globals.css` dipersempit.
 - Verifikasi preview produksi (login sup-1): hero `15-21 Nov 2026`, progres `0/2` (aria 0..2), CTA "Isi laporan pekan", pencarian `q=Tono` menyaring 2 → 1 anggota, tanpa overflow di 1280 dan 375, konsol bersih. Gate: eslint 0, prettier 0, tsc 0, tes 35/35, build OK.
 
+## 1n. Sesi 2026-11-19 — pass `/iuran` dan `/rekap`
+
+- `/iuran`: blok "Bulan berjalan" di atas (nama bulan, `lunas/total`, bilah progres `--signal`, daftar nama yang belum membayar, CTA ke form). Kolom bulan berjalan di ledger ditandai warna dan garis bawah `--signal`; sel lunas memakai tint `--signal`; riwayat tetap.
+- `/rekap`: blok "Pekan terbaru" (rentang, `selesai/total` laporan sudah dikirim, siapa yang menunggu, CTA ke rekap pekan). Tabel dikelompokkan per pekan lewat beberapa `tbody`; aksi "Lihat rekap" pindah ke baris pekan, kolom tinggal Anggota/Status/Terisi.
+- Verifikasi preview produksi (sup-1): `/iuran` 2/3 lunas, progres 67%, satu nama belum bayar, prefill `?catat=` memilih Wulan; `/rekap` 3 kelompok pekan, 5 laporan, ringkasan 0/2 dengan dua nama menunggu; tanpa overflow 1280/375, konsol bersih. Gate: eslint 0, prettier 0, tsc 0, tes 35/35, build OK.
+- **Catatan Dependabot:** alert #2 `GHSA-gcqx-w48m-w2h4` (`deepmerge@4.3.1`, lewat CLI shadcn) adalah advisory yang **ditarik 16 Nov 2026** dan bukan kerentanan. Tidak ada tindakan; jangan dibahas lagi.
+
 ## 2. Lokasi dokumen (baca berurutan)
 
 | File | Isi |
