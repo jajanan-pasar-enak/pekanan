@@ -2,13 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { FormKlienBaru } from "@/components/form-klien-baru";
-import {
-  BarisTabelSkeleton,
-  HalamanSkeleton,
-  IsiKartuSkeleton,
-  KartuSkeleton,
-  KartuTabelSkeleton,
-} from "@/components/skeleton";
+import { BarisTabelSkeleton, KartuTabelSkeleton } from "@/components/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -123,36 +117,6 @@ async function IsiDaftar({ q, belum, hal }: { q: string; belum: boolean; hal: nu
 
 export default function KlienPage({ searchParams }: PageProps<"/klien">) {
   return (
-    <Suspense
-      fallback={
-        <HalamanSkeleton
-          judul="Klien Saya"
-          subjudul="Follow-up dicatat dari kejadian; jumlah per pekan dihitung otomatis."
-          anak={
-            <>
-              <KartuSkeleton judul="Tambah klien" anak={<IsiKartuSkeleton jumlahBaris={3} />} />
-              <KartuTabelSkeleton jumlahBaris={8} />
-            </>
-          }
-        />
-      }
-    >
-      <IsiHalamanKlien searchParams={searchParams} />
-    </Suspense>
-  );
-}
-
-async function IsiHalamanKlien({
-  searchParams,
-}: {
-  searchParams: PageProps<"/klien">["searchParams"];
-}) {
-  const sp = await searchParams;
-  const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 80) : "";
-  const belum = sp.belum === "1";
-  const hal = Math.max(1, Number(sp.hal) || 1);
-
-  return (
     <>
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">Klien Saya</h1>
@@ -171,51 +135,66 @@ async function IsiHalamanKlien({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Daftar klien</CardTitle>
-          <CardDescription>
-            Cari nama atau kontak, lalu buka untuk melihat follow-up.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <form
-            action="/klien"
-            method="get"
-            role="search"
-            className="flex flex-col gap-2 sm:flex-row sm:items-center"
-          >
-            {belum && <input type="hidden" name="belum" value="1" />}
-            <Input
-              type="search"
-              name="q"
-              defaultValue={q}
-              placeholder="Cari nama atau kontak"
-              aria-label="Cari nama atau kontak klien"
-              className="focus-visible:ring-3 focus-visible:ring-ring sm:max-w-xs"
-            />
-            <div className="flex flex-wrap gap-2">
-              <Button type="submit" variant="outline" className="active:translate-y-px">
-                Cari
-              </Button>
-              <Button variant={belum ? "secondary" : "outline"} asChild>
-                <Link href={tautanKlien(q, !belum, 1)}>
-                  {belum ? "Semua klien" : "Belum ada follow-up"}
-                </Link>
-              </Button>
-              {(q || belum) && (
-                <Button variant="ghost" asChild>
-                  <Link href="/klien">Hapus filter</Link>
-                </Button>
-              )}
-            </div>
-          </form>
-
-          <Suspense fallback={<BarisTabelSkeleton jumlahBaris={8} />}>
-            <IsiDaftar q={q} belum={belum} hal={hal} />
-          </Suspense>
-        </CardContent>
-      </Card>
+      <Suspense fallback={<KartuTabelSkeleton jumlahBaris={8} />}>
+        <KartuDaftarKlien searchParams={searchParams} />
+      </Suspense>
     </>
+  );
+}
+
+async function KartuDaftarKlien({
+  searchParams,
+}: {
+  searchParams: PageProps<"/klien">["searchParams"];
+}) {
+  const sp = await searchParams;
+  const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 80) : "";
+  const belum = sp.belum === "1";
+  const hal = Math.max(1, Number(sp.hal) || 1);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Daftar klien</CardTitle>
+        <CardDescription>Cari nama atau kontak, lalu buka untuk melihat follow-up.</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <form
+          action="/klien"
+          method="get"
+          role="search"
+          className="flex flex-col gap-2 sm:flex-row sm:items-center"
+        >
+          {belum && <input type="hidden" name="belum" value="1" />}
+          <Input
+            type="search"
+            name="q"
+            defaultValue={q}
+            placeholder="Cari nama atau kontak"
+            aria-label="Cari nama atau kontak klien"
+            className="focus-visible:ring-3 focus-visible:ring-ring sm:max-w-xs"
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" variant="outline" className="active:translate-y-px">
+              Cari
+            </Button>
+            <Button variant={belum ? "secondary" : "outline"} asChild>
+              <Link href={tautanKlien(q, !belum, 1)}>
+                {belum ? "Semua klien" : "Belum ada follow-up"}
+              </Link>
+            </Button>
+            {(q || belum) && (
+              <Button variant="ghost" asChild>
+                <Link href="/klien">Hapus filter</Link>
+              </Button>
+            )}
+          </div>
+        </form>
+
+        <Suspense fallback={<BarisTabelSkeleton jumlahBaris={8} />}>
+          <IsiDaftar q={q} belum={belum} hal={hal} />
+        </Suspense>
+      </CardContent>
+    </Card>
   );
 }
