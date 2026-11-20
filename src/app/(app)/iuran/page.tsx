@@ -182,7 +182,7 @@ async function IsiIuran({
         </div>
       </section>
 
-      <Card id="catat-iuran" className="scroll-mt-20">
+      <Card id="catat-iuran" className="scroll-mt-28 md:scroll-mt-20">
         <CardHeader>
           <CardTitle>Catat pembayaran</CardTitle>
           <CardDescription>

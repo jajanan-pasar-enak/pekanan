@@ -544,7 +544,7 @@ export function FormLaporan({
           {bolehUbah && (
             <div className="flex flex-col gap-1">
               <p className="text-xs text-muted-foreground">{keadaanSimpan}</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="hidden text-xs text-muted-foreground md:block">
                 Enter pindah kolom pada isian angka, Ctrl+Enter dari keterangan. Shift+Enter
                 kembali. Alt+↑/↓ pindah anggota.
               </p>
@@ -570,6 +570,7 @@ export function FormLaporan({
               <li key={g.anggotaId}>
                 <button
                   type="button"
+                  data-slot="button"
                   onClick={() => pindahKe(g.anggotaId, g.kolom[0] ?? "kehadiran")}
                   className="flex w-full flex-wrap items-baseline gap-x-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
                 >
