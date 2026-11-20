@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { karyawan, laporanAnggota, laporanPekan, pekan, user } from "@/db/schema";
 import { AppError } from "@/lib/http";
@@ -157,22 +157,26 @@ function kosong(p: { id: string; mulai: string; selesai: string }): RekapPekan {
 }
 
 export type RekapRingkas = {
-  id: string;
+  // null bila supervisor belum punya laporan untuk pekan ini sama sekali.
+  id: string | null;
+  supervisorId: string;
   supervisor: string;
   pekanId: string;
   mulai: string;
   selesai: string;
-  status: string;
+  status: string | null;
   diisi: number;
   total: number;
 };
 
 // Laporan milik Anggota Langsung viewer, terbaru dulu. Dipakai Atasan untuk
-// memilih pekan yang ingin dilihat rekapitulasinya.
+// memilih pekan yang ingin dilihat rekapitulasinya. Supervisor yang belum punya
+// baris laporan tetap ditampilkan (id/status null) agar yang diam terlihat.
 export async function daftarRekapAnggota(viewerId: string): Promise<RekapRingkas[]> {
   const rows = await db
     .select({
       id: laporanPekan.id,
+      supervisorId: laporanPekan.supervisorId,
       pekanId: pekan.id,
       mulai: pekan.mulai,
       selesai: pekan.selesai,
@@ -185,23 +189,57 @@ export async function daftarRekapAnggota(viewerId: string): Promise<RekapRingkas
     .where(and(eq(karyawan.supervisorId, viewerId), isNull(laporanPekan.deletedAt)))
     .orderBy(desc(pekan.mulai), asc(karyawan.nama));
 
-  if (rows.length === 0) return [];
+  const semuaPekan = await db
+    .select({ id: pekan.id, mulai: pekan.mulai, selesai: pekan.selesai })
+    .from(pekan)
+    .orderBy(desc(pekan.mulai));
 
-  const barisSemua = await db
+  const anggota = await db
     .select({
-      laporanId: laporanAnggota.laporanId,
-      kehadiran: laporanAnggota.kehadiran,
-      mediaOnline: laporanAnggota.mediaOnline,
-      mediaOffline: laporanAnggota.mediaOffline,
-      oneOnOne: laporanAnggota.oneOnOne,
+      id: karyawan.id,
+      nama: karyawan.nama,
+      aktif: karyawan.aktif,
+      // Pekan yang selesai sebelum tanggal masuk bukan laporan yang hilang.
+      tglMasuk: sql<string>`(${karyawan.createdAt} AT TIME ZONE 'Asia/Jakarta')::date::text`,
     })
-    .from(laporanAnggota)
-    .where(
-      inArray(
-        laporanAnggota.laporanId,
-        rows.map((r) => r.id),
-      ),
-    );
+    .from(karyawan)
+    .where(eq(karyawan.supervisorId, viewerId))
+    .orderBy(asc(karyawan.nama));
+
+  // Draf otomatis hanya dibuat untuk supervisor yang punya Anggota Langsung
+  // (lihat buatDraf di pekan/bootstrap.ts). Dihitung terpisah: subquery
+  // berkorelasi `${karyawan.id}` dirender tanpa kualifikasi pada query satu
+  // tabel, sehingga EXISTS bisa membandingkan kolom tabel dalam.
+  const jumlahAnggota = await db
+    .select({
+      supervisorId: karyawan.supervisorId,
+      jumlah: sql<number>`count(*)::int`,
+    })
+    .from(karyawan)
+    .where(isNotNull(karyawan.supervisorId))
+    .groupBy(karyawan.supervisorId);
+  const punyaAnggota = new Map(jumlahAnggota.map((r) => [r.supervisorId, r.jumlah]));
+
+  if (rows.length === 0 && anggota.length === 0) return [];
+
+  const barisSemua =
+    rows.length === 0
+      ? []
+      : await db
+          .select({
+            laporanId: laporanAnggota.laporanId,
+            kehadiran: laporanAnggota.kehadiran,
+            mediaOnline: laporanAnggota.mediaOnline,
+            mediaOffline: laporanAnggota.mediaOffline,
+            oneOnOne: laporanAnggota.oneOnOne,
+          })
+          .from(laporanAnggota)
+          .where(
+            inArray(
+              laporanAnggota.laporanId,
+              rows.map((r) => r.id),
+            ),
+          );
 
   const isi = new Map<string, { diisi: number; total: number }>();
   for (const b of barisSemua) {
@@ -218,14 +256,38 @@ export async function daftarRekapAnggota(viewerId: string): Promise<RekapRingkas
     isi.set(b.laporanId, stat);
   }
 
-  return rows.map((r) => ({
-    id: r.id,
-    supervisor: r.supervisor,
-    pekanId: r.pekanId,
-    mulai: r.mulai,
-    selesai: r.selesai,
-    status: r.status,
-    diisi: isi.get(r.id)?.diisi ?? 0,
-    total: isi.get(r.id)?.total ?? 0,
-  }));
+  const laporanPer = new Map(rows.map((r) => [`${r.pekanId}:${r.supervisorId}`, r]));
+  const hasil: RekapRingkas[] = [];
+  for (const p of semuaPekan) {
+    for (const a of anggota) {
+      const ada = laporanPer.get(`${p.id}:${a.id}`);
+      if (ada) {
+        hasil.push({
+          id: ada.id,
+          supervisorId: a.id,
+          supervisor: ada.supervisor,
+          pekanId: p.id,
+          mulai: p.mulai,
+          selesai: p.selesai,
+          status: ada.status,
+          diisi: isi.get(ada.id)?.diisi ?? 0,
+          total: isi.get(ada.id)?.total ?? 0,
+        });
+        continue;
+      }
+      if (!a.aktif || (punyaAnggota.get(a.id) ?? 0) === 0 || p.selesai < a.tglMasuk) continue;
+      hasil.push({
+        id: null,
+        supervisorId: a.id,
+        supervisor: a.nama,
+        pekanId: p.id,
+        mulai: p.mulai,
+        selesai: p.selesai,
+        status: null,
+        diisi: 0,
+        total: 0,
+      });
+    }
+  }
+  return hasil;
 }

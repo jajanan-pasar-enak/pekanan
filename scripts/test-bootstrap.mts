@@ -11,6 +11,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../src/db";
 import { karyawan, laporanAnggota, laporanPekan, pekan, user } from "../src/db/schema";
 import { bootstrapPekan, siapkanDrafPekanBerjalan } from "../src/lib/pekan/bootstrap";
+import { daftarRekapAnggota } from "../src/lib/kepegawaian/queries";
 import { pekanWIB, tambahHari } from "../src/lib/waktu";
 
 function hostLokal(raw: string | undefined): boolean {
@@ -202,6 +203,57 @@ async function main() {
     laporanS4.every((l) => laporanS1.every((s) => s.id !== l.id)),
     true,
     "draf antar supervisor tidak tercampur",
+  );
+
+  // Rekap Atasan: supervisor yang belum punya laporan tetap muncul sebagai
+  // baris kosong, sedangkan yang nonaktif/belum punya anggota tidak dipaksakan.
+  const s5 = await buatKaryawan("Uji Lima", s1);
+  await buatKaryawan("Uji Anggota F", s5);
+  const s6 = await buatKaryawan("Uji Enam Nonaktif", s1, false);
+  await buatKaryawan("Uji Anggota G", s6);
+  // S5 masuk sehari setelah P3: P1/P2 bukan laporan yang hilang untuknya.
+  await db
+    .update(karyawan)
+    .set({ createdAt: new Date(`${tambahHari(P3.selesai, 1)}T00:00:00Z`) })
+    .where(eq(karyawan.id, s5));
+
+  const rekap = await daftarRekapAnggota(s1);
+  const barisS5 = rekap.filter((r) => r.supervisorId === s5);
+  cek(
+    barisS5.map((r) => r.mulai),
+    [SEKARANG.mulai, P1.mulai, P2.mulai],
+    "supervisor tanpa laporan tampil untuk pekan sejak tanggal masuk",
+  );
+  cek(
+    barisS5.every((r) => r.id === null && r.status === null),
+    true,
+    "baris tanpa laporan memakai id/status null",
+  );
+  cek(
+    rekap.every((r) => r.supervisorId !== s6),
+    true,
+    "supervisor nonaktif tidak dianggap laporan yang hilang",
+  );
+  cek(
+    rekap.every((r) => r.supervisorId !== m1 && r.supervisorId !== m2),
+    true,
+    "anggota tanpa Anggota Langsung tidak dianggap supervisor yang lalai",
+  );
+
+  await siapkanDrafPekanBerjalan(s5);
+  const rekapSetelahDraf = await daftarRekapAnggota(s1);
+  const barisS5Berjalan = rekapSetelahDraf.find(
+    (r) => r.supervisorId === s5 && r.mulai === SEKARANG.mulai,
+  );
+  cek(
+    barisS5Berjalan && { status: barisS5Berjalan.status, total: barisS5Berjalan.total },
+    { status: "Draf", total: 1 },
+    "draf yang sudah ada menggantikan baris kosong pada pekan berjalan",
+  );
+  cek(
+    rekapSetelahDraf.filter((r) => r.supervisorId === s5).length,
+    3,
+    "pekan tanpa laporan tetap tampil setelah draf pekan berjalan dibuat",
   );
 }
 

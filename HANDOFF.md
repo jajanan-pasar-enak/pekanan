@@ -353,6 +353,16 @@ Audit `/hallmark` (scope app, genre modern-minimal). Diagnosis: masalahnya bukan
 - **Catatan:** demo ini tidak menyentuh Neon produksi; hentikan `next start` dan `pg_ctl stop -D /tmp/pekanan-demo-pg` bila selesai, dan data uji hapus (`Uji tampilan riwayat hapus`) tidak perlu dibersihkan dari produksi karena tidak pernah masuk ke sana.
 - **Commit:** menyusul bersama dokumen ini.
 
+## 1y. Sesi 2026-11-20 — rekap menampilkan supervisor yang belum punya laporan
+
+- **Masalah:** `daftarRekapAnggota` hanya membaca baris `laporan_pekan` yang sudah ada, sehingga supervisor yang tidak pernah membuka aplikasi pada suatu pekan hilang dari `/rekap` — bukan Draf, bukan menunggu, tidak terlihat sama sekali.
+- **Perbaikan (`src/lib/kepegawaian/queries.ts`):** hasil kini disusun dari `pekan` × Anggota Langsung viewer. Baris yang belum punya laporan diberi `id = null`, `status = null`; UI menampilkan **Belum dibuka** (pekan berjalan) atau **Belum ada laporan** (pekan lewat). Baris kosong hanya dibuat bila supervisor aktif, punya Anggota Langsung (syarat `buatDraf`), dan pekan selesai setelah tanggal masuk (`karyawan.created_at` WIB). Laporan yang sudah ada tetap tampil apa pun status aktifnya.
+- **UI (`src/app/(app)/rekap/page.tsx`):** badge membedakan `Draf` vs `Draf (pekan lewat)` seperti dashboard; hitungan "sudah dikirim" hanya `Terkirim`/`Dikoreksi` (bukan sekadar "bukan Draf"); kolom Terisi `—` untuk baris kosong; tautan "Lihat rekap" disembunyikan untuk pekan yang tidak punya laporan sama sekali (dulu akan 404). Label kartu teratas menjadi "Pekan berjalan" bila pekan terbaru = pekan ini.
+- **Jebakan Drizzle:** `${karyawan.id}` di dalam subquery `sql` dirender **tanpa kualifikasi** (`"id"`) bila query hanya memakai satu tabel, sehingga `exists (select 1 from karyawan a where a.supervisor_id = "id")` membandingkan kolom tabel dalam dan selalu false. Jangan memakai subquery berkorelasi dengan pola itu pada query satu tabel; hitung terpisah dengan `groupBy` (dipakai di sini) atau pastikan kolom terkalifikasi.
+- **Uji:** `scripts/test-bootstrap.mts` +6 pemeriksaan (27 total) untuk baris kosong, tanggal masuk, supervisor nonaktif, anggota tanpa Anggota Langsung, dan penggantian baris kosong oleh draf. `pnpm test` 42/42, `tsc` 0, eslint 0 error (1 warning lama), prettier bersih, `pnpm build` exit 0.
+- **Verifikasi LAN (DB demo sekali pakai):** login `sup-1@seed.local` → `/rekap` 200; pekan berjalan menampilkan Tono `Draf 0/2` dan Wulan `Belum dibuka —`; setelah pekan lama disisipkan: Tono `Draf (pekan lewat)` dan Wulan `Belum ada laporan`, tautan "Lihat rekap" hanya muncul pada pekan yang punya laporan. Data uji ini hanya ada di `/tmp/pekanan-demo-pg`.
+- **Belum di-commit** saat catatan ini ditulis.
+
 
 ## 2. Lokasi dokumen (baca berurutan)
 
