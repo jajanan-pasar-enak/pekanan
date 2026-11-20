@@ -6,6 +6,7 @@
 
 /* Hallmark · waive 22 · paper, ink and rules carry low chroma (≤0.012) on purpose: a warm ledger sheet · --signal (teal) stays the only accent, for progress and settled state */
 /* Hallmark · 2026-11-19 · 7b answered: card is pure white on warm paper, so the sheet reads against the desk rather than a missing tint */
+/* Hallmark · waive 26b (form laporan) · disabled styling lives in the Button and Select primitives (`disabled:opacity-50`), the form only passes the flag */
 
 @import "tailwindcss";
 @import "tw-animate-css";

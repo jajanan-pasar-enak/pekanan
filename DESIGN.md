@@ -56,6 +56,11 @@ Source of truth: `src/app/globals.css` (`@theme inline` + `:root`). If a `tokens
 - Minimum 32px for every control, including row actions; 44px hit target on coarse pointers. Nothing smaller ships.
 - Focus: instant 3px ring on buttons, inputs, badges, nav links and text links.
 
+## Interaction
+- Report entry: number fields advance on `Enter`; notes advance on `Ctrl/Cmd+Enter`; `Shift+Enter` goes back; `Alt+↑/↓` moves between members. A select chosen by keyboard continues to the next field. The member list also responds to `↑/↓` while focused.
+- Before submit, missing required fields are listed per member above the action bar; each row is a button that jumps to that member's first empty field. The submit button stays disabled until the list is empty.
+- Correction history reads as sentences: Indonesian column labels, and an empty value is written "belum diisi", never a raw null or key.
+
 ## State and motion
 - Character: calm. Transitions on colour, background, border, box-shadow and transform only; 150–200ms. Never `transition: all`, never animate width, height, top or left.
 - Active press: 1px translate. No lifts, scales or bounces.

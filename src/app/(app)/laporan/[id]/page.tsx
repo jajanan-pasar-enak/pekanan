@@ -12,28 +12,8 @@ import { AppError } from "@/lib/http";
 import { daftarFollowupPekan } from "@/lib/klien/followup";
 import { daftarHasilFollowup } from "@/lib/klien/queries";
 import { getLaporan } from "@/lib/laporan/queries";
+import { ringkasPerubahan } from "@/lib/laporan/koreksi";
 import { tanggalHariIni, formatRentangTanggal, formatTanggalWaktu } from "@/lib/waktu";
-
-type BarisKoreksi = Record<string, unknown>;
-
-function teksNilai(v: unknown): string {
-  if (v === null || v === undefined || v === "") return "kosong";
-  return String(v);
-}
-
-function ringkasDiff(sebelum: unknown, sesudah: unknown, namaAnggota: Map<string, string>) {
-  const a = (sebelum ?? {}) as Record<string, BarisKoreksi>;
-  const b = (sesudah ?? {}) as Record<string, BarisKoreksi>;
-  return Object.keys(b).map((anggotaId) => ({
-    anggotaId,
-    nama: namaAnggota.get(anggotaId) ?? anggotaId,
-    kolom: Object.keys(b[anggotaId] ?? {}).filter(
-      (k) => JSON.stringify(a[anggotaId]?.[k]) !== JSON.stringify(b[anggotaId]?.[k]),
-    ),
-    sebelum: a[anggotaId] ?? {},
-    sesudah: b[anggotaId] ?? {},
-  }));
-}
 
 async function IsiLaporan({ id }: { id: string }) {
   await connection();
@@ -123,16 +103,17 @@ async function IsiLaporan({ id }: { id: string }) {
                   <span className="text-muted-foreground">{formatTanggalWaktu(k.createdAt)}</span>
                 </p>
                 <p className="text-sm">{k.alasan}</p>
-                <ul className="flex flex-col gap-0.5 text-xs text-muted-foreground">
-                  {ringkasDiff(k.sebelum, k.sesudah, namaAnggota).map((d) => (
+                <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
+                  {ringkasPerubahan(k.sebelum, k.sesudah, namaAnggota).map((d) => (
                     <li key={d.anggotaId}>
-                      <span className="font-medium">{d.nama}</span>:{" "}
-                      {d.kolom
-                        .map(
-                          (kolom) =>
-                            `${kolom} ${teksNilai(d.sebelum[kolom])} → ${teksNilai(d.sesudah[kolom])}`,
-                        )
-                        .join("; ")}
+                      <span className="font-medium">{d.nama}</span>
+                      <ul className="mt-0.5 flex flex-col gap-0.5">
+                        {d.perubahan.map((p) => (
+                          <li key={p.kolom}>
+                            {p.label}: dari {p.sebelum} menjadi {p.sesudah}
+                          </li>
+                        ))}
+                      </ul>
                     </li>
                   ))}
                 </ul>

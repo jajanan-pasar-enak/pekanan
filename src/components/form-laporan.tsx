@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "cn";
@@ -17,6 +17,13 @@ import {
   kolomKosong,
   type BarisNilai,
 } from "@/lib/laporan/aturan";
+import {
+  kolomAkhir,
+  kolomAwal,
+  ringkasGap,
+  URUTAN_ISIAN,
+  type KolomIsian,
+} from "@/lib/laporan/label";
 import type { BarisLaporan } from "@/lib/laporan/queries";
 
 type StatusSimpan = "bersih" | "menyimpan" | "tersimpan" | "gagal";
@@ -99,6 +106,8 @@ export function FormLaporan({
   const jeda = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   // Simpanan per anggota diantrekan agar PATCH lama tidak menimpa yang baru.
   const antrean = useRef(new Map<string, Promise<boolean>>());
+  const panelRef = useRef<HTMLElement | null>(null);
+  const fokusTertunda = useRef<{ anggotaId: string; kolom: KolomIsian } | null>(null);
 
   useEffect(() => {
     const timer = jeda.current;
@@ -107,7 +116,24 @@ export function FormLaporan({
     };
   }, []);
 
+  useEffect(() => {
+    const target = fokusTertunda.current;
+    if (!target || target.anggotaId !== aktifId) return;
+    fokusTertunda.current = null;
+    const raf = requestAnimationFrame(() => {
+      panelRef.current?.querySelector<HTMLElement>(`[data-kolom="${target.kolom}"]`)?.focus();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [aktifId]);
+
   const semuaLengkap = useMemo(() => baris.every(lengkap), [baris]);
+  const gap = useMemo(
+    () =>
+      ringkasGap(
+        baris.map((b) => ({ anggotaId: b.anggotaId, nama: b.nama, nilai: potonganBaris(b) })),
+      ),
+    [baris],
+  );
   const jumlahLengkap = baris.filter(lengkap).length;
   const adaGagal = Object.values(status).includes("gagal");
   const adaMenyimpan = Object.values(status).includes("menyimpan");
@@ -131,6 +157,55 @@ export function FormLaporan({
   if (!aktif) return null;
   const kosongAktif = kolomKosong(aktif).length;
   const k = kontrol(aktif);
+
+  function fokusKolom(kolom: KolomIsian) {
+    panelRef.current?.querySelector<HTMLElement>(`[data-kolom="${kolom}"]`)?.focus();
+  }
+
+  function pindahKe(anggotaId: string, kolom: KolomIsian) {
+    if (anggotaId === aktifId) {
+      fokusKolom(kolom);
+      return;
+    }
+    fokusTertunda.current = { anggotaId, kolom };
+    setAktifId(anggotaId);
+  }
+
+  function pindahAnggota(arah: 1 | -1) {
+    const i = baris.findIndex((b) => b.anggotaId === aktifId);
+    const tujuan = baris[i + arah];
+    if (!tujuan) return;
+    pindahKe(tujuan.anggotaId, arah === 1 ? kolomAwal(tujuan) : kolomAkhir(tujuan));
+  }
+
+  function pindahKolom(dari: KolomIsian, arah: 1 | -1) {
+    const i = URUTAN_ISIAN.indexOf(dari);
+    const tujuan = URUTAN_ISIAN[i + arah];
+    if (!tujuan) {
+      pindahAnggota(arah);
+      return;
+    }
+    fokusKolom(tujuan);
+  }
+
+  function kunciNavigasi(
+    e: KeyboardEvent<HTMLElement>,
+    kolom: KolomIsian,
+    jenis: "angka" | "teks" | "pilih",
+  ) {
+    if (jenis === "pilih" || e.key !== "Enter") return;
+    const lanjut = jenis === "angka" || e.ctrlKey || e.metaKey;
+    if (!lanjut) return;
+    e.preventDefault();
+    pindahKolom(kolom, e.shiftKey ? -1 : 1);
+  }
+
+  function kunciAnggota(e: KeyboardEvent<HTMLElement>) {
+    if (!e.altKey || (e.key !== "ArrowDown" && e.key !== "ArrowUp")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    pindahAnggota(e.key === "ArrowDown" ? 1 : -1);
+  }
 
   function ubah(anggotaId: string, patch: Partial<BarisForm>) {
     const berikutnya = baris.map((b) => (b.anggotaId === anggotaId ? { ...b, ...patch } : b));
@@ -236,16 +311,21 @@ export function FormLaporan({
           value={b.kehadiran}
           opsi={STATUS_KEHADIRAN}
           disabled={!bolehUbah}
+          dataKolom="kehadiran"
           onChange={(v) => ubah(b.anggotaId, { kehadiran: v })}
           onBlur={() => void simpanSekarang(b.anggotaId)}
+          onKeyDown={(e) => kunciNavigasi(e, "kehadiran", "pilih")}
+          onSelesai={() => pindahKolom("kehadiran", 1)}
         />
       ),
       keteranganHadir: (
         <Textarea
           aria-label={`Keterangan kehadiran ${b.nama}`}
+          data-kolom="keteranganHadir"
           value={b.keteranganHadir ?? ""}
           onChange={(e) => ubah(b.anggotaId, { keteranganHadir: e.target.value })}
           onBlur={() => void simpanSekarang(b.anggotaId)}
+          onKeyDown={(e) => kunciNavigasi(e, "keteranganHadir", "teks")}
           readOnly={!bolehUbah}
           rows={2}
         />
@@ -253,9 +333,11 @@ export function FormLaporan({
       mediaOnline: (
         <Input
           aria-label={`Media online ${b.nama}`}
+          data-kolom="mediaOnline"
           type="number"
           min={0}
           inputMode="numeric"
+          enterKeyHint="next"
           value={b.mediaOnlineTeks}
           onChange={(e) =>
             ubah(b.anggotaId, {
@@ -264,6 +346,7 @@ export function FormLaporan({
             })
           }
           onBlur={() => void simpanSekarang(b.anggotaId)}
+          onKeyDown={(e) => kunciNavigasi(e, "mediaOnline", "angka")}
           readOnly={!bolehUbah}
           aria-invalid={b.mediaOnlineTeks !== "" && b.mediaOnline === null}
         />
@@ -271,9 +354,11 @@ export function FormLaporan({
       mediaOffline: (
         <Input
           aria-label={`Media offline ${b.nama}`}
+          data-kolom="mediaOffline"
           type="number"
           min={0}
           inputMode="numeric"
+          enterKeyHint="next"
           value={b.mediaOfflineTeks}
           onChange={(e) =>
             ubah(b.anggotaId, {
@@ -282,6 +367,7 @@ export function FormLaporan({
             })
           }
           onBlur={() => void simpanSekarang(b.anggotaId)}
+          onKeyDown={(e) => kunciNavigasi(e, "mediaOffline", "angka")}
           readOnly={!bolehUbah}
           aria-invalid={b.mediaOfflineTeks !== "" && b.mediaOffline === null}
         />
@@ -292,16 +378,21 @@ export function FormLaporan({
           value={b.oneOnOne}
           opsi={CARA_ONE_ON_ONE}
           disabled={!bolehUbah}
+          dataKolom="oneOnOne"
           onChange={(v) => ubah(b.anggotaId, { oneOnOne: v })}
           onBlur={() => void simpanSekarang(b.anggotaId)}
+          onKeyDown={(e) => kunciNavigasi(e, "oneOnOne", "pilih")}
+          onSelesai={() => pindahKolom("oneOnOne", 1)}
         />
       ),
       keteranganOneOnOne: (
         <Textarea
           aria-label={`Keterangan one-on-one ${b.nama}`}
+          data-kolom="keteranganOneOnOne"
           value={b.keteranganOneOnOne ?? ""}
           onChange={(e) => ubah(b.anggotaId, { keteranganOneOnOne: e.target.value })}
           onBlur={() => void simpanSekarang(b.anggotaId)}
+          onKeyDown={(e) => kunciNavigasi(e, "keteranganOneOnOne", "teks")}
           readOnly={!bolehUbah}
           rows={2}
         />
@@ -346,7 +437,20 @@ export function FormLaporan({
               <button
                 key={b.anggotaId}
                 type="button"
-                onClick={() => setAktifId(b.anggotaId)}
+                data-anggota-id={b.anggotaId}
+                onClick={(e) => {
+                  if (e.detail === 0) pindahKe(b.anggotaId, kolomAwal(b));
+                  else setAktifId(b.anggotaId);
+                }}
+                onKeyDown={(e) => {
+                  if (e.altKey || (e.key !== "ArrowDown" && e.key !== "ArrowUp")) return;
+                  e.preventDefault();
+                  const i = baris.findIndex((x) => x.anggotaId === b.anggotaId);
+                  const tujuan = baris[i + (e.key === "ArrowDown" ? 1 : -1)];
+                  e.currentTarget.parentElement
+                    ?.querySelector<HTMLElement>(`[data-anggota-id="${tujuan?.anggotaId}"]`)
+                    ?.focus();
+                }}
                 aria-pressed={terpilih}
                 className={cn(
                   "flex shrink-0 flex-col items-start gap-0.5 rounded-lg px-3 py-2 text-left text-sm transition-colors focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none md:w-full",
@@ -374,7 +478,10 @@ export function FormLaporan({
         </div>
 
         <section
+          ref={panelRef}
           aria-labelledby={`editor-${aktif.anggotaId}`}
+          aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
+          onKeyDownCapture={kunciAnggota}
           className="flex min-w-0 flex-col gap-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:p-5"
         >
           <div className="flex flex-wrap items-start justify-between gap-2">
@@ -413,16 +520,16 @@ export function FormLaporan({
               {k.kehadiran}
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">One-on-one</span>
-              {k.oneOnOne}
-            </div>
-            <div className="flex flex-col gap-1.5">
               <span className="text-xs text-muted-foreground">Media online</span>
               {k.mediaOnline}
             </div>
             <div className="flex flex-col gap-1.5">
               <span className="text-xs text-muted-foreground">Media offline</span>
               {k.mediaOffline}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">One-on-one</span>
+              {k.oneOnOne}
             </div>
             <div className="flex flex-col gap-1.5 sm:col-span-2">
               <span className="text-xs text-muted-foreground">Keterangan kehadiran</span>
@@ -434,12 +541,54 @@ export function FormLaporan({
             </div>
           </div>
 
-          {bolehUbah && <p className="text-xs text-muted-foreground">{keadaanSimpan}</p>}
+          {bolehUbah && (
+            <div className="flex flex-col gap-1">
+              <p className="text-xs text-muted-foreground">{keadaanSimpan}</p>
+              <p className="text-xs text-muted-foreground">
+                Enter pindah kolom pada isian angka, Ctrl+Enter dari keterangan. Shift+Enter
+                kembali. Alt+↑/↓ pindah anggota.
+              </p>
+            </div>
+          )}
         </section>
       </div>
 
+      {bisaKirim && gap.length > 0 && (
+        <section
+          id="ringkasan-gap"
+          aria-labelledby="judul-gap"
+          className="rounded-xl bg-card p-4 ring-1 ring-foreground/10"
+        >
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="judul-gap" className="text-sm font-medium">
+              Belum lengkap sebelum kirim
+            </h2>
+            <p className="text-xs text-muted-foreground">{gap.length} anggota</p>
+          </div>
+          <ul className="mt-1 flex flex-col gap-0.5">
+            {gap.map((g) => (
+              <li key={g.anggotaId}>
+                <button
+                  type="button"
+                  onClick={() => pindahKe(g.anggotaId, g.kolom[0] ?? "kehadiran")}
+                  className="flex w-full flex-wrap items-baseline gap-x-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                  <span className="font-medium">{g.nama}</span>
+                  <span className="text-xs text-muted-foreground">{g.label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {bisaKirim && (
-        <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t bg-background py-3">
+        <div
+          className={cn(
+            "flex flex-wrap items-center justify-between gap-3 border-t bg-background py-3",
+            gap.length === 0 && "sticky bottom-0 z-10",
+          )}
+        >
           <div className="flex min-w-0 flex-col gap-0.5">
             <p className="text-sm tabular-nums">
               {jumlahLengkap}/{baris.length} baris lengkap
@@ -449,15 +598,11 @@ export function FormLaporan({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            {!semuaLengkap && (
-              <p className="text-xs text-muted-foreground">
-                Lengkapi semua kolom wajib sebelum mengirim.
-              </p>
-            )}
             <Button
               type="button"
               onClick={() => void kirim()}
               disabled={tombolNonaktif}
+              aria-describedby={gap.length > 0 ? "ringkasan-gap" : undefined}
               className="active:translate-y-px"
             >
               {mengirim ? "Mengirim…" : "Kirim laporan"}

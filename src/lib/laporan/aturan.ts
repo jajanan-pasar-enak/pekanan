@@ -12,6 +12,8 @@ export const CARA_ONE_ON_ONE = ["Pribadi", "Sebelum Meeting Pekanan", "Alpa"] as
 
 export const KOLOM_WAJIB = ["kehadiran", "mediaOnline", "mediaOffline", "oneOnOne"] as const;
 
+export type KolomWajib = (typeof KOLOM_WAJIB)[number];
+
 export type BarisNilai = {
   kehadiran: string | null;
   keteranganHadir: string | null;

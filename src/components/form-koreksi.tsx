@@ -120,7 +120,7 @@ export function FormKoreksi({
               <TableHead className="w-28">Media online</TableHead>
               <TableHead className="w-28">Media offline</TableHead>
               <TableHead>One-on-one</TableHead>
-              <TableHead>Keterangan O2O</TableHead>
+              <TableHead>Keterangan one-on-one</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
