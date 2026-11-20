@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { followup, followupEdit, hasilFollowup, karyawan, klien } from "@/db/schema";
 import { AppError } from "@/lib/http";
@@ -33,6 +33,17 @@ export type FollowupRingkas = {
   createdAt: Date;
 };
 
+export type FollowupDihapusKlien = {
+  id: string;
+  tanggal: string;
+  hasil: { id: string; nama: string };
+  deskripsi: string | null;
+  pencatat: { id: string; nama: string };
+  oleh: { id: string; nama: string } | null;
+  alasan: string | null;
+  dihapusPada: Date | null;
+};
+
 export type KlienDetail = {
   id: string;
   nama: string;
@@ -40,6 +51,7 @@ export type KlienDetail = {
   pemilik: { id: string; nama: string };
   bolehCatat: boolean;
   followup: FollowupRingkas[];
+  dihapus: FollowupDihapusKlien[];
 };
 
 const kolomKlienRingkas = {
@@ -172,6 +184,36 @@ export async function getKlien(id: string, viewerId: string): Promise<KlienDetai
     .where(eq(followup.klienId, id))
     .orderBy(asc(followupEdit.createdAt));
 
+  const dihapus = await db
+    .select({
+      id: followup.id,
+      tanggal: followup.tanggal,
+      hasil: { id: hasilFollowup.id, nama: hasilFollowup.nama },
+      deskripsi: followup.deskripsi,
+      pencatat: { id: karyawan.id, nama: karyawan.nama },
+      deletedAt: followup.deletedAt,
+    })
+    .from(followup)
+    .innerJoin(hasilFollowup, eq(hasilFollowup.id, followup.hasilFollowupId))
+    .innerJoin(karyawan, eq(karyawan.id, followup.createdBy))
+    .where(and(eq(followup.klienId, id), isNotNull(followup.deletedAt)))
+    .orderBy(desc(followup.tanggal), desc(followup.deletedAt));
+
+  // Alasan dan pelaku penghapusan dibaca dari followup_edit bertanda `dihapus`.
+  const hapusEdit = await db
+    .select({
+      followupId: followupEdit.followupId,
+      alasan: followupEdit.alasan,
+      editor: { id: karyawan.id, nama: karyawan.nama },
+      createdAt: followupEdit.createdAt,
+    })
+    .from(followupEdit)
+    .innerJoin(followup, eq(followup.id, followupEdit.followupId))
+    .innerJoin(karyawan, eq(karyawan.id, followupEdit.editorId))
+    .where(and(eq(followup.klienId, id), sql`(${followupEdit.sesudah} ? 'dihapus')`))
+    .orderBy(asc(followupEdit.createdAt));
+  const hapusPer = new Map(hapusEdit.map((h) => [h.followupId, h]));
+
   const idAtasan = riwayat
     .map((r) => r.pencatatSupervisorId)
     .filter((v): v is string => v !== null);
@@ -217,6 +259,19 @@ export async function getKlien(id: string, viewerId: string): Promise<KlienDetai
         })),
       createdAt: f.createdAt,
     })),
+    dihapus: dihapus.map((d) => {
+      const h = hapusPer.get(d.id);
+      return {
+        id: d.id,
+        tanggal: d.tanggal,
+        hasil: d.hasil,
+        deskripsi: d.deskripsi,
+        pencatat: d.pencatat,
+        oleh: h?.editor ?? null,
+        alasan: h?.alasan ?? null,
+        dihapusPada: h?.createdAt ?? d.deletedAt,
+      };
+    }),
   };
 }
 

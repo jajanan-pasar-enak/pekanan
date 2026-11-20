@@ -18,7 +18,7 @@ import {
 import { requireKaryawanHalaman } from "@/lib/auth/current";
 import { AppError } from "@/lib/http";
 import { daftarHasilFollowup, getKlien } from "@/lib/klien/queries";
-import { formatTanggal, tanggalHariIni } from "@/lib/waktu";
+import { formatTanggal, formatTanggalWaktu, tanggalHariIni } from "@/lib/waktu";
 
 async function IsiKlien({ id }: { id: string }) {
   await connection();
@@ -31,6 +31,38 @@ async function IsiKlien({ id }: { id: string }) {
     throw error;
   }
   const opsiHasil = klien.bolehCatat ? await daftarHasilFollowup(true) : [];
+
+  type BarisRiwayat = {
+    id: string;
+    tanggal: string;
+    hasil: string;
+    deskripsi: string | null;
+    oleh: string;
+    edit: (typeof klien.followup)[number]["edit"];
+    dihapus: { oleh: string; alasan: string | null; pada: Date | null } | null;
+  };
+  const riwayat: BarisRiwayat[] = [
+    ...klien.followup.map((f) => ({
+      id: f.id,
+      tanggal: f.tanggal,
+      hasil: f.hasil.nama,
+      deskripsi: f.deskripsi,
+      oleh: f.olehSupervisor
+        ? `${f.olehSupervisor.nama} (atas nama ${f.pencatat.nama})`
+        : f.pencatat.nama,
+      edit: f.edit,
+      dihapus: null,
+    })),
+    ...klien.dihapus.map((d) => ({
+      id: d.id,
+      tanggal: d.tanggal,
+      hasil: d.hasil.nama,
+      deskripsi: d.deskripsi,
+      oleh: d.pencatat.nama,
+      edit: [],
+      dihapus: { oleh: d.oleh?.nama ?? "pengguna", alasan: d.alasan, pada: d.dihapusPada },
+    })),
+  ].sort((a, b) => b.tanggal.localeCompare(a.tanggal));
 
   return (
     <>
@@ -66,10 +98,13 @@ async function IsiKlien({ id }: { id: string }) {
       <Card>
         <CardHeader>
           <CardTitle>Riwayat follow-up</CardTitle>
-          <CardDescription>{klien.followup.length} kejadian.</CardDescription>
+          <CardDescription>
+            {klien.followup.length} kejadian
+            {klien.dihapus.length > 0 ? `, ${klien.dihapus.length} dihapus` : ""}.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {klien.followup.length === 0 ? (
+          {riwayat.length === 0 ? (
             <p className="text-sm text-muted-foreground">Belum ada follow-up.</p>
           ) : (
             <Table>
@@ -82,27 +117,40 @@ async function IsiKlien({ id }: { id: string }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {klien.followup.map((f) => (
-                  <TableRow key={f.id}>
-                    <TableCell className="whitespace-nowrap">{formatTanggal(f.tanggal)}</TableCell>
-                    <TableCell>{f.hasil.nama}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {f.deskripsi ?? "Belum diisi"}
-                      {f.edit.length > 0 && (
-                        <ul className="mt-1 flex flex-col gap-0.5 text-xs">
-                          {f.edit.map((e) => (
-                            <li key={e.id}>
-                              diubah {e.editor.nama}: {e.alasan}
-                            </li>
-                          ))}
-                        </ul>
+                {riwayat.map((f) => (
+                  <TableRow key={f.id} className={f.dihapus ? "text-muted-foreground" : undefined}>
+                    <TableCell className="whitespace-nowrap">
+                      <span className={f.dihapus ? "line-through" : undefined}>
+                        {formatTanggal(f.tanggal)}
+                      </span>
+                      {f.dihapus && (
+                        <Badge variant="outline" className="ml-2">
+                          dihapus
+                        </Badge>
                       )}
                     </TableCell>
-                    <TableCell>
-                      {f.olehSupervisor
-                        ? `${f.olehSupervisor.nama} (atas nama ${f.pencatat.nama})`
-                        : f.pencatat.nama}
+                    <TableCell className={f.dihapus ? "line-through" : undefined}>
+                      {f.hasil}
                     </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {f.deskripsi ?? "Belum diisi"}
+                      {f.dihapus ? (
+                        <p className="mt-1 text-xs">
+                          {`Dihapus${f.dihapus.pada ? ` ${formatTanggalWaktu(f.dihapus.pada)}` : ""} oleh ${f.dihapus.oleh}${f.dihapus.alasan ? `: ${f.dihapus.alasan}` : ""}.`}
+                        </p>
+                      ) : (
+                        f.edit.length > 0 && (
+                          <ul className="mt-1 flex flex-col gap-0.5 text-xs">
+                            {f.edit.map((e) => (
+                              <li key={e.id}>
+                                diubah {e.editor.nama}: {e.alasan}
+                              </li>
+                            ))}
+                          </ul>
+                        )
+                      )}
+                    </TableCell>
+                    <TableCell>{f.oleh}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

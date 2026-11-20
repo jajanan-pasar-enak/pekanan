@@ -110,7 +110,7 @@ Semua sudah di-push ke `main`. Sebelumnya **semua** `Suspense fallback={null}` (
 - **Uji:** `pnpm test` **32/32** (+`hapusFollowupSchema`); `pnpm build` exit 0. Uji browser `/tmp/pw/hapus-followup.mjs` terhadap `pnpm start`: **10/10** (konfirmasi, tombol terkunci, alasan, angka turun 1, riwayat tetap setelah reload, DELETE id acak → 400). Uji dijalankan ulang beberapa kali; tiap putaran menghapus satu follow-up "uji" di Toko Uji Browser.
 - **Jebakan saat menguji (jangan diulang):** sempat menambahkan `isNull(followup.deletedAt)` ke query **daftar hapus** di `followup.ts` lewat bulk edit → seksi "Dihapus pada pekan ini" kosong. Query itu memang mencari baris soft-deleted; filter hanya untuk daftar hidup/hitungan.
 - **Sudah di-commit & di-push:** `79bd6f0` (fitur + migrasi + skrip) dan `aa8f1f9` (docs). Vercel auto-deploy dari `main`; migrasi sudah diterapkan manual lebih dulu, jadi deploy tidak punya langkah DB.
-- **Belum dilakukan:** entri hapus di `/klien/[id]` (riwayat hapus hanya tampil di dialog laporan).
+- **Sudah dilakukan (2026-11-20):** entri hapus kini tampil di riwayat `/klien/[id]` — lihat §1x.
 
 ## 1c. Hasil sesi 2026-11-08 (lanjutan 2) — lebar tabel laporan
 
@@ -343,6 +343,15 @@ Audit `/hallmark` (scope app, genre modern-minimal). Diagnosis: masalahnya bukan
 - **Koneksi lokal**: `src/db/index.ts` tidak lagi memaksa `sslmode=verify-full` untuk host loopback (`localhost`, `127.0.0.1`, `::1`); host jauh tetap `verify-full`. Tanpa ini Postgres uji tanpa TLS tidak bisa dihubungi.
 - **Batas**: draf catch-up dibuat dengan status `Draf` dan kolom isian kosong; skrip tidak menguji UI maupun pengiriman laporan.
 - Pemeriksaan sesi ini: 42/42 unit test, 21 pemeriksaan bootstrap, 10 pemeriksaan DB, eslint 0 error (1 warning lama), prettier bersih, `pnpm build` exit 0.
+
+## 1x. Sesi 2026-11-20 — riwayat hapus di `/klien/[id]` + demo LAN untuk Android
+
+- **Riwayat hapus di `/klien/[id]`:** `getKlien` kini juga membaca baris `followup.deleted_at IS NOT NULL` beserta jejak hapusnya dari `followup_edit` (`sesudah ? 'dihapus'`, entri terakhir menang). Baris hapus digabung ke tabel riwayat, diurutkan per tanggal; tanggal/hasil dicoret, label `dihapus`, dan keterangan `Dihapus <waktu> oleh <nama>[: alasan].` Deskripsi kartu menulis `<n> kejadian, <m> dihapus.` Baris hidup membawa riwayat edit seperti sebelumnya.
+- **Berkas:** `src/lib/klien/queries.ts` (tipe `FollowupDihapusKlien`, query `dihapus` + `hapusEdit`, `KlienDetail.dihapus`), `src/app/(app)/klien/[id]/page.tsx` (gabungan `riwayat`, render baris hapus).
+- **Verifikasi:** `pnpm build` exit 0, eslint 0 error, prettier bersih. Uji nyata di server preview lokal (DB sekali pakai, bukan produksi): login `sup-2@seed.local` dari origin LAN → 200; `DELETE /api/followup/94c1eb54…` (`{alasan}`) → 200; `GET /klien/a8be8af1…` → 200 dan memuat `Dihapus 20 Nov 2026, 10.24 oleh Tono Supervisor: Uji tampilan riwayat hapus.`
+- **Demo LAN (hanya untuk uji, data sekali pakai):** Postgres lokal `127.0.0.1:55432` (`/tmp/pekanan-demo-pg`, db `pekanan_demo`), migrasi + `scripts/seed.mts`, lalu `next start -H 0.0.0.0 -p 3000` dengan `DATABASE_URL*` lokal dan `BETTER_AUTH_URL=http://192.168.1.100:3000`. Diuji dari origin LAN: `POST /api/auth/sign-in/email` → 200, `/` dan `/klien/[id]` → 200. Akun: `sup-2@seed.local`, `magang-1@seed.local`, `admin@seed.local` — password seed `SeedPekanan123!`. Bila Android tidak bisa membuka, periksa firewall host untuk port 3000.
+- **Catatan:** demo ini tidak menyentuh Neon produksi; hentikan `next start` dan `pg_ctl stop -D /tmp/pekanan-demo-pg` bila selesai, dan data uji hapus (`Uji tampilan riwayat hapus`) tidak perlu dibersihkan dari produksi karena tidak pernah masuk ke sana.
+- **Commit:** menyusul bersama dokumen ini.
 
 
 ## 2. Lokasi dokumen (baca berurutan)
