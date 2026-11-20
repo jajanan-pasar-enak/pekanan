@@ -81,8 +81,11 @@ export async function bootstrapPekan(viewerId: string | null): Promise<void> {
   const { mulai, selesai } = pekanWIB();
   const pekanId = await buatAtauAmbilPekan(mulai, selesai);
   if (!viewerId) return;
-  await buatDraf(viewerId, pekanId);
+  // Catch-up dihitung sebelum draf pekan berjalan dibuat; kalau tidak, batas
+  // catch-up ikut menjadi pekan berjalan dan pekan yang terlewat tidak pernah
+  // terisi.
   await catchUp(viewerId, selesai);
+  await buatDraf(viewerId, pekanId);
 }
 
 export async function daftarAnggotaLangsung(supervisorId: string) {

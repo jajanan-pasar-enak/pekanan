@@ -324,7 +324,24 @@ Audit `/hallmark` (scope app, genre modern-minimal). Diagnosis: masalahnya bukan
 - **Tes**: 42/42 lulus (7 tes baru untuk label/gap/riwayat). `tsc --noEmit` 0, `pnpm build` exit 0, prettier bersih, eslint 0 error (1 warning lama di `.hallmark/komparasi/build.mjs` yang gitignored). sloplint 5 berkas: 0 FAIL, 1 REFLEX (26b) — waived karena disabled state ada di primitif Button/Select.
 - **Verifikasi browser**: harness sementara `/uji-form` (sudah dihapus) + CDP headless 1280x800/390x844. Terukur: Enter angka → mediaOffline; Shift+Enter → mediaOnline; Alt+↓ → Budi/kehadiran; Alt+↑ → Ani; klik gap → Ani/mediaOffline; Select keyboard memilih dan lanjut ke mediaOnline; Ctrl+Enter → keteranganOneOnOne; panah daftar anggota → anggota-budi; panel gap tampil; tombol kirim nonaktif; tanpa overflow horizontal; 0 error console. Setelah perbaikan overlap, gap bottom 736 vs aksi top 752 (tidak menutupi). Tangkapan: `.hallmark/design/ux-loop-1280.png`, `ux-loop-390.png` (gitignored).
 - **Batasan**: halaman `/laporan/[id]` asli tidak bisa dibuka karena akun uji produksi sudah dihapus dan sengaja tidak dibuat ulang; verifikasi memakai komponen `FormLaporan` yang sama dengan props statis dan API di-mock. Perlu uji dengan supervisor nyata untuk memastikan pintasan terasa pas.
-- **Belum di-commit.**
+- **Commit**: `5e15936` (UX loop). Perbaikan mobile menyusul di `4d83a5c`.
+
+## 1w. Sesi 2026-11-20 — bug catch-up pekan + skrip uji integrasi lokal
+
+- **Bug ditemukan lewat tes**: `bootstrapPekan` membuat draf pekan berjalan **sebelum** `catchUp`. Akibatnya `batasCatchUp` membaca `MAX(selesai)` yang baru saja menjadi pekan berjalan, sehingga pekan yang terlewat **tidak pernah terisi** — catch-up praktis mati. Perbaikan: `catchUp` dijalankan lebih dulu, baru `buatDraf` pekan berjalan (`src/lib/pekan/bootstrap.ts`). Urutan ini juga tetap aman untuk pemanggilan berulang karena `buatDraf` idempoten.
+- **Skrip uji** `scripts/test-bootstrap.mts` (21 pemeriksaan): membuat pekan berjalan dari tanggal WIB, catch-up tiga pekan terlewat, tidak menduplikasi pekan yang sudah dilaporkan, membuat ulang draf di atas laporan yang di-soft-delete, idempoten pada panggilan kedua, tidak membuat draf untuk supervisor nonaktif, supervisor baru hanya dapat pekan berjalan, dan `siapkanDrafPekanBerjalan` (alih supervisor) hanya membuat pekan berjalan. Skrip **menolak berjalan** bila `DATABASE_URL` bukan host lokal.
+- **Cara jalan** (Postgres lokal sekali pakai, port 55432):
+  ```sh
+  initdb -D /tmp/pekanan-uji-pg -A trust --no-locale -E UTF8
+  pg_ctl -D /tmp/pekanan-uji-pg -o "-p 55432 -k /tmp/pekanan-uji-sock -h 127.0.0.1" start
+  createdb -h 127.0.0.1 -p 55432 pekanan_uji
+  DATABASE_URL_UNPOOLED=postgresql://127.0.0.1:55432/pekanan_uji pnpm db:migrate
+  DATABASE_URL=postgresql://127.0.0.1:55432/pekanan_uji \
+  DATABASE_URL_POOLED=postgresql://127.0.0.1:55432/pekanan_uji pnpm test:bootstrap
+  ```
+- **Koneksi lokal**: `src/db/index.ts` tidak lagi memaksa `sslmode=verify-full` untuk host loopback (`localhost`, `127.0.0.1`, `::1`); host jauh tetap `verify-full`. Tanpa ini Postgres uji tanpa TLS tidak bisa dihubungi.
+- **Batas**: draf catch-up dibuat dengan status `Draf` dan kolom isian kosong; skrip tidak menguji UI maupun pengiriman laporan. Tes DB lain (trigger `retire_transferred_laporan`) tetap belum ada.
+- Pemeriksaan sesi ini: 42/42 unit test, eslint 0 error (1 warning lama), prettier bersih, `pnpm build` exit 0.
 
 
 ## 2. Lokasi dokumen (baca berurutan)
@@ -460,7 +477,7 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
    - Tampilkan entri "dihapus" di riwayat `/klien/[id]` (sekarang hanya di dialog laporan).
    - `scripts/test-db.mts` untuk trigger `retire_transferred_laporan` — satu-satunya item checklist yang belum punya skrip tersimpan.
    - Smoke masih butuh password admin yang tidak diketahui; pertimbangkan menjalankannya terhadap `admin@seed.local`.
-5. **Belum diuji manual (browser):** bootstrap setelah pergantian pekan nyata (Draf baru + catch-up). Rute Rekap sekarang **sudah punya layar** (§1b) — poin lama sudah usang.
+5. **Bootstrap pergantian pekan:** perilaku catch-up sudah diuji lewat skrip integrasi lokal (§1w); uji browser tetap berguna untuk tampilannya, tetapi jalur data utamanya sudah tertutup.
 6. **Kebersihan riwayat git:** `AdminBaru123!` masih ada di `HANDOFF.md` versi lama pada riwayat kedua repo, tetapi **sudah tidak berlaku**. `git filter-repo` tidak wajib.
 7. Skrip uji browser ada di `/tmp/pw` (+ Playwright-Core, Chrome `/usr/bin/google-chrome-stable`); **tidak di repo**: `uji.mjs`, `rekap.mjs`, `akun.mjs`, `wajib.mjs`, `tabel.mjs`, `followup.mjs`, `hapus-followup.mjs`, `cek-klien.mjs`, `prod*.mjs`, `prod-followup.mjs`, plus skrip sesi 5: `auth.mjs` (login + simpan cookie ke `storage.json`), `firstload.mjs`, `nav3.mjs`, `detail.mjs`, `shape2.mjs`. Sesi ini berakhir dengan **server lokal dimatikan** (port 3000 bebas).
 - **Jebakan skrip sesi 5:** `localhost:3000` dikunci `BETTER_AUTH_URL`; server di port lain → login 403 `INVALID_ORIGIN`. Untuk uji dengan sumber yang diedit, jalankan salinan bersih (`rsync` src ke `/tmp/pt` + `pnpm install`, cukup pakai `node_modules` milik sendiri) di port 3000. Men-symlink `node_modules` proyek ke salinan **merusak Turbopack** ("Could not find the Next.js package"). Cookie Better Auth disuntik ke konteks Playwright dengan `domain: 'localhost', path: '/'` (bukan `url`). Menunda request `document` 4 dtk = simulasi lambat; skeleton terjadi di navigasi klien, bukan muat penuh pertama. `BASE` script di-hardcode ke `http://localhost:3000` — untuk uji produksi salin script dan ganti BASE.

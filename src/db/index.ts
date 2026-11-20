@@ -16,7 +16,10 @@ function opsiKoneksi(raw: string | undefined) {
   const password = encodeURIComponent(decodeURIComponent(r.password));
   const host = r.hostname;
   const port = r.port ? `:${r.port}` : "";
-  r.searchParams.set("sslmode", "verify-full");
+  // Postgres lokal untuk uji biasanya tidak memakai TLS; hanya host jauh
+  // (Neon) yang dipaksa verify-full.
+  const lokal = host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]";
+  if (!lokal) r.searchParams.set("sslmode", "verify-full");
   return {
     connectionString: `${r.protocol}//${username}:${password}@${host}${port}${r.pathname}${r.search}`,
   };
