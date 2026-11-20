@@ -62,9 +62,14 @@ async function IsiRekapPekan({ pekanId }: { pekanId: string }) {
             {formatRentangTanggal(pekan.mulai, pekan.selesai)} WIB
           </p>
         </div>
-        <Button variant="outline" asChild>
-          <Link href="/rekap">Kembali</Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" asChild>
+            <a href={`/api/rekap/pekan/${pekanId}?format=csv`}>Ekspor CSV</a>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/rekap">Kembali</Link>
+          </Button>
+        </div>
       </header>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -134,9 +139,12 @@ export default async function RekapPekanPage({ params }: PageProps<"/rekap/[peka
         <HalamanSkeleton
           judul="Rekap Pekan"
           aksi={
-            <Button variant="outline" asChild>
-              <Link href="/rekap">Kembali</Link>
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline">Ekspor CSV</Button>
+              <Button variant="outline" asChild>
+                <Link href="/rekap">Kembali</Link>
+              </Button>
+            </div>
           }
           anak={
             <>

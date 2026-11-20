@@ -361,6 +361,17 @@ Audit `/hallmark` (scope app, genre modern-minimal). Diagnosis: masalahnya bukan
 - **Jebakan Drizzle:** `${karyawan.id}` di dalam subquery `sql` dirender **tanpa kualifikasi** (`"id"`) bila query hanya memakai satu tabel, sehingga `exists (select 1 from karyawan a where a.supervisor_id = "id")` membandingkan kolom tabel dalam dan selalu false. Jangan memakai subquery berkorelasi dengan pola itu pada query satu tabel; hitung terpisah dengan `groupBy` (dipakai di sini) atau pastikan kolom terkalifikasi.
 - **Uji:** `scripts/test-bootstrap.mts` +6 pemeriksaan (27 total) untuk baris kosong, tanggal masuk, supervisor nonaktif, anggota tanpa Anggota Langsung, dan penggantian baris kosong oleh draf. `pnpm test` 42/42, `tsc` 0, eslint 0 error (1 warning lama), prettier bersih, `pnpm build` exit 0.
 - **Verifikasi LAN (DB demo sekali pakai):** login `sup-1@seed.local` → `/rekap` 200; pekan berjalan menampilkan Tono `Draf 0/2` dan Wulan `Belum dibuka —`; setelah pekan lama disisipkan: Tono `Draf (pekan lewat)` dan Wulan `Belum ada laporan`, tautan "Lihat rekap" hanya muncul pada pekan yang punya laporan. Data uji ini hanya ada di `/tmp/pekanan-demo-pg`.
+- **Commit:** `62f42dc`.
+
+## 1z. Sesi 2026-11-20 — ekspor CSV rekap pekan dan ledger iuran
+
+- **Helper (`src/lib/csv.ts`):** `csv(baris)` menulis sel `null`/`undefined` kosong, meng-escape koma/kutip/CR/LF ala RFC 4180, dan memberi awalan `'` pada teks berawalan `= + - @ TAB CR` (termasuk bila didahului spasi) agar tidak dieksekusi spreadsheet. Baris dipisah CRLF, diakhiri newline. `unduhanCsv(baris, nama)` menambah BOM UTF-8 (Excel), `content-type: text/csv; charset=utf-8`, `content-disposition: attachment`, dan `cache-control: no-store`; nama berkas disanitasi ke `[\w.-]`.
+- **`/api/iuran/ledger` (baru):** cakupan sama dengan `/iuran` — diri sendiri + Anggota Langsung, 12 bulan terakhir. Kolom bulan memakai `labelBulanPendek`, sel berisi nominal bila lunas dan kosong bila belum; kolom `Lunas` berformat `n/12`. Nama berkas `ledger-iuran-YYYY-MM.csv`. Logika label bulan dipindah ke `src/lib/iuran/label.ts` (dipakai halaman dan route; +`label.test.ts`).
+- **`/api/rekap/pekan/[id]?format=csv`:** parameter `format=csv` mengembalikan CSV (Anggota, Kehadiran, Media online, Media offline, One-on-one, Follow-up, lalu baris Total dengan `lengkap/anggota`). Tanpa parameter, respons JSON tetap seperti sebelumnya. Otorisasi tetap lewat `getRekapPekan` (supervisor/atasan/admin; selain itu 404).
+- **UI:** tombol "Ekspor CSV" di `CardAction` kartu Ledger `/iuran` dan di header `/rekap/[pekanId]` (prefetch dimatikan karena tautan unduhan biasa `<a>`); skeleton ikut disesuaikan.
+- **Jebakan uji:** `Response.text()` membuang BOM UTF-8 sesuai WHATWG, jadi uji BOM harus membaca `arrayBuffer()` (tiga byte pertama `EF BB BF`).
+- **Verifikasi (preview LAN di DB demo `/tmp/pekanan-demo-pg`, bukan produksi):** `pnpm test` 48/48, `tsc` 0, eslint 0 error (1 warning lama), prettier bersih, `pnpm build` exit 0. `GET /api/iuran/ledger` sebagai `sup-2@seed.local` → 200, `text/csv`, `filename="ledger-iuran-2026-11.csv"`, baris diri sendiri + 2 anggota, BOM + CRLF benar. `GET /api/rekap/pekan/bef53164…?format=csv` sebagai `sup-1@seed.local` → 200, `filename="rekap-2026-11-15.csv"`, header + 4 baris + Total. Tanpa sesi → 401 JSON (kedua route); akun anggota untuk pekan tanpa laporan → 404 JSON; `?format` absen → JSON utuh. Kedua tombol muncul di HTML yang dirender.
+- **Catatan build:** route handler dengan `connection()` ikut di-prerender saat build dan memunculkan `HANGING_PROMISE_REJECTION` di log untuk `/api/iuran/ledger` — sama persis dengan `/api/me` yang sudah ada; route tetap `ƒ` (dinamis) dan build exit 0.
 - **Belum di-commit** saat catatan ini ditulis.
 
 
@@ -494,7 +505,8 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
    - ~~Hapus follow-up dari dialog (soft-delete + alasan)~~ — **selesai & live** (§1e).
    - ~~Skeleton saat memuat + judul/tombol statis tidak di-skeleton~~ — **selesai & live** (§1f).
    - ~~Peringatan SSL `sslmode` di log Vercel~~ — **selesai** (§1g); cek log Vercel setelah deploy `a6e95e3` untuk konfirmasi peringatan tidak muncul lagi.
-   - Tampilkan entri "dihapus" di riwayat `/klien/[id]` (sekarang hanya di dialog laporan).
+   - Tampilkan entri "dihapus" di riwayat `/klien/[id]` — **selesai** (§1x).
+   - ~~Ekspor CSV rekap pekan dan ledger iuran~~ — **selesai** (§1z).
    - ~~`scripts/test-db.mts` untuk trigger `retire_transferred_laporan`~~ — **selesai** (§1w, 10 pemeriksaan).
    - Smoke masih butuh password admin yang tidak diketahui; pertimbangkan menjalankannya terhadap `admin@seed.local`.
 5. **Bootstrap pergantian pekan:** perilaku catch-up sudah diuji lewat skrip integrasi lokal (§1w); uji browser tetap berguna untuk tampilannya, tetapi jalur data utamanya sudah tertutup.

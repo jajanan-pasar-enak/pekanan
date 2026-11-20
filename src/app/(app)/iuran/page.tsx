@@ -12,7 +12,14 @@ import {
   Skeleton,
 } from "@/components/skeleton";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -22,6 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { requireKaryawanHalaman } from "@/lib/auth/current";
+import { duaBelasBulan, labelBulan, labelBulanPendek } from "@/lib/iuran/label";
 import { daftarNominalIuran, daftarPembayaran, rekapIuranBanyak } from "@/lib/iuran/queries";
 import { daftarAnggotaLangsung } from "@/lib/pekan/bootstrap";
 import { bulanBerjalan, formatTanggal, tanggalHariIni } from "@/lib/waktu";
@@ -31,56 +39,6 @@ const rupiah = new Intl.NumberFormat("id-ID", {
   currency: "IDR",
   maximumFractionDigits: 0,
 });
-
-const BULAN = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
-
-const BULAN_PENDEK = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "Mei",
-  "Jun",
-  "Jul",
-  "Agu",
-  "Sep",
-  "Okt",
-  "Nov",
-  "Des",
-];
-
-export function labelBulan(iso: string): string {
-  const [tahun, bulan] = iso.split("-").map(Number);
-  return `${BULAN[bulan! - 1]} ${tahun}`;
-}
-
-// Daftar bulan berjalan dan 11 bulan sebelumnya (terbaru di atas).
-function duaBelasBulan(berjalan: string): string[] {
-  let [tahun, bulan] = berjalan.split("-").map(Number);
-  const hasil: string[] = [];
-  for (let i = 0; i < 12; i++) {
-    hasil.push(`${tahun}-${String(bulan).padStart(2, "0")}-01`);
-    bulan! -= 1;
-    if (bulan! < 1) {
-      bulan = 12;
-      tahun! -= 1;
-    }
-  }
-  return hasil;
-}
 
 async function IsiIuran({
   searchParams,
@@ -206,6 +164,11 @@ async function IsiIuran({
           <CardDescription>
             Dua belas bulan terakhir. Kolom pertama adalah bulan berjalan.
           </CardDescription>
+          <CardAction>
+            <Button variant="outline" size="sm" asChild>
+              <a href="/api/iuran/ledger">Ekspor CSV</a>
+            </Button>
+          </CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <p className="text-xs text-muted-foreground">
@@ -222,7 +185,7 @@ async function IsiIuran({
                     Karyawan
                   </th>
                   {kolom.map((b) => {
-                    const [tahun, bulanKe] = b.bulan.split("-").map(Number);
+                    const [singkat, tahun] = labelBulanPendek(b.bulan).split(" ");
                     return (
                       <th
                         key={b.bulan}
@@ -233,7 +196,7 @@ async function IsiIuran({
                             "border-b-2 border-b-signal font-medium text-signal",
                         )}
                       >
-                        <span className="block text-xs">{BULAN_PENDEK[bulanKe! - 1]}</span>
+                        <span className="block text-xs">{singkat}</span>
                         <span className="block text-[11px] text-muted-foreground">{tahun}</span>
                       </th>
                     );
