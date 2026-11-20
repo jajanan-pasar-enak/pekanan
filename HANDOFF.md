@@ -339,9 +339,10 @@ Audit `/hallmark` (scope app, genre modern-minimal). Diagnosis: masalahnya bukan
   DATABASE_URL=postgresql://127.0.0.1:55432/pekanan_uji \
   DATABASE_URL_POOLED=postgresql://127.0.0.1:55432/pekanan_uji pnpm test:bootstrap
   ```
+- **Skrip DB** `scripts/test-db.mts` (10 pemeriksaan, transaksi + rollback): trigger `retire_transferred_laporan` memensiunkan baris yang kalah saat tujuan sudah punya laporan hidup, tidak menyentuh tujuan tanpa laporan, tidak terpicu untuk supervisor yang sama atau perubahan kolom lain, dan tidak mengubah baris yang sudah terhapus. Juga menjaga indeks unik laporan hidup dan CHECK `pekan`/`status`. Jalankan dengan env lokal yang sama lewat `pnpm test:db`.
 - **Koneksi lokal**: `src/db/index.ts` tidak lagi memaksa `sslmode=verify-full` untuk host loopback (`localhost`, `127.0.0.1`, `::1`); host jauh tetap `verify-full`. Tanpa ini Postgres uji tanpa TLS tidak bisa dihubungi.
-- **Batas**: draf catch-up dibuat dengan status `Draf` dan kolom isian kosong; skrip tidak menguji UI maupun pengiriman laporan. Tes DB lain (trigger `retire_transferred_laporan`) tetap belum ada.
-- Pemeriksaan sesi ini: 42/42 unit test, eslint 0 error (1 warning lama), prettier bersih, `pnpm build` exit 0.
+- **Batas**: draf catch-up dibuat dengan status `Draf` dan kolom isian kosong; skrip tidak menguji UI maupun pengiriman laporan.
+- Pemeriksaan sesi ini: 42/42 unit test, 21 pemeriksaan bootstrap, 10 pemeriksaan DB, eslint 0 error (1 warning lama), prettier bersih, `pnpm build` exit 0.
 
 
 ## 2. Lokasi dokumen (baca berurutan)
@@ -475,7 +476,7 @@ BETTER_AUTH_LOGIN_LIMIT  # opsional, default 60 (login & change-password per IP/
    - ~~Skeleton saat memuat + judul/tombol statis tidak di-skeleton~~ — **selesai & live** (§1f).
    - ~~Peringatan SSL `sslmode` di log Vercel~~ — **selesai** (§1g); cek log Vercel setelah deploy `a6e95e3` untuk konfirmasi peringatan tidak muncul lagi.
    - Tampilkan entri "dihapus" di riwayat `/klien/[id]` (sekarang hanya di dialog laporan).
-   - `scripts/test-db.mts` untuk trigger `retire_transferred_laporan` — satu-satunya item checklist yang belum punya skrip tersimpan.
+   - ~~`scripts/test-db.mts` untuk trigger `retire_transferred_laporan`~~ — **selesai** (§1w, 10 pemeriksaan).
    - Smoke masih butuh password admin yang tidak diketahui; pertimbangkan menjalankannya terhadap `admin@seed.local`.
 5. **Bootstrap pergantian pekan:** perilaku catch-up sudah diuji lewat skrip integrasi lokal (§1w); uji browser tetap berguna untuk tampilannya, tetapi jalur data utamanya sudah tertutup.
 6. **Kebersihan riwayat git:** `AdminBaru123!` masih ada di `HANDOFF.md` versi lama pada riwayat kedua repo, tetapi **sudah tidak berlaku**. `git filter-repo` tidak wajib.

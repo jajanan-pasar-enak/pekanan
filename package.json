@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "tsx --test --test-concurrency=1 \"src/**/*.test.ts\"",
     "test:bootstrap": "tsx scripts/test-bootstrap.mts",
+    "test:db": "tsx scripts/test-db.mts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "seed:admin": "tsx scripts/seed-admin.mts",
