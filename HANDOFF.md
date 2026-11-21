@@ -382,6 +382,16 @@ Audit `/hallmark` (scope app, genre modern-minimal). Diagnosis: masalahnya bukan
 - **`.vercelignore` (baru):** mengecualikan `.env.local`, `HANDOFF.md`, `.hallmark`, `scripts`, `drizzle` dari unggahan Vercel CLI (build tidak membutuhkannya).
 - **Catatan verifikasi produksi:** login skrip dengan `sup-1@seed.local` + password seed di **produksi** menghasilkan `INVALID_EMAIL_OR_PASSWORD` (akun seed produksi sudah tidak memakai password itu / sudah dibersihkan); verifikasi isi CSV produksi perlu dilakukan dengan akun produksi yang nyata. Route sudah terbukti live (tanpa sesi → 401 JSON, bukan 404).
 
+## 1ab. Sesi 2026-11-21 — seed Faker khusus verifikasi CSV produksi
+
+- **Skrip baru:** `scripts/seed-csv.mts` + generator deterministik `scripts/seed-csv-data.mts`, memakai `@faker-js/faker` locale Indonesia. Perintah: `pnpm seed:csv`; cleanup: `pnpm seed:csv --cleanup`.
+- **Cakupan data:** 7 akun/profil bertanda `csv-verifikasi-*` (1 akun login, 2 supervisor, 4 anggota), 3 laporan/6 baris lengkap, ledger 12 bulan dengan pola lunas 12/8/4, 4 klien, 6 follow-up, serta master nominal/hasil khusus.
+- **Pengaman:** host nonlokal ditolak tanpa `FORCE=1` dan `SEED_CSV_PASSWORD` minimal 12 karakter, termasuk saat cleanup. Koneksi nonlokal dipaksa `sslmode=verify-full`. Semua ID deterministik; cleanup hanya menghapus ID milik seed. Referensi asing membuat transaksi rollback, bukan ikut terhapus. UUID pekan berasal dari tanggal mulai dan pekan hanya dihapus bila memang dibuat seed serta sudah tidak dirujuk.
+- **Tes:** `scripts/seed-csv-data.test.mts` masuk `pnpm test`; total unit **55/55**. `pnpm test:seed-csv` menjalankan 11 pemeriksaan pada DB lokal khusus `pekanan_csv_uji`: `seed → seed`, rollback saat ada klien asing, `cleanup → cleanup`, dan data non-seed tetap utuh.
+- **Verifikasi produksi terkontrol:** baseline `[user, account, session, karyawan, pekan, laporan, baris, pembayaran, klien, followup, nominal, hasil]` = `[2,2,2,2,5,0,0,0,0,0,2,3]`. Seed sementara menghasilkan marker `[7 user, 7 profil, 1 account, 0 session, 3 laporan, 24 pembayaran, 4 klien, 6 followup, 1 nominal, 1 hasil]`.
+- **Hasil endpoint produksi:** login akun sementara berhasil; ledger CSV `200`, 3 baris data × 14 kolom; rekap CSV `200`, 7 baris data × 6 kolom; nama berkas, `text/csv`, BOM UTF-8, CRLF, penjaga formula, dan kedua tombol ekspor semuanya benar.
+- **Cleanup produksi:** sukses; seluruh marker kembali nol dan baseline kembali persis `[2,2,2,2,5,0,0,0,0,0,2,3]`. Password sementara dibuat acak dalam memori dan tidak disimpan. Tidak ada data seed tersisa.
+- **Gerbang:** lint 0 error (1 warning lama di artefak Hallmark), prettier bersih, audit dependency tanpa vulnerability, `pnpm build` exit 0. Banner `connection()` saat prerender `/api/me` dan `/api/iuran/ledger` tetap noise yang sudah dikenal.
 
 ## 2. Lokasi dokumen (baca berurutan)
 
